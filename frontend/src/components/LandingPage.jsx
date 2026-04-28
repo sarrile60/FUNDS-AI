@@ -144,10 +144,12 @@ function HowItWorks() {
       </div>
       <div className="grid md:grid-cols-3 gap-4">
         {steps.map((s, i) => (
-          <div key={i} className="aif-card p-5 relative overflow-hidden">
-            <div className="absolute -right-4 -top-6 text-[80px] font-black text-[#5FE3C9]/8 leading-none">{i + 1}</div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-2">{t("how.step")} {i + 1}</div>
-            <div className="text-white font-medium">{s}</div>
+          <div key={i} className="aif-card p-5 relative overflow-hidden min-h-[140px]">
+            <div className="absolute right-4 top-2 text-[72px] font-black text-[#5FE3C9]/10 leading-none pointer-events-none select-none">{i + 1}</div>
+            <div className="relative z-10">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-2">{t("how.step")} {i + 1}</div>
+              <div className="text-white font-medium">{s}</div>
+            </div>
           </div>
         ))}
       </div>
