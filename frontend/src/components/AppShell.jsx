@@ -8,11 +8,13 @@ import CaseDashboard from "./CaseDashboard";
 import CasesList from "./CasesList";
 import Footer from "./Footer";
 import { useAuth } from "../auth";
+import { useI18n } from "../i18n";
 import { api } from "../api";
 import { toast } from "sonner";
 
 export default function AppShell() {
   const { user } = useAuth();
+  const { lang } = useI18n();
   const [view, setView] = useState("wizard"); // wizard | tracing | dashboard
   const [activeCase, setActiveCase] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -40,7 +42,7 @@ export default function AppShell() {
 
   const onTracingComplete = async () => {
     if (!activeCase) return;
-    try { await api.analyze(activeCase.id); }
+    try { await api.analyze(activeCase.id, lang); }
     catch { toast.error("Errore nell'analisi"); }
     setRefreshKey(k => k + 1);
     setView("dashboard");

@@ -1,21 +1,22 @@
-// CasesList — sidebar list of all user's cases
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 import { Folder, Plus } from "lucide-react";
+import { useI18n } from "../i18n";
 
 export default function CasesList({ activeId, onSelect, onNew, refreshKey }) {
+  const { t } = useI18n();
   const [cases, setCases] = useState([]);
   useEffect(() => { (async () => { try { setCases(await api.listCases()); } catch {} })(); }, [refreshKey]);
   return (
     <div className="aif-card p-4 sticky top-20" data-testid="cases-list">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-white font-semibold text-sm">I miei casi</div>
+        <div className="text-white font-semibold text-sm">{t("cl.title")}</div>
         <button onClick={onNew} className="aif-btn-ghost !py-1 !px-2 !text-xs inline-flex items-center gap-1" data-testid="cases-new">
-          <Plus size={12}/> Nuovo
+          <Plus size={12}/> {t("cl.new")}
         </button>
       </div>
       <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
-        {cases.length === 0 && <div className="text-[12px] text-[var(--aif-text-dim)]">Nessun caso ancora.</div>}
+        {cases.length === 0 && <div className="text-[12px] text-[var(--aif-text-dim)]">{t("cl.empty")}</div>}
         {cases.map((c) => (
           <button key={c.id} onClick={() => onSelect(c.id)}
             data-testid={`case-${c.case_reference}`}

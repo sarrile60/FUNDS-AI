@@ -7,6 +7,16 @@ const API = `${BACKEND_URL}/api`;
 
 const Ctx = createContext({ user: null, token: null, login: async () => {}, register: async () => {}, logout: () => {} });
 
+// Helper: extract human-readable error from axios error
+function _err(e, fallback) {
+  const d = e?.response?.data?.detail;
+  if (!d) return fallback;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) return d.map(x => x?.msg || x?.message || JSON.stringify(x)).join(", ");
+  if (typeof d === "object") return d.msg || d.message || JSON.stringify(d);
+  return String(d);
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("aif_token"));
   const [user, setUser] = useState(() => {
@@ -33,7 +43,7 @@ export function AuthProvider({ children }) {
       persist(data.token, data.user);
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: e?.response?.data?.detail || "Errore di accesso" };
+      return { ok: false, error: _err(e, "Sign-in error") };
     } finally { setLoading(false); }
   };
 
@@ -44,7 +54,7 @@ export function AuthProvider({ children }) {
       persist(data.token, data.user);
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: e?.response?.data?.detail || "Errore di registrazione" };
+      return { ok: false, error: _err(e, "Registration error") };
     } finally { setLoading(false); }
   };
 

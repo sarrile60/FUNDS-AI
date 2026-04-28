@@ -1,27 +1,24 @@
 // LiveFundTracingAnimation
-// =========================
-// Premium multi-stage animation that runs while the AI "analyzes" the case.
-// Stages: initializing → scanning_payment → mapping_path → detecting_risk → building_schema → generating_reports → complete
-// Pure SVG + CSS + small Framer Motion. No fake claims.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Zap, Network, AlertTriangle, FileSearch, FileCheck2, CheckCircle2, Activity } from "lucide-react";
+import { useI18n } from "../i18n";
 
 const STAGE_LIST = [
-  { key: "init",     label: "Inizializzazione analisi sicura del caso",    icon: Shield },
-  { key: "payment",  label: "Analisi metodo di pagamento",                 icon: Zap },
-  { key: "mapping",  label: "Mappatura percorso fondi",                    icon: Network },
-  { key: "risk",     label: "Rilevamento indicatori di frode",             icon: AlertTriangle },
-  { key: "schema",   label: "Costruzione schema documentale di recupero",  icon: FileSearch },
-  { key: "reports",  label: "Generazione report professionali",            icon: FileCheck2 },
-  { key: "complete", label: "Case Intelligence pronta",                    icon: CheckCircle2 },
+  { key: "init",     labelKey: "trace.s.init",     icon: Shield },
+  { key: "payment",  labelKey: "trace.s.payment",  icon: Zap },
+  { key: "mapping",  labelKey: "trace.s.mapping",  icon: Network },
+  { key: "risk",     labelKey: "trace.s.risk",     icon: AlertTriangle },
+  { key: "schema",   labelKey: "trace.s.schema",   icon: FileSearch },
+  { key: "reports",  labelKey: "trace.s.reports",  icon: FileCheck2 },
+  { key: "complete", labelKey: "trace.s.complete", icon: CheckCircle2 },
 ];
 
 const RAIL_ICONS = [
   { id: "sepa",         label: "SEPA",         icon: "🏦" },
   { id: "instant_sepa", label: "SEPA Instant", icon: "⚡" },
   { id: "postepay",     label: "PostePay",     icon: "💳" },
-  { id: "card",         label: "Carta",        icon: "💳" },
+  { id: "card",         label: "Card",         icon: "💳" },
   { id: "paypal",       label: "PayPal",       icon: "🅿" },
   { id: "revolut",      label: "Revolut",      icon: "🅡" },
   { id: "wise",         label: "Wise",         icon: "🪙" },
@@ -30,44 +27,42 @@ const RAIL_ICONS = [
   { id: "forex",        label: "Forex Broker", icon: "📈" },
 ];
 
-// node chains by scam/payment
-function chainFor(scam, pay) {
+// node chains by scam/payment (labels are bilingual-ish technical terms)
+function chainFor(scam, pay, t) {
   if (pay === "instant_sepa" || pay === "sepa") {
-    return ["Banca Vittima", "Rete SEPA", "IBAN Beneficiario", "Possibile Mule", "Richiesta Recall"];
+    return [t("trace.n.victimBank"), "SEPA", t("trace.n.beneficiaryIban"), t("trace.n.possibleMule"), t("trace.n.recall")];
   }
   if (pay === "postepay" || scam === "postepay") {
-    return ["PostePay/BancoPosta", "Ricarica", "Destinatario", "Reclamo Poste"];
+    return ["PostePay/BancoPosta", t("trace.n.topup"), t("trace.n.recipient"), t("trace.n.posteComplaint")];
   }
-  if (pay === "card") return ["Carta Vittima", "Merchant Descriptor", "Payment Processor", "Chargeback"];
-  if (scam === "crypto") return ["Exchange Origine", "Wallet", "Blockchain TX", "Wallet Destinatario", "Possibile Exchange Esposto", "Freeze Request"];
-  if (scam === "forex_broker") return ["Deposito Vittima", "Finta Piattaforma", "IBAN/Wallet/Processor", "Prelievo Bloccato", "CONSOB / Polizia"];
-  if (scam === "fake_recovery") return ["Vittima", "Finto Recuperatore", "Tassa di Sblocco", "ALERT Secondary Scam"];
-  if (["paypal","revolut","wise","satispay"].includes(pay)) return ["Wallet/App", "Account Destinatario", "Platform Dispute"];
-  return ["Vittima", "Metodo di Pagamento", "Destinatario", "Report"];
+  if (pay === "card") return [t("trace.n.victimCard"), "Merchant Descriptor", t("trace.n.processor"), "Chargeback"];
+  if (scam === "crypto") return [t("trace.n.exchangeOrigin"), "Wallet", "Blockchain TX", t("trace.n.recipientWallet"), t("trace.n.exchangeExposed"), "Freeze Request"];
+  if (scam === "forex_broker") return [t("trace.n.victimDeposit"), t("trace.n.fakePlatform"), "IBAN/Wallet/Processor", t("trace.n.blocked"), "CONSOB / Polizia"];
+  if (scam === "fake_recovery") return [t("trace.n.victim"), t("trace.n.fakeRecovery"), t("trace.n.unlockFee"), "ALERT Secondary Scam"];
+  if (["paypal","revolut","wise","satispay"].includes(pay)) return ["Wallet/App", t("trace.n.recipientAccount"), "Platform Dispute"];
+  return [t("trace.n.victim"), t("trace.n.payMethod"), t("trace.n.recipient"), "Report"];
 }
 
-const RISK_FLAGS = [
-  "Broker non autorizzato", "Prelievo bloccato", "Richiesta tassa di sblocco",
-  "AML fee", "Gas fee", "Falso documento autorità", "Richiesta seed phrase",
-  "Richiesta OTP", "Remote access risk", "IBAN sospetto", "Wallet risk", "Falso recupero fondi"
+const RISK_FLAG_KEYS = [
+  "rf.unauth_broker","rf.blocked","rf.unlockfee","rf.aml","rf.gas","rf.fakedoc",
+  "rf.seed","rf.otp","rf.remote","rf.iban","rf.wallet","rf.fakerec",
 ];
 
-const REPORTS = [
-  "Reclamo banca", "Richiesta freeze exchange", "Segnalazione CONSOB",
-  "Riassunto Polizia Postale", "Reclamo Poste", "Lawyer handoff memo", "Timeline caso"
+const REPORT_KEYS = [
+  "dash.report.bank_complaint","dash.report.exchange_freeze","dash.report.consob_report",
+  "dash.report.police_report","dash.report.poste_complaint","dash.report.lawyer_memo","dash.report.case_timeline",
 ];
 
-const SCHEMA_STEPS = [
-  "Contatta banca", "Richiedi recall bonifico", "Prepara chargeback",
-  "Contatta exchange compliance", "Prepara segnalazione CONSOB",
-  "Prepara riassunto Polizia Postale", "Conserva prove", "Non pagare altre commissioni"
+const SCHEMA_KEYS = [
+  "sch.bank","sch.recall","sch.chargeback","sch.exchange","sch.consob","sch.police","sch.preserve","sch.nopay",
 ];
 
 export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = "sepa", onComplete }) {
+  const { t } = useI18n();
   const [stage, setStage] = useState(0);
   const [progress, setProgress] = useState(0);
   const completedRef = useRef(false);
-  const chain = useMemo(() => chainFor(scam, pay), [scam, pay]);
+  const chain = useMemo(() => chainFor(scam, pay, t), [scam, pay, t]);
 
   // Auto-advance stages with visible timing
   useEffect(() => {
@@ -111,8 +106,8 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[#9FB0CC]">Tracciamento fondi</div>
-            <div className="text-white font-semibold">{STAGE_LIST[stage].label}</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[#9FB0CC]">{t("trace.title")}</div>
+            <div className="text-white font-semibold">{t(STAGE_LIST[stage].labelKey)}</div>
           </div>
         </div>
         <div className="aif-chip text-[10px]"><Activity size={12}/> {Math.round(progress)}%</div>
@@ -147,8 +142,8 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
                 </svg>
               </div>
               <div className="text-center mt-4">
-                <div className="text-white font-semibold">Caso protetto e crittografato</div>
-                <div className="text-[12px] text-[var(--aif-text-dim)] mt-1">Generazione case ID • Verifica integrità prove</div>
+                <div className="text-white font-semibold">{t("trace.init.title")}</div>
+                <div className="text-[12px] text-[var(--aif-text-dim)] mt-1">{t("trace.init.sub")}</div>
               </div>
             </motion.div>
           )}
@@ -168,7 +163,7 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
                 );
               })}
               <div className="col-span-5 text-center text-[12px] text-[var(--aif-text-dim)] mt-2">
-                Riconoscimento del binario di pagamento per orientare l'analisi…
+                {t("trace.payment.help")}
               </div>
             </motion.div>
           )}
@@ -177,14 +172,14 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
 
           {stage === 3 && (
             <motion.div key="risk" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-4">
-              <div className="text-center text-[13px] text-[var(--aif-text-dim)] mb-4">Scansione indicatori di frode in corso…</div>
+              <div className="text-center text-[13px] text-[var(--aif-text-dim)] mb-4">{t("trace.risk.help")}</div>
               <div className="flex flex-wrap gap-2 justify-center">
-                {RISK_FLAGS.map((f, i) => (
-                  <motion.span key={f}
+                {RISK_FLAG_KEYS.map((k, i) => (
+                  <motion.span key={k}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.08 }}
                     className="risk-badge risk-high">
-                    ⚠ {f}
+                    ⚠ {t(k)}
                   </motion.span>
                 ))}
               </div>
@@ -193,13 +188,13 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
 
           {stage === 4 && (
             <motion.div key="schema" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2 grid sm:grid-cols-2 gap-2">
-              {SCHEMA_STEPS.map((s, i) => (
-                <motion.div key={s}
+              {SCHEMA_KEYS.map((k, i) => (
+                <motion.div key={k}
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.12 }}
                   className="aif-card !rounded-xl p-3 flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-[#5FE3C9]"/>
-                  <div className="text-[13px] text-white">{s}</div>
+                  <div className="text-[13px] text-white">{t(k)}</div>
                 </motion.div>
               ))}
             </motion.div>
@@ -207,15 +202,15 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
 
           {stage === 5 && (
             <motion.div key="reports" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {REPORTS.map((r, i) => (
-                <motion.div key={r}
+              {REPORT_KEYS.map((k, i) => (
+                <motion.div key={k}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
                   className="aif-card !rounded-xl p-3 flex items-center gap-3">
                   <div className="w-9 h-12 rounded bg-gradient-to-b from-[#5FE3C9]/30 to-[#6E8BFF]/30 border border-[var(--aif-line)] flex items-center justify-center">
                     <FileCheck2 size={16} className="text-[#5FE3C9]"/>
                   </div>
-                  <div className="text-[13px] text-white">{r}</div>
+                  <div className="text-[13px] text-white">{t(k)}</div>
                 </motion.div>
               ))}
             </motion.div>
@@ -227,15 +222,15 @@ export default function LiveFundTracingAnimation({ scam = "forex_broker", pay = 
                 <div className="absolute inset-0 bg-[#4ADE80] blur-2xl opacity-25"/>
                 <CheckCircle2 size={88} className="text-[#4ADE80] relative"/>
               </div>
-              <div className="mt-3 text-white font-semibold text-lg">Case Intelligence pronta</div>
-              <div className="text-[12px] text-[var(--aif-text-dim)] mt-1">Apertura della dashboard…</div>
+              <div className="mt-3 text-white font-semibold text-lg">{t("trace.complete.title")}</div>
+              <div className="text-[12px] text-[var(--aif-text-dim)] mt-1">{t("trace.complete.sub")}</div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       <div className="mt-5 text-[11px] text-[var(--aif-text-dim)] text-center relative z-10">
-        Analisi preliminare basata sulle informazioni fornite. Il recupero dei fondi non è garantito.
+        {t("trace.disclaimer")}
       </div>
     </div>
   );

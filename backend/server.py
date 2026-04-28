@@ -210,43 +210,115 @@ class ReportIn(BaseModel):
 # ============================================================
 
 RED_FLAG_RULES = [
-    ("withdrawal_blocked",         "Prelievo bloccato dalla piattaforma",                              25),
-    ("requested_extra_fee",        "Richiesta tassa di sblocco / AML / gas fee",                       30),
-    ("seed_phrase_shared",         "Seed phrase / private key condivisa con scammer",                  35),
-    ("otp_shared",                 "Codici OTP / credenziali bancarie condivisi",                      30),
-    ("remote_access_installed",    "Software di accesso remoto installato (AnyDesk/TeamViewer)",       25),
-    ("scammer_still_active",       "Scammer ancora in contatto attivo",                                15),
-    ("impersonated_authority",     "Falsa identità autorità (CONSOB / Banca d'Italia / Polizia)",      20),
+    ("withdrawal_blocked",         {"it": "Prelievo bloccato dalla piattaforma", "en": "Withdrawal blocked by the platform"},                              25),
+    ("requested_extra_fee",        {"it": "Richiesta tassa di sblocco / AML / gas fee", "en": "Unlock / AML / gas fee request"},                       30),
+    ("seed_phrase_shared",         {"it": "Seed phrase / private key condivisa con scammer", "en": "Seed phrase / private key shared with scammer"},                  35),
+    ("otp_shared",                 {"it": "Codici OTP / credenziali bancarie condivisi", "en": "OTP codes / banking credentials shared"},                      30),
+    ("remote_access_installed",    {"it": "Software di accesso remoto installato (AnyDesk/TeamViewer)", "en": "Remote access software installed (AnyDesk/TeamViewer)"},       25),
+    ("scammer_still_active",       {"it": "Scammer ancora in contatto attivo", "en": "Scammer still in active contact"},                                15),
+    ("impersonated_authority",     {"it": "Falsa identità autorità (CONSOB / Banca d'Italia / Polizia)", "en": "Impersonated authority (CONSOB / Banca d'Italia / Police)"},      20),
 ]
 
 SCAM_TYPE_FLAGS = {
-    "forex_broker": ["Possibile broker non autorizzato", "Profitti garantiti / dashboard falsa"],
-    "crypto": ["Possibile invio crypto a wallet sconosciuto", "Transazione potenzialmente irreversibile"],
-    "fake_recovery": ["Falso recupero fondi rilevato (secondary scam)", "Richiesta di pagamento per 'sbloccare' fondi"],
-    "romance": ["Pattern pig butchering / romance investment", "Investment scam tramite relazione personale"],
-    "phishing": ["Phishing / smishing / vishing rilevato", "Possibile furto credenziali"],
-    "postepay": ["Scam PostePay / BancoPosta con destinatario sconosciuto", "Possibile falso SMS Poste"],
-    "sepa": ["Bonifico SEPA verso IBAN potenzialmente sospetto", "Valutare richiesta di recall"],
-    "instant_sepa": ["Bonifico SEPA istantaneo: alta urgenza, irreversibile in molti casi"],
-    "card": ["Pagamento carta contestabile (chargeback)", "Verificare merchant descriptor"],
-    "paypal": ["Dispute PayPal/Wallet possibile entro tempi piattaforma"],
+    "forex_broker": {
+        "it": ["Possibile broker non autorizzato", "Profitti garantiti / dashboard falsa"],
+        "en": ["Possible unauthorized broker", "Guaranteed profits / fake dashboard"],
+    },
+    "crypto": {
+        "it": ["Possibile invio crypto a wallet sconosciuto", "Transazione potenzialmente irreversibile"],
+        "en": ["Possible crypto sent to unknown wallet", "Potentially irreversible transaction"],
+    },
+    "fake_recovery": {
+        "it": ["Falso recupero fondi rilevato (secondary scam)", "Richiesta di pagamento per 'sbloccare' fondi"],
+        "en": ["Fake recovery scam detected (secondary scam)", "Payment requested to 'unlock' funds"],
+    },
+    "romance": {
+        "it": ["Pattern pig butchering / romance investment", "Investment scam tramite relazione personale"],
+        "en": ["Pig butchering / romance investment pattern", "Investment scam via personal relationship"],
+    },
+    "phishing": {
+        "it": ["Phishing / smishing / vishing rilevato", "Possibile furto credenziali"],
+        "en": ["Phishing / smishing / vishing detected", "Possible credential theft"],
+    },
+    "postepay": {
+        "it": ["Scam PostePay / BancoPosta con destinatario sconosciuto", "Possibile falso SMS Poste"],
+        "en": ["PostePay / BancoPosta scam with unknown recipient", "Possible fake Poste SMS"],
+    },
+    "sepa": {
+        "it": ["Bonifico SEPA verso IBAN potenzialmente sospetto", "Valutare richiesta di recall"],
+        "en": ["SEPA wire to potentially suspicious IBAN", "Evaluate recall request"],
+    },
+    "instant_sepa": {
+        "it": ["Bonifico SEPA istantaneo: alta urgenza, irreversibile in molti casi"],
+        "en": ["Instant SEPA wire: high urgency, often irreversible"],
+    },
+    "card": {
+        "it": ["Pagamento carta contestabile (chargeback)", "Verificare merchant descriptor"],
+        "en": ["Card payment may be disputable (chargeback)", "Verify merchant descriptor"],
+    },
+    "paypal": {
+        "it": ["Dispute PayPal/Wallet possibile entro tempi piattaforma"],
+        "en": ["PayPal/wallet dispute possible within platform timeframe"],
+    },
 }
 
 PAYMENT_RAIL_SUMMARY = {
-    "sepa": "Bonifico SEPA standard – richiesta di recall via banca emittente",
-    "instant_sepa": "Bonifico SEPA Istantaneo – tempi strettissimi, contattare banca immediatamente",
-    "postepay": "PostePay / BancoPosta – reclamo Poste Italiane via canali ufficiali",
-    "card": "Carta di pagamento – procedura chargeback via banca emittente / circuito",
-    "crypto": "Crypto – richiesta freeze a exchange esposti se identificabili",
-    "paypal": "PayPal – apertura dispute, valutare buyer/seller protection",
-    "revolut": "Revolut – dispute via app, segnalazione fraud",
-    "wise": "Wise – fraud report + supporto via app",
-    "satispay": "Satispay – segnalazione tramite supporto, raccolta ricevute",
-    "western_union": "Western Union / MoneyGram – fraud report, MTCN richiesta",
+    "sepa":         {"it": "Bonifico SEPA standard – richiesta di recall via banca emittente",                  "en": "Standard SEPA wire — recall request via issuing bank"},
+    "instant_sepa": {"it": "Bonifico SEPA Istantaneo – tempi strettissimi, contattare banca immediatamente",    "en": "Instant SEPA wire — extremely tight timing, contact bank immediately"},
+    "postepay":     {"it": "PostePay / BancoPosta – reclamo Poste Italiane via canali ufficiali",               "en": "PostePay / BancoPosta — Poste Italiane complaint via official channels"},
+    "card":         {"it": "Carta di pagamento – procedura chargeback via banca emittente / circuito",         "en": "Payment card — chargeback procedure via issuing bank / scheme"},
+    "crypto":       {"it": "Crypto – richiesta freeze a exchange esposti se identificabili",                    "en": "Crypto — freeze request to exposed exchanges if identifiable"},
+    "paypal":       {"it": "PayPal – apertura dispute, valutare buyer/seller protection",                       "en": "PayPal — open dispute, evaluate buyer/seller protection"},
+    "revolut":      {"it": "Revolut – dispute via app, segnalazione fraud",                                     "en": "Revolut — in-app dispute, fraud report"},
+    "wise":         {"it": "Wise – fraud report + supporto via app",                                            "en": "Wise — fraud report + in-app support"},
+    "satispay":     {"it": "Satispay – segnalazione tramite supporto, raccolta ricevute",                       "en": "Satispay — report via support, gather receipts"},
+    "western_union":{"it": "Western Union / MoneyGram – fraud report, MTCN richiesta",                          "en": "Western Union / MoneyGram — fraud report, MTCN required"},
 }
 
+OUTLOOK = {
+    "secondary_scam": {"it": "Allerta secondary scam – non versare ulteriori somme",            "en": "Secondary-scam alert — do not send any further funds"},
+    "card":           {"it": "Possibili opzioni di contestazione (chargeback) entro tempi del circuito",  "en": "Possible dispute options (chargeback) within scheme timeframe"},
+    "sepa":           {"it": "Possibile richiesta di recall – tempistica fondamentale",         "en": "Recall request possible — timing is critical"},
+    "instant_sepa":   {"it": "Azione urgente consigliata: bonifici istantanei sono in molti casi irrevocabili",  "en": "Urgent action recommended: instant transfers are often irrevocable"},
+    "crypto":         {"it": "Possibile richiesta freeze se exchange identificabile – serve transaction hash",  "en": "Freeze request possible if exchange identifiable — transaction hash required"},
+    "high":           {"it": "Serve supporto professionale – preparare dossier completo",       "en": "Professional support needed — prepare complete dossier"},
+    "default":        {"it": "Documentazione da completare per valutare opzioni",               "en": "Documentation to be completed to evaluate options"},
+}
 
-def _compute_analysis(case: dict, transactions: list, evidence: list) -> dict:
+ACTIONS = {
+    "sepa_recall":      {"it": "Contattare immediatamente la banca emittente e chiedere richiesta di recall",  "en": "Immediately contact the issuing bank and request a recall"},
+    "card_chargeback":  {"it": "Aprire pratica di chargeback con la banca emittente",                            "en": "Open a chargeback case with the issuing bank"},
+    "poste_complaint":  {"it": "Reclamo Poste Italiane via canali ufficiali con ricevuta",                       "en": "Poste Italiane complaint via official channels with receipt"},
+    "consob_filing":    {"it": "Preparare segnalazione CONSOB (broker non autorizzato)",                          "en": "Prepare CONSOB filing (unauthorized broker)"},
+    "exchange_freeze":  {"it": "Inviare richiesta di freeze a exchange esposto",                                  "en": "Send freeze request to the exposed exchange"},
+    "police":           {"it": "Preparare riassunto per Polizia Postale / Commissariato P.S. Online",            "en": "Prepare summary for Polizia Postale / online police precinct"},
+    "preserve":         {"it": "Conservare tutte le prove originali, non cancellare chat o email",               "en": "Preserve all original evidence, do not delete chats or emails"},
+    "no_secondary":     {"it": "Non pagare nessuna 'tassa di sblocco' – è un secondary scam",                     "en": "Do not pay any 'unlock fee' — that is a secondary scam"},
+    "lawyer":           {"it": "Considerare consulenza con avvocato esperto in frodi finanziarie",                "en": "Consider consulting a lawyer experienced in financial fraud"},
+}
+
+MISSING = {
+    "screenshot":   {"it": "Screenshot conversazioni / dashboard",                  "en": "Conversation / dashboard screenshots"},
+    "receipt":      {"it": "Ricevuta del pagamento (CRO/TRN o screenshot transazione)", "en": "Payment receipt (CRO/TRN or transaction screenshot)"},
+    "tx_hash":      {"it": "Transaction hash on-chain",                              "en": "On-chain transaction hash"},
+    "iban":         {"it": "IBAN beneficiario completo",                             "en": "Full beneficiary IBAN"},
+    "no_evidence":  {"it": "Nessuna prova caricata: aggiungere checklist evidenze", "en": "No evidence added: complete the evidence checklist"},
+    "no_tx":        {"it": "Nessuna transazione registrata",                         "en": "No transactions recorded"},
+}
+
+PERIODS = {
+    "very_recent": {"it": "Pagamento molto recente (≤48h) – finestra di azione critica", "en": "Very recent payment (≤48h) — critical action window"},
+    "recent":      {"it": "Pagamento recente (≤7 giorni) – azione tempestiva consigliata", "en": "Recent payment (≤7 days) — timely action recommended"},
+}
+
+CRYPTO_SEED = {"it": "CRITICO: seed phrase esposta – muovere fondi residui immediatamente",
+               "en": "CRITICAL: seed phrase exposed — move remaining funds immediately"}
+
+LARGE_LOSS = {"it": "Perdita elevata (€{amt:,})", "en": "Large loss (€{amt:,})"}
+
+
+def _compute_analysis(case: dict, transactions: list, evidence: list, lang: str = "it") -> dict:
+    L = lang if lang in ("it", "en") else "it"
     score = 0
     flags: List[str] = []
 
@@ -257,34 +329,39 @@ def _compute_analysis(case: dict, transactions: list, evidence: list) -> dict:
             days = (datetime.now(timezone.utc) - d.replace(tzinfo=timezone.utc) if d.tzinfo is None else datetime.now(timezone.utc) - d).days
             if days <= 2:
                 score += 30
-                flags.append("Pagamento molto recente (≤48h) – finestra di azione critica")
+                flags.append(PERIODS["very_recent"][L])
             elif days <= 7:
                 score += 20
-                flags.append("Pagamento recente (≤7 giorni) – azione tempestiva consigliata")
+                flags.append(PERIODS["recent"][L])
             elif days <= 30:
                 score += 10
     except Exception:
         pass
 
     # Boolean rule flags
-    for key, label, weight in RED_FLAG_RULES:
+    for key, label_dict, weight in RED_FLAG_RULES:
         if case.get(key):
             score += weight
-            flags.append(label)
+            flags.append(label_dict[L])
 
     # Scam-type flags
-    flags.extend(SCAM_TYPE_FLAGS.get(case.get("scam_type", ""), []))
+    flags.extend(SCAM_TYPE_FLAGS.get(case.get("scam_type", ""), {}).get(L, []))
 
     # Payment-rail summary
     pay = (case.get("payment_method") or "").lower()
-    rail_summary = PAYMENT_RAIL_SUMMARY.get(pay, "Metodo di pagamento da chiarire – preparare comunque dossier evidenze")
+    rail = PAYMENT_RAIL_SUMMARY.get(pay)
+    rail_summary = rail[L] if rail else (
+        "Metodo di pagamento da chiarire – preparare comunque dossier evidenze"
+        if L == "it" else
+        "Payment method to clarify — prepare the evidence dossier anyway"
+    )
 
     # Loss amount weight
     try:
         amt = float(case.get("loss_amount") or 0)
         if amt >= 50000:
             score += 25
-            flags.append(f"Perdita elevata (€{int(amt):,})")
+            flags.append(LARGE_LOSS[L].format(amt=int(amt)))
         elif amt >= 10000:
             score += 15
         elif amt >= 1000:
@@ -295,25 +372,24 @@ def _compute_analysis(case: dict, transactions: list, evidence: list) -> dict:
     # Crypto + seed phrase = critical
     if case.get("scam_type") == "crypto" and case.get("seed_phrase_shared"):
         score += 30
-        flags.append("CRITICO: seed phrase esposta – muovere fondi residui immediatamente")
+        flags.append(CRYPTO_SEED[L])
 
     # Evidence completeness
-    needed = {"screenshot", "ricevuta", "iban", "transaction_hash", "chat", "email"}
     have = {e.get("evidence_type", "").lower() for e in evidence}
     missing = []
     if "screenshot" not in have:
-        missing.append("Screenshot conversazioni / dashboard")
+        missing.append(MISSING["screenshot"][L])
     if "ricevuta" not in have and pay in {"sepa", "instant_sepa", "postepay", "card", "paypal"}:
-        missing.append("Ricevuta del pagamento (CRO/TRN o screenshot transazione)")
+        missing.append(MISSING["receipt"][L])
     if "transaction_hash" not in have and case.get("scam_type") == "crypto":
-        missing.append("Transaction hash on-chain")
+        missing.append(MISSING["tx_hash"][L])
     if "iban" not in have and pay in {"sepa", "instant_sepa"}:
-        missing.append("IBAN beneficiario completo")
+        missing.append(MISSING["iban"][L])
     if not evidence:
-        missing.append("Nessuna prova caricata: aggiungere checklist evidenze")
+        missing.append(MISSING["no_evidence"][L])
 
     if len(transactions) == 0:
-        missing.append("Nessuna transazione registrata")
+        missing.append(MISSING["no_tx"][L])
         score += 5
 
     # Cap
@@ -331,23 +407,23 @@ def _compute_analysis(case: dict, transactions: list, evidence: list) -> dict:
     # Recommended actions
     actions = []
     if pay in {"sepa", "instant_sepa"}:
-        actions.append("Contattare immediatamente la banca emittente e chiedere richiesta di recall")
+        actions.append(ACTIONS["sepa_recall"][L])
     if pay == "card":
-        actions.append("Aprire pratica di chargeback con la banca emittente")
+        actions.append(ACTIONS["card_chargeback"][L])
     if pay in {"postepay"} or case.get("scam_type") == "postepay":
-        actions.append("Reclamo Poste Italiane via canali ufficiali con ricevuta")
+        actions.append(ACTIONS["poste_complaint"][L])
     if case.get("scam_type") in {"forex_broker"}:
-        actions.append("Preparare segnalazione CONSOB (broker non autorizzato)")
+        actions.append(ACTIONS["consob_filing"][L])
     if case.get("scam_type") == "crypto":
-        actions.append("Inviare richiesta di freeze a exchange esposto")
-    actions.append("Preparare riassunto per Polizia Postale / Commissariato P.S. Online")
-    actions.append("Conservare tutte le prove originali, non cancellare chat o email")
+        actions.append(ACTIONS["exchange_freeze"][L])
+    actions.append(ACTIONS["police"][L])
+    actions.append(ACTIONS["preserve"][L])
     if case.get("requested_extra_fee"):
-        actions.append("Non pagare nessuna 'tassa di sblocco' – è un secondary scam")
-    actions.append("Considerare consulenza con avvocato esperto in frodi finanziarie")
+        actions.append(ACTIONS["no_secondary"][L])
+    actions.append(ACTIONS["lawyer"][L])
 
     # Tracing summary nodes
-    nodes = _build_tracing_nodes(case, transactions)
+    nodes = _build_tracing_nodes(case, transactions, L)
 
     return {
         "urgency_score": score,
@@ -357,46 +433,82 @@ def _compute_analysis(case: dict, transactions: list, evidence: list) -> dict:
         "recommended_actions": actions,
         "payment_rail_summary": rail_summary,
         "tracing_summary": nodes,
-        "recovery_outlook": _outlook(score, pay, case),
+        "recovery_outlook": _outlook(score, pay, case, L),
+        "language": L,
     }
 
 
-def _outlook(score: int, pay: str, case: dict) -> str:
+def _outlook(score: int, pay: str, case: dict, L: str) -> str:
     if case.get("requested_extra_fee") or case.get("scam_type") == "fake_recovery":
-        return "Allerta secondary scam – non versare ulteriori somme"
-    if pay in {"card"}:
-        return "Possibili opzioni di contestazione (chargeback) entro tempi del circuito"
-    if pay in {"sepa"}:
-        return "Possibile richiesta di recall – tempistica fondamentale"
-    if pay in {"instant_sepa"}:
-        return "Azione urgente consigliata: bonifici istantanei sono in molti casi irrevocabili"
+        return OUTLOOK["secondary_scam"][L]
+    if pay == "card":
+        return OUTLOOK["card"][L]
+    if pay == "sepa":
+        return OUTLOOK["sepa"][L]
+    if pay == "instant_sepa":
+        return OUTLOOK["instant_sepa"][L]
     if case.get("scam_type") == "crypto":
-        return "Possibile richiesta freeze se exchange identificabile – serve transaction hash"
+        return OUTLOOK["crypto"][L]
     if score >= 60:
-        return "Serve supporto professionale – preparare dossier completo"
-    return "Documentazione da completare per valutare opzioni"
+        return OUTLOOK["high"][L]
+    return OUTLOOK["default"][L]
 
 
-def _build_tracing_nodes(case: dict, transactions: list) -> Dict[str, Any]:
+def _build_tracing_nodes(case: dict, transactions: list, L: str = "it") -> Dict[str, Any]:
     pay = (case.get("payment_method") or "").lower()
     scam = (case.get("scam_type") or "").lower()
 
-    if pay == "instant_sepa" or pay == "sepa":
-        chain = ["Banca Vittima", "Rete SEPA", "IBAN Beneficiario", "Possibile Mule Account", "Richiesta Recall"]
+    chains = {
+        ("sepa_or_instant",): {
+            "it": ["Banca Vittima", "Rete SEPA", "IBAN Beneficiario", "Possibile Mule Account", "Richiesta Recall"],
+            "en": ["Victim Bank", "SEPA Network", "Beneficiary IBAN", "Possible Mule Account", "Recall Request"],
+        },
+        ("postepay",): {
+            "it": ["PostePay/BancoPosta", "Ricarica/Trasferimento", "Destinatario", "Reclamo Poste"],
+            "en": ["PostePay/BancoPosta", "Top-up/Transfer", "Recipient", "Poste Complaint"],
+        },
+        ("card",): {
+            "it": ["Carta Vittima", "Merchant Descriptor", "Payment Processor", "Chargeback Route"],
+            "en": ["Victim Card", "Merchant Descriptor", "Payment Processor", "Chargeback Route"],
+        },
+        ("crypto",): {
+            "it": ["Exchange Origine", "Wallet Address", "Blockchain TX", "Wallet Destinatario", "Possibile Exchange Esposto", "Freeze Request"],
+            "en": ["Origin Exchange", "Wallet Address", "Blockchain TX", "Recipient Wallet", "Possible Exposed Exchange", "Freeze Request"],
+        },
+        ("forex_broker",): {
+            "it": ["Deposito Vittima", "Finta Piattaforma Broker", "IBAN/Wallet/Processor", "Prelievo Bloccato", "CONSOB / Polizia Report"],
+            "en": ["Victim Deposit", "Fake Broker Platform", "IBAN/Wallet/Processor", "Blocked Withdrawal", "CONSOB / Police Report"],
+        },
+        ("fake_recovery",): {
+            "it": ["Vittima", "Finto Recuperatore", "Richiesta Tassa di Sblocco", "ALERT Secondary Scam"],
+            "en": ["Victim", "Fake Recovery Agent", "Unlock Fee Request", "ALERT Secondary Scam"],
+        },
+        ("wallet_apps",): {
+            "it": ["Wallet/App", "Account Destinatario", "Platform Dispute Route"],
+            "en": ["Wallet/App", "Recipient Account", "Platform Dispute Route"],
+        },
+        ("default",): {
+            "it": ["Vittima", "Metodo di Pagamento", "Destinatario", "Report Generato"],
+            "en": ["Victim", "Payment Method", "Recipient", "Generated Report"],
+        },
+    }
+
+    if pay in ("instant_sepa", "sepa"):
+        chain = chains[("sepa_or_instant",)][L]
     elif pay == "postepay" or scam == "postepay":
-        chain = ["PostePay/BancoPosta", "Ricarica/Trasferimento", "Destinatario", "Reclamo Poste"]
+        chain = chains[("postepay",)][L]
     elif pay == "card":
-        chain = ["Carta Vittima", "Merchant Descriptor", "Payment Processor", "Chargeback Route"]
+        chain = chains[("card",)][L]
     elif scam == "crypto":
-        chain = ["Exchange Origine", "Wallet Address", "Blockchain TX", "Wallet Destinatario", "Possibile Exchange Esposto", "Freeze Request"]
+        chain = chains[("crypto",)][L]
     elif scam == "forex_broker":
-        chain = ["Deposito Vittima", "Finta Piattaforma Broker", "IBAN/Wallet/Processor", "Prelievo Bloccato", "CONSOB / Polizia Report"]
+        chain = chains[("forex_broker",)][L]
     elif scam == "fake_recovery":
-        chain = ["Vittima", "Finto Recuperatore", "Richiesta Tassa di Sblocco", "ALERT Secondary Scam"]
+        chain = chains[("fake_recovery",)][L]
     elif pay in {"paypal", "revolut", "wise", "satispay"}:
-        chain = ["Wallet/App", "Account Destinatario", "Platform Dispute Route"]
+        chain = chains[("wallet_apps",)][L]
     else:
-        chain = ["Vittima", "Metodo di Pagamento", "Destinatario", "Report Generato"]
+        chain = chains[("default",)][L]
 
     return {
         "chain": chain,
@@ -417,7 +529,8 @@ def _format_eur(v) -> str:
 
 
 def _build_report(report_type: str, language: str, case: dict, transactions: list, evidence: list, analysis: dict | None) -> Dict[str, Any]:
-    user_full_name = case.get("user_full_name") or "[Nome Cognome]"
+    L = "en" if (language or "it").lower().startswith("en") else "it"
+    user_full_name = case.get("user_full_name") or ("[Full Name]" if L == "en" else "[Nome Cognome]")
     case_ref = case.get("case_reference", "—")
     amount = _format_eur(case.get("loss_amount", 0))
     pay = case.get("payment_method") or "—"
@@ -428,42 +541,49 @@ def _build_report(report_type: str, language: str, case: dict, transactions: lis
     tx_lines = []
     for t in transactions[:30]:
         line = f"- [{t.get('payment_type','')}] {t.get('date','')} | {_format_eur(t.get('amount',0))} {t.get('currency','EUR')} | "
-        if t.get("iban"):
-            line += f"IBAN {t['iban']} ({t.get('iban_country','')}) "
-        if t.get("recipient_name"):
-            line += f"→ {t['recipient_name']} "
-        if t.get("tx_hash"):
-            line += f"hash: {t['tx_hash']} "
-        if t.get("wallet_address"):
-            line += f"wallet: {t['wallet_address']} "
-        if t.get("reference_number"):
-            line += f"ref: {t['reference_number']} "
+        if t.get("iban"):              line += f"IBAN {t['iban']} ({t.get('iban_country','')}) "
+        if t.get("recipient_name"):    line += f"-> {t['recipient_name']} "
+        if t.get("tx_hash"):           line += f"hash: {t['tx_hash']} "
+        if t.get("wallet_address"):    line += f"wallet: {t['wallet_address']} "
+        if t.get("reference_number"):  line += f"ref: {t['reference_number']} "
         tx_lines.append(line.strip())
-    tx_block = "\n".join(tx_lines) if tx_lines else "Nessuna transazione registrata."
+    tx_block = "\n".join(tx_lines) if tx_lines else ("No transactions recorded." if L == "en" else "Nessuna transazione registrata.")
 
-    ev_lines = [f"- {e.get('title','')} ({e.get('evidence_type','')}): {'presente' if e.get('collected') else 'mancante'}"
-                for e in evidence] or ["Nessuna prova registrata."]
+    ev_lines = [f"- {e.get('title','')} ({e.get('evidence_type','')}): {('present' if e.get('collected') else 'missing') if L == 'en' else ('presente' if e.get('collected') else 'mancante')}"
+                for e in evidence] or [("No evidence recorded." if L == "en" else "Nessuna prova registrata.")]
     ev_block = "\n".join(ev_lines)
 
-    flags = "\n".join(f"- {f}" for f in (analysis or {}).get("red_flags", [])) or "- (in valutazione)"
+    flags = "\n".join(f"- {f}" for f in (analysis or {}).get("red_flags", [])) or ("- (under evaluation)" if L == "en" else "- (in valutazione)")
     actions = "\n".join(f"- {a}" for a in (analysis or {}).get("recommended_actions", []))
 
     today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
 
-    titles = {
+    titles_it = {
         "bank_complaint": "Reclamo Banca per Operazione Contestata",
         "chargeback":     "Richiesta di Chargeback Carta",
         "poste_complaint":"Reclamo Poste Italiane / PostePay / BancoPosta",
-        "consob_report":  "Segnalazione CONSOB – Sospetta Truffa di Investimento",
-        "police_report":  "Riassunto per Denuncia – Polizia Postale",
-        "exchange_freeze":"Richiesta di Freeze Exchange – Sospetto Riciclaggio",
+        "consob_report":  "Segnalazione CONSOB - Sospetta Truffa di Investimento",
+        "police_report":  "Riassunto per Denuncia - Polizia Postale",
+        "exchange_freeze":"Richiesta di Freeze Exchange - Sospetto Riciclaggio",
         "lawyer_memo":    "Memo Caso per Avvocato",
         "case_timeline":  "Timeline Personale del Caso",
-        "recovery_warning":"Warning Report – Falso Recupero Fondi",
+        "recovery_warning":"Warning Report - Falso Recupero Fondi",
     }
-    title = titles.get(report_type, "Report Caso")
+    titles_en = {
+        "bank_complaint": "Bank Complaint - Disputed Transaction",
+        "chargeback":     "Card Chargeback Request",
+        "poste_complaint":"Poste Italiane / PostePay / BancoPosta Complaint",
+        "consob_report":  "CONSOB Filing - Suspected Investment Scam",
+        "police_report":  "Police Summary - Polizia Postale",
+        "exchange_freeze":"Exchange Freeze Request - Suspected Laundering",
+        "lawyer_memo":    "Lawyer Case Memo",
+        "case_timeline":  "Personal Case Timeline",
+        "recovery_warning":"Warning Report - Fake Recovery Scam",
+    }
+    titles = titles_en if L == "en" else titles_it
+    title = titles.get(report_type, "Case Report" if L == "en" else "Report Caso")
 
-    intro_map = {
+    intro_it = {
         "bank_complaint": (
             f"Il/La sottoscritto/a {user_full_name} segnala alla banca emittente operazioni di pagamento "
             f"ritenute non autorizzate / contestate, per un importo totale stimato di {amount}. "
@@ -471,43 +591,79 @@ def _build_report(report_type: str, language: str, case: dict, transactions: lis
             f"di richiesta di recall del bonifico ai sensi della normativa sui servizi di pagamento "
             f"(incluso il D. Lgs. 11/2010)."
         ),
-        "chargeback": (
-            f"Si richiede l'apertura di una procedura di chargeback per la transazione contestata di {amount} "
-            f"effettuata con carta di pagamento. Le operazioni risultano disconosciute / frutto di frode."
-        ),
-        "poste_complaint": (
-            f"Il/La sottoscritto/a {user_full_name} presenta reclamo a Poste Italiane in merito ad operazioni "
-            f"PostePay/BancoPosta riconducibili a sospetta truffa, per un totale di {amount}."
-        ),
-        "consob_report": (
-            "Il/La sottoscritto/a intende segnalare a CONSOB un soggetto / piattaforma sospetta di operare "
-            "abusivamente come intermediario o di proporre offerte di investimento non autorizzate, "
-            "ai sensi del TUF e dei poteri di vigilanza CONSOB."
-        ),
-        "police_report": (
-            f"Il/La sottoscritto/a {user_full_name} riassume i fatti relativi a presunta truffa online "
-            f"al fine di sporgere denuncia / querela presso la Polizia Postale o il Commissariato di P.S. Online."
-        ),
-        "exchange_freeze": (
-            "Si richiede al compliance team dell'exchange di valutare il blocco preventivo di fondi "
-            "associati al wallet sottostante, a seguito di sospetta movimentazione fraudolenta."
-        ),
-        "lawyer_memo": (
-            "Memo professionale a uso dello studio legale incaricato. Sintesi dei fatti, evidenze, "
-            "transazioni e analisi preliminare di urgenza e red flags."
-        ),
-        "case_timeline": (
-            "Timeline personale degli eventi e dei pagamenti, utile per condivisione con banca, "
-            "exchange, autorità o consulenti professionali."
-        ),
-        "recovery_warning": (
-            "ATTENZIONE: il caso presenta indicatori riconducibili a tentativi di FALSO RECUPERO FONDI "
-            "(secondary scam). Non versare ulteriori somme."
-        ),
+        "chargeback": f"Si richiede l'apertura di una procedura di chargeback per la transazione contestata di {amount}.",
+        "poste_complaint": f"Il/La sottoscritto/a {user_full_name} presenta reclamo a Poste Italiane in merito ad operazioni PostePay/BancoPosta riconducibili a sospetta truffa, per un totale di {amount}.",
+        "consob_report":  "Il/La sottoscritto/a intende segnalare a CONSOB un soggetto / piattaforma sospetta di operare abusivamente come intermediario o di proporre offerte di investimento non autorizzate.",
+        "police_report":  f"Il/La sottoscritto/a {user_full_name} riassume i fatti relativi a presunta truffa online al fine di sporgere denuncia / querela presso la Polizia Postale o il Commissariato di P.S. Online.",
+        "exchange_freeze":"Si richiede al compliance team dell'exchange di valutare il blocco preventivo di fondi associati al wallet sottostante.",
+        "lawyer_memo":    "Memo professionale a uso dello studio legale incaricato. Sintesi dei fatti, evidenze, transazioni e analisi preliminare.",
+        "case_timeline":  "Timeline personale degli eventi e dei pagamenti, utile per condivisione con banca, exchange, autorità o consulenti.",
+        "recovery_warning":"ATTENZIONE: il caso presenta indicatori riconducibili a tentativi di FALSO RECUPERO FONDI (secondary scam). Non versare ulteriori somme.",
     }
-    intro = intro_map.get(report_type, "Riassunto del caso e delle evidenze raccolte.")
+    intro_en = {
+        "bank_complaint": (
+            f"The undersigned, {user_full_name}, reports to the issuing bank payment operations "
+            f"deemed unauthorized / disputed, for a total estimated amount of {amount}. "
+            f"A formal complaint is requested and, where applicable, the activation of recall procedures "
+            f"under Italian payment-services regulation (including Legislative Decree 11/2010)."
+        ),
+        "chargeback":      f"A chargeback procedure is requested for the disputed transaction of {amount}, made by payment card.",
+        "poste_complaint": f"The undersigned, {user_full_name}, files a complaint with Poste Italiane regarding PostePay/BancoPosta operations related to a suspected scam, totalling {amount}.",
+        "consob_report":   "The undersigned intends to report to CONSOB an entity / platform suspected of operating unlawfully as an intermediary or proposing unauthorized investment offers.",
+        "police_report":   f"The undersigned, {user_full_name}, summarizes the facts of an alleged online scam in order to file a complaint with the Polizia Postale or online police precinct.",
+        "exchange_freeze": "The exchange compliance team is requested to evaluate a preventive freeze of funds associated with the underlying wallet, due to suspected fraudulent movement.",
+        "lawyer_memo":     "Professional memo for the engaged law firm. Facts summary, evidence, transactions and preliminary analysis.",
+        "case_timeline":   "Personal timeline of events and payments, useful for sharing with bank, exchange, authorities or professionals.",
+        "recovery_warning":"WARNING: the case shows indicators of FAKE RECOVERY SCAM (secondary scam). Do not send any further funds.",
+    }
+    intro = (intro_en if L == "en" else intro_it).get(report_type, "")
 
-    body = f"""{title.upper()}
+    if L == "en":
+        body = f"""{title.upper()}
+
+Report date: {today}
+Case reference: {case_ref}
+
+DECLARANT
+- Name: {user_full_name}
+- Country: {case.get('country','IT')}
+- Region/City: {case.get('region','—')}
+
+SUBJECT
+{intro}
+
+CASE SUMMARY
+- Suspected scam type: {scam}
+- Main payment method: {pay}
+- Estimated loss: {amount}
+- First payment date: {first_date}
+- Last contact date: {last_date}
+- Scammer still active: {'Yes' if case.get('scammer_still_active') else 'No'}
+- Further payment / unlock-fee requests: {'Yes' if case.get('requested_extra_fee') else 'No'}
+- Impersonated authority: {case.get('impersonated_authority') or 'None'}
+
+RELEVANT TRANSACTIONS
+{tx_block}
+
+AVAILABLE EVIDENCE
+{ev_block}
+
+DETECTED RISK INDICATORS
+{flags}
+
+REQUESTED / RECOMMENDED ACTIONS
+{actions}
+
+DECLARATION
+The information above is provided in good faith by the declarant. This document is prepared with
+the support of AI-FUNDS, a documentation platform for victims of online scams. AI-FUNDS is not
+affiliated with CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane, banks or exchanges, and
+does not provide legal advice. The assessments are preliminary.
+
+Declarant signature: __________________________      Date: {today}
+"""
+    else:
+        body = f"""{title.upper()}
 
 Data report: {today}
 Riferimento caso: {case_ref}
@@ -694,13 +850,13 @@ async def list_evidence(case_id: str, user=Depends(get_current_user)):
 # ----- ANALYSIS -----
 
 @api.post("/cases/{case_id}/analyze")
-async def analyze_case(case_id: str, user=Depends(get_current_user)):
+async def analyze_case(case_id: str, lang: str = "it", user=Depends(get_current_user)):
     c = await db.cases.find_one({"id": case_id, "user_id": user["id"]}, {"_id": 0})
     if not c:
         raise HTTPException(404, "Case not found")
     txs = await db.transactions.find({"case_id": case_id}, {"_id": 0}).to_list(500)
     evs = await db.evidence.find({"case_id": case_id}, {"_id": 0}).to_list(500)
-    result = _compute_analysis(c, txs, evs)
+    result = _compute_analysis(c, txs, evs, lang)
     doc = {"id": _new_id(), "case_id": case_id, **result, "created_at": _now_iso()}
     await db.analyses.insert_one(doc)
     # update case urgency

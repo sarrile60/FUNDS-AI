@@ -1,6 +1,7 @@
 // HeroNetwork — premium animated fund-tracing graph (pure SVG + CSS)
 // Shows victim → payment rails → recipient nodes → risk → report
 import React from "react";
+import { useI18n } from "../i18n";
 
 const NODE = ({ x, y, label, sub, icon, color = "#5FE3C9", size = 38, dataId }) => (
   <g transform={`translate(${x} ${y})`} data-testid={dataId}>
@@ -29,6 +30,9 @@ const LINK = ({ x1, y1, x2, y2, color = "#5FE3C9", delay = 0, dashed = true }) =
 );
 
 export default function HeroNetwork() {
+  const { t, lang } = useI18n();
+  const tag1 = t("hero.live");
+  const tag2 = t("hero.risk");
   return (
     <div className="relative w-full">
       <svg viewBox="0 0 800 480" className="w-full h-auto" data-testid="hero-network">
@@ -59,19 +63,19 @@ export default function HeroNetwork() {
         <LINK x1="500" y1="300" x2="690" y2="340" color="#FF8B6A" delay={1.8}/>
 
         {/* Nodes */}
-        <NODE x="100" y="230" label="Vittima" sub="Italia" color="#5FE3C9" size={32} icon="👤" dataId="node-victim"/>
+        <NODE x="100" y="230" label={t("hn.victim")} sub={lang === "en" ? "Italy" : "Italia"} color="#5FE3C9" size={32} icon="👤" dataId="node-victim"/>
 
-        <NODE x="280" y="120" label="Bonifico SEPA" sub="IBAN IT" color="#5FE3C9" size={28} icon="🏦"/>
-        <NODE x="280" y="230" label="PostePay" sub="Ricarica" color="#5FE3C9" size={28} icon="💳"/>
-        <NODE x="280" y="340" label="Crypto Wallet" sub="On-chain" color="#5FE3C9" size={28} icon="₿"/>
+        <NODE x="280" y="120" label={t("hn.sepa")}     sub={t("hn.sepa.sub")}    color="#5FE3C9" size={28} icon="🏦"/>
+        <NODE x="280" y="230" label="PostePay"          sub={t("hn.postepay.sub")} color="#5FE3C9" size={28} icon="💳"/>
+        <NODE x="280" y="340" label={t("hn.crypto")}    sub={t("hn.crypto.sub")}  color="#5FE3C9" size={28} icon="₿"/>
 
-        <NODE x="500" y="160" label="IBAN Beneficiario" sub="EU/Estero" color="#6E8BFF" size={24} icon="🏛️"/>
-        <NODE x="500" y="230" label="Merchant / Wallet" sub="Destinazione" color="#6E8BFF" size={24} icon="🔗"/>
-        <NODE x="500" y="300" label="Possibile Mule" sub="Conto sospetto" color="#6E8BFF" size={24} icon="⚠"/>
+        <NODE x="500" y="160" label={t("hn.iban")}      sub={t("hn.iban.sub")}    color="#6E8BFF" size={24} icon="🏛️"/>
+        <NODE x="500" y="230" label={t("hn.merchant")}  sub={t("hn.merchant.sub")} color="#6E8BFF" size={24} icon="🔗"/>
+        <NODE x="500" y="300" label={t("hn.mule")}      sub={t("hn.mule.sub")}    color="#6E8BFF" size={24} icon="⚠"/>
 
-        <NODE x="690" y="120" label="Reclamo Banca" sub="Recall SEPA" color="#FFB454" size={24} icon="📄"/>
-        <NODE x="690" y="230" label="Freeze Exchange" sub="Compliance" color="#FFB454" size={24} icon="❄"/>
-        <NODE x="690" y="340" label="Polizia Postale" sub="Riassunto" color="#FF6B7A" size={24} icon="🛡"/>
+        <NODE x="690" y="120" label={t("hn.bank_complaint")} sub="Recall SEPA"   color="#FFB454" size={24} icon="📄"/>
+        <NODE x="690" y="230" label={t("hn.freeze")}    sub="Compliance"          color="#FFB454" size={24} icon="❄"/>
+        <NODE x="690" y="340" label={t("hn.police")}    sub={t("hn.police.sub")}  color="#FF6B7A" size={24} icon="🛡"/>
 
         {/* Particles */}
         {[...Array(8)].map((_, i) => (
@@ -83,8 +87,8 @@ export default function HeroNetwork() {
       </svg>
 
       {/* Floating chips */}
-      <div className="absolute top-2 left-2 aif-chip text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-[#5FE3C9] aif-pulse inline-block"/> Live tracing</div>
-      <div className="absolute bottom-2 right-2 aif-chip text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-[#FF8B6A] aif-pulse inline-block"/> Risk flagging</div>
+      <div className="absolute top-2 left-2 aif-chip text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-[#5FE3C9] aif-pulse inline-block"/> {tag1}</div>
+      <div className="absolute bottom-2 right-2 aif-chip text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-[#FF8B6A] aif-pulse inline-block"/> {tag2}</div>
     </div>
   );
 }

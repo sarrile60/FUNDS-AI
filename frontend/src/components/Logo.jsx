@@ -1,6 +1,9 @@
 // AI-FUNDS Logo - inline SVG
 import React from "react";
+import { useI18n } from "../i18n";
+
 export default function Logo({ size = 36 }) {
+  const { lang } = useI18n();
   return (
     <div className="flex items-center gap-2.5" data-testid="aif-logo">
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -20,7 +23,9 @@ export default function Logo({ size = 36 }) {
       </svg>
       <div className="leading-tight">
         <div className="font-extrabold tracking-tight text-[18px] text-white">AI-FUNDS</div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-[#9FB0CC]">Fund Tracing • IT</div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-[#9FB0CC]">
+          Fund Tracing • {lang === "en" ? "IT" : "Italia"}
+        </div>
       </div>
     </div>
   );
