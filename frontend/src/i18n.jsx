@@ -14,6 +14,7 @@ const dict = {
     "nav.register": "Registrati",
     "nav.logout": "Esci",
     "nav.dashboard": "Dashboard",
+    "nav.back": "Indietro",
 
     // Hero
     "hero.tag": "AI-assisted fund tracing • Italia",
@@ -464,6 +465,7 @@ const dict = {
     "nav.register": "Sign up",
     "nav.logout": "Sign out",
     "nav.dashboard": "Dashboard",
+    "nav.back": "Back",
 
     // Hero
     "hero.tag": "AI-assisted fund tracing • Italy",

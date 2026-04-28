@@ -1,8 +1,8 @@
 // AdminLogin — separate login screen for admin route /admin
 import React, { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Mail, KeyRound, Eye, EyeOff, ShieldCheck, ArrowRight } from "lucide-react";
+import { Mail, KeyRound, Eye, EyeOff, ShieldCheck, ArrowRight, ArrowLeft } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
 
@@ -31,7 +31,12 @@ export default function AdminLogin() {
   return (
     <div className="aif-app-bg min-h-screen flex flex-col">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
-      <div className="relative max-w-7xl mx-auto px-5 lg:px-8 py-6 w-full"><Logo/></div>
+      <div className="relative max-w-7xl mx-auto px-5 lg:px-8 py-6 w-full flex items-center justify-between gap-4">
+        <Logo/>
+        <Link to="/" className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="adm-back">
+          <ArrowLeft size={14}/> Back
+        </Link>
+      </div>
       <div className="relative flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md">
           <div className="aif-card aif-glow p-7 md:p-9">
