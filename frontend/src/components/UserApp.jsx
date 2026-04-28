@@ -146,21 +146,27 @@ export default function UserApp() {
 // ============================================================
 function StartProcedure({ user, tier, setTier, consent, setConsent, busy, onStart }) {
   const { t } = useI18n();
+  const initials = `${(user.first_name || "?").charAt(0)}${(user.last_name || "").charAt(0)}`.toUpperCase();
   return (
     <div className="space-y-5" data-testid="start-procedure">
-      {/* Welcome card */}
-      <div className="aif-card aif-glow p-6 md:p-8 relative overflow-hidden">
+      {/* Hero header — centered */}
+      <div className="aif-card aif-glow p-6 md:p-10 relative overflow-hidden">
         <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
-        <div className="relative z-10">
-          <div className="aif-chip"><Sparkles size={12} className="text-[#5FE3C9]"/> {t("proc.tag")}</div>
-          <h1 className="section-title mt-3">{t("proc.title")}</h1>
-          <p className="text-[var(--aif-text-dim)] mt-3 max-w-3xl leading-relaxed">{t("proc.subtitle")}</p>
-
-          <div className="mt-6 aif-card !rounded-xl p-4 max-w-md">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("proc.welcome")}</div>
-            <div className="text-white font-semibold mt-1">{user.first_name} {user.last_name}</div>
-            <div className="text-[12px] text-[var(--aif-text-dim)] mt-0.5">{user.email}</div>
+        <div className="relative z-10 text-center">
+          {/* Welcome pill (centered, compact) */}
+          <div className="inline-flex items-center gap-3 aif-card !rounded-full !py-2 !px-4 mb-5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center text-[#06122A] font-bold text-[13px]">
+              {initials}
+            </div>
+            <div className="text-left">
+              <div className="text-white font-semibold text-[13px] leading-tight">{user.first_name} {user.last_name}</div>
+              <div className="text-[11px] text-[var(--aif-text-dim)] leading-tight">{user.email}</div>
+            </div>
           </div>
+
+          <div className="aif-chip mx-auto"><Sparkles size={12} className="text-[#5FE3C9]"/> {t("proc.tag")}</div>
+          <h1 className="section-title mt-4 mx-auto max-w-3xl">{t("proc.title")}</h1>
+          <p className="text-[var(--aif-text-dim)] mt-4 max-w-2xl mx-auto leading-relaxed">{t("proc.subtitle")}</p>
         </div>
       </div>
 
