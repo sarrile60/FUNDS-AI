@@ -19,10 +19,31 @@ export default function Navbar() {
     { id: "faq", label: t("nav.faq") },
   ];
 
+  // Smooth-scroll with easing + sticky-navbar offset
   const scrollTo = (id) => {
     setOpen(false);
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!el) return;
+    const navOffset = 72; // sticky navbar height
+    const startY = window.scrollY;
+    const targetY = el.getBoundingClientRect().top + window.scrollY - navOffset;
+    const distance = targetY - startY;
+    const duration = 1100; // ms — slow enough to feel premium
+    const startTime = performance.now();
+    // easeInOutCubic
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      window.scrollTo(0, startY + distance * ease(t));
+      if (t < 1) requestAnimationFrame(step);
+      else {
+        // brief highlight pulse on the target section
+        el.classList.add("aif-section-pulse");
+        setTimeout(() => el.classList.remove("aif-section-pulse"), 1400);
+      }
+    };
+    requestAnimationFrame(step);
   };
 
   return (
