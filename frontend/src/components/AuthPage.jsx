@@ -43,10 +43,10 @@ export default function AuthPage({ mode = "login" }) {
     <div className="aif-app-bg min-h-screen flex flex-col">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative max-w-7xl mx-auto px-5 lg:px-8 py-6 w-full flex items-center justify-between gap-4">
-        <Link to="/"><Logo/></Link>
         <Link to="/" className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="auth-back">
           <ArrowLeft size={14}/> {t("nav.back")}
         </Link>
+        <Link to="/"><Logo/></Link>
       </div>
 
       <div className="relative flex-1 flex items-center justify-center px-5 pb-16">

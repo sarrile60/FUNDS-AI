@@ -32,10 +32,10 @@ export default function AdminLogin() {
     <div className="aif-app-bg min-h-screen flex flex-col">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative max-w-7xl mx-auto px-5 lg:px-8 py-6 w-full flex items-center justify-between gap-4">
-        <Logo/>
         <Link to="/" className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="adm-back">
           <ArrowLeft size={14}/> Back
         </Link>
+        <Logo/>
       </div>
       <div className="relative flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md">
