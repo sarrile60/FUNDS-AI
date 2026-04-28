@@ -90,10 +90,6 @@ export default function AuthPage({ mode = "login" }) {
                 <button type="submit" disabled={busy} className="aif-btn-primary w-full inline-flex items-center justify-center gap-2 disabled:opacity-60" data-testid="auth-submit">
                   {busy ? t("auth.wait") : t("auth.btn_login")} <ArrowRight size={16}/>
                 </button>
-
-                <div className="text-center text-[12px] text-[var(--aif-text-dim)]">
-                  {t("auth.register_disabled")}
-                </div>
               </form>
             </div>
           )}
