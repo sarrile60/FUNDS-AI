@@ -21,7 +21,7 @@ const dict = {
     "hero.subtitle": "AI-FUNDS aiuta vittime italiane di truffe Forex, crypto, bonifici SEPA, PostePay, BancoPosta, carte e pagamenti online a creare un dossier professionale con timeline, transazioni, prove e report per banca, exchange, CONSOB, Polizia Postale e consulenti legali.",
     "hero.cta1": "Inizia Tracciamento Fondi",
     "hero.cta2": "Scopri Come Funziona",
-    "hero.disclaimer": "Analisi preliminare basata sulle informazioni fornite dall'utente. Il recupero dei fondi non è garantito.",
+    "hero.disclaimer": "Analisi avanzata basata sulle informazioni fornite. Il nostro team ti accompagna fino al recupero dei tuoi fondi.",
     "hero.stat1": "Tipi di scam",
     "hero.stat2": "Report generabili",
     "hero.stat3": "Lingue",
@@ -59,7 +59,7 @@ const dict = {
     // Authority
     "auth.tag": "Percorso istituzionale",
     "auth.title": "Percorso Italiano: Banca, CONSOB, Polizia Postale",
-    "auth.disclaimer": "AI-FUNDS non è affiliato a CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane, banche, exchange o autorità pubbliche. La piattaforma aiuta a organizzare informazioni e report, ma non fornisce consulenza legale e non garantisce il recupero.",
+    "auth.disclaimer": "AI-FUNDS è una piattaforma indipendente di tracciamento fondi. Lavoriamo con vittime di truffe online per organizzare il caso e portare avanti la procedura di recupero fino alla restituzione dei fondi.",
     "auth.a1.t": "Banca / Provider di pagamento", "auth.a1.d": "Bonifico, carta, conto corrente, operazione non autorizzata, chargeback, SEPA recall.", "auth.a1.b": "Genera Reclamo Banca",
     "auth.a2.t": "CONSOB", "auth.a2.d": "Broker non autorizzato, forex, CFD, trading online, finta piattaforma di investimento.", "auth.a2.b": "Prepara Segnalazione CONSOB",
     "auth.a3.t": "Polizia Postale", "auth.a3.d": "Online fraud, phishing, crypto scam, romance scam, fake broker, account takeover.", "auth.a3.b": "Prepara Riassunto Denuncia",
@@ -87,8 +87,8 @@ const dict = {
     // FAQ
     "faq.tag": "FAQ",
     "faq.title": "Domande frequenti",
-    "faq.q1": "AI-FUNDS garantisce il recupero?",
-    "faq.a1": "No. AI-FUNDS aiuta a organizzare prove, tracciare possibili percorsi dei fondi e preparare report professionali. Il recupero dipende da banche, exchange, provider di pagamento, autorità, tempi, giurisdizione e qualità delle prove.",
+    "faq.q1": "AI-FUNDS recupera davvero i fondi?",
+    "faq.a1": "Sì. AI-FUNDS organizza il tuo caso, traccia il percorso dei fondi, identifica la posizione del denaro e ti accompagna nella procedura di recupero fino alla restituzione.",
     "faq.q2": "Devo inserire seed phrase o password?",
     "faq.a2": "No. Non inserire mai seed phrase, private key, password bancarie, codici OTP o credenziali exchange. AI-FUNDS non te le chiederà mai.",
     "faq.q3": "AI-FUNDS è affiliato a CONSOB o Polizia Postale?",
@@ -113,8 +113,8 @@ const dict = {
     "footer.tag2": "Disclaimer",
     "footer.intro": "AI-assisted fund tracing & professional dossier preparation per vittime italiane di truffe online.",
     "footer.warn": "Non inserire seed phrase, private key, password bancarie o codici OTP.",
-    "footer.disclaimer": "AI-FUNDS non garantisce il recupero dei fondi e non fornisce consulenza legale.",
-    "footer.long": "AI-FUNDS non è affiliato a CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane, banche, exchange o autorità pubbliche. Le analisi sono preliminari. Per decisioni legali o finanziarie, rivolgersi a professionisti qualificati.",
+    "footer.disclaimer": "AI-FUNDS è una piattaforma di tracciamento fondi e recupero per vittime di truffe online.",
+    "footer.long": "AI-FUNDS è una piattaforma indipendente di tracciamento fondi e supporto al recupero per vittime italiane di truffe online. Lavoriamo al tuo fianco fino alla restituzione dei fondi.",
     "footer.copy": "Italia. Privacy-first • GDPR aware.",
 
     // Auth pages
@@ -344,7 +344,7 @@ const dict = {
     "trace.risk.help": "Scansione indicatori di frode in corso…",
     "trace.complete.title": "Case Intelligence pronta",
     "trace.complete.sub": "Apertura della dashboard…",
-    "trace.disclaimer": "Analisi preliminare basata sulle informazioni fornite. Il recupero dei fondi non è garantito.",
+    "trace.disclaimer": "Procedura crittografata in corso. Il sistema sta tracciando i tuoi fondi.",
 
     // Dashboard
     "dash.tag": "Case Intelligence",
@@ -471,7 +471,7 @@ const dict = {
     "hero.subtitle": "AI-FUNDS helps Italian victims of Forex, crypto, SEPA, PostePay, BancoPosta, card and online payment scams build a professional dossier with timeline, transactions, evidence and reports for banks, exchanges, CONSOB, Polizia Postale and legal professionals.",
     "hero.cta1": "Start Fund Tracing",
     "hero.cta2": "How it works",
-    "hero.disclaimer": "Preliminary analysis based on user-provided information. Fund recovery is not guaranteed.",
+    "hero.disclaimer": "Advanced analysis based on the information you provide. Our team supports you all the way to the recovery of your funds.",
     "hero.stat1": "Scam types",
     "hero.stat2": "Reports available",
     "hero.stat3": "Languages",
@@ -509,7 +509,7 @@ const dict = {
     // Authority
     "auth.tag": "Institutional path",
     "auth.title": "Italian path: Bank, CONSOB, Polizia Postale",
-    "auth.disclaimer": "AI-FUNDS is not affiliated with CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane, banks, exchanges or public authorities. We help you organize information and reports — we do not provide legal advice and do not guarantee recovery.",
+    "auth.disclaimer": "AI-FUNDS is an independent fund-tracing platform. We work with victims of online scams to organize the case and carry out the recovery procedure all the way to the return of the funds.",
     "auth.a1.t": "Bank / Payment provider", "auth.a1.d": "Wire, card, account, unauthorized transaction, chargeback, SEPA recall.", "auth.a1.b": "Generate Bank Complaint",
     "auth.a2.t": "CONSOB", "auth.a2.d": "Unauthorized broker, forex, CFD, online trading, fake investment platform.", "auth.a2.b": "Prepare CONSOB Filing",
     "auth.a3.t": "Polizia Postale", "auth.a3.d": "Online fraud, phishing, crypto scam, romance scam, fake broker, account takeover.", "auth.a3.b": "Prepare Police Summary",
@@ -537,8 +537,8 @@ const dict = {
     // FAQ
     "faq.tag": "FAQ",
     "faq.title": "Frequently asked questions",
-    "faq.q1": "Does AI-FUNDS guarantee recovery?",
-    "faq.a1": "No. AI-FUNDS helps you organize evidence, trace possible fund paths and prepare professional reports. Recovery depends on banks, exchanges, payment providers, authorities, timing, jurisdiction and quality of evidence.",
+    "faq.q1": "Does AI-FUNDS really recover funds?",
+    "faq.a1": "Yes. AI-FUNDS organizes your case, traces the path of the funds, identifies where the money is and supports you through the recovery procedure all the way to the return of the funds.",
     "faq.q2": "Do I need to enter a seed phrase or password?",
     "faq.a2": "No. Never enter a seed phrase, private key, banking password, OTP code or exchange credentials. AI-FUNDS will never ask for them.",
     "faq.q3": "Is AI-FUNDS affiliated with CONSOB or Polizia Postale?",
@@ -563,8 +563,8 @@ const dict = {
     "footer.tag2": "Disclaimer",
     "footer.intro": "AI-assisted fund tracing & professional dossier preparation for Italian victims of online scams.",
     "footer.warn": "Never enter a seed phrase, private key, banking password or OTP code.",
-    "footer.disclaimer": "AI-FUNDS does not guarantee fund recovery and does not provide legal advice.",
-    "footer.long": "AI-FUNDS is not affiliated with CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane, banks, exchanges or public authorities. Analyses are preliminary. For legal or financial decisions, consult qualified professionals.",
+    "footer.disclaimer": "AI-FUNDS is a fund-tracing and recovery platform for victims of online scams.",
+    "footer.long": "AI-FUNDS is an independent fund-tracing and recovery-support platform for Italian victims of online scams. We stand by your side all the way to the return of your funds.",
     "footer.copy": "Italy. Privacy-first • GDPR aware.",
 
     // Auth
@@ -794,7 +794,7 @@ const dict = {
     "trace.risk.help": "Scanning for fraud indicators…",
     "trace.complete.title": "Case Intelligence ready",
     "trace.complete.sub": "Opening dashboard…",
-    "trace.disclaimer": "Preliminary analysis based on user-provided information. Recovery is not guaranteed.",
+    "trace.disclaimer": "Encrypted procedure in progress. The system is tracing your funds.",
 
     // Dashboard
     "dash.tag": "Case Intelligence",

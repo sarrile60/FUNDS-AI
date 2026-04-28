@@ -59,8 +59,8 @@ function addFooter(doc, margin, pageW, pageH) {
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 130);
   doc.text(
-    "AI-FUNDS non è affiliato a CONSOB, Banca d'Italia, Polizia Postale, Poste Italiane o autorità pubbliche. " +
-    "Le analisi sono preliminari. Il recupero non è garantito. AI-FUNDS non fornisce consulenza legale.",
+    "AI-FUNDS — Fund tracing & recovery platform for victims of online scams. " +
+    "This report is generated from the information provided by the case holder.",
     margin, pageH - 24, { maxWidth: pageW - margin * 2 }
   );
 }
