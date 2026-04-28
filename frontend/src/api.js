@@ -3,16 +3,22 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
 export const api = {
-  createCase:   (data) => axios.post(`${API}/cases`, data).then(r => r.data),
-  listCases:    () => axios.get(`${API}/cases`).then(r => r.data),
-  getCase:      (id) => axios.get(`${API}/cases/${id}`).then(r => r.data),
-  updateCase:   (id, data) => axios.put(`${API}/cases/${id}`, data).then(r => r.data),
-  addTransaction:(id, data) => axios.post(`${API}/cases/${id}/transactions`, data).then(r => r.data),
-  listTransactions:(id) => axios.get(`${API}/cases/${id}/transactions`).then(r => r.data),
-  addEvidence:  (id, data) => axios.post(`${API}/cases/${id}/evidence`, data).then(r => r.data),
-  listEvidence: (id) => axios.get(`${API}/cases/${id}/evidence`).then(r => r.data),
-  analyze:      (id, lang = "it") => axios.post(`${API}/cases/${id}/analyze`, null, { params: { lang } }).then(r => r.data),
-  getAnalysis:  (id) => axios.get(`${API}/cases/${id}/analysis`).then(r => r.data),
-  createReport: (id, data) => axios.post(`${API}/cases/${id}/reports`, data).then(r => r.data),
-  listReports:  (id) => axios.get(`${API}/cases/${id}/reports`).then(r => r.data),
+  // procedure
+  startProcedure:    (amount_tier) => axios.post(`${API}/procedure/start`, { amount_tier }).then(r => r.data),
+  completeProcedure: () => axios.post(`${API}/procedure/complete`).then(r => r.data),
+  procedureState:    () => axios.get(`${API}/procedure/state`).then(r => r.data),
+
+  // recovery requests (user)
+  createRecoveryRequest: (data) => axios.post(`${API}/recovery-requests`, data).then(r => r.data),
+
+  // admin
+  adminListUsers:    () => axios.get(`${API}/admin/users`).then(r => r.data),
+  adminCreateUser:   (data) => axios.post(`${API}/admin/users`, data).then(r => r.data),
+  adminUpdateUser:   (id, data) => axios.put(`${API}/admin/users/${id}`, data).then(r => r.data),
+  adminDeleteUser:   (id) => axios.delete(`${API}/admin/users/${id}`).then(r => r.data),
+
+  adminListRequests:   () => axios.get(`${API}/admin/recovery-requests`).then(r => r.data),
+  adminUpdateRequest:  (id, data) => axios.put(`${API}/admin/recovery-requests/${id}`, data).then(r => r.data),
+  adminMarkSent:       (id) => axios.post(`${API}/admin/recovery-requests/${id}/mark-sent`).then(r => r.data),
+  adminDeleteRequest:  (id) => axios.delete(`${API}/admin/recovery-requests/${id}`).then(r => r.data),
 };

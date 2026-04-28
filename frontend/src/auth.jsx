@@ -1,21 +1,20 @@
-// Auth context with JWT stored in localStorage. Calls /api/auth/*.
+// Auth context — single login endpoint for both admin and users.
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Ctx = createContext({ user: null, token: null, login: async () => {}, register: async () => {}, logout: () => {} });
-
-// Helper: extract human-readable error from axios error
 function _err(e, fallback) {
   const d = e?.response?.data?.detail;
   if (!d) return fallback;
   if (typeof d === "string") return d;
-  if (Array.isArray(d)) return d.map(x => x?.msg || x?.message || JSON.stringify(x)).join(", ");
-  if (typeof d === "object") return d.msg || d.message || JSON.stringify(d);
+  if (Array.isArray(d)) return d.map(x => x?.msg || JSON.stringify(x)).join(", ");
+  if (typeof d === "object") return d.msg || JSON.stringify(d);
   return String(d);
 }
+
+const Ctx = createContext({ user: null, token: null });
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("aif_token"));
@@ -24,7 +23,6 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(false);
 
-  // Attach Authorization header globally
   useEffect(() => {
     if (token) axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     else delete axios.defaults.headers.common["Authorization"];
@@ -41,27 +39,18 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await axios.post(`${API}/auth/login`, { email, password });
       persist(data.token, data.user);
-      return { ok: true };
+      return { ok: true, user: data.user };
     } catch (e) {
       return { ok: false, error: _err(e, "Sign-in error") };
     } finally { setLoading(false); }
   };
 
-  const register = async (email, password, full_name) => {
-    setLoading(true);
-    try {
-      const { data } = await axios.post(`${API}/auth/register`, { email, password, full_name, consent_privacy: true });
-      persist(data.token, data.user);
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, error: _err(e, "Registration error") };
-    } finally { setLoading(false); }
-  };
+  const tryRegister = async () => ({ ok: false, error: "Registration is currently unavailable. Please contact your administrator." });
 
   const logout = () => persist(null, null);
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register, logout, API }}>
+    <Ctx.Provider value={{ user, token, loading, login, register: tryRegister, logout, API }}>
       {children}
     </Ctx.Provider>
   );

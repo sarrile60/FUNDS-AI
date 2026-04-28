@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import { Mail, KeyRound, User, Eye, EyeOff, ShieldAlert, ArrowRight } from "lucide-react";
+import { Mail, KeyRound, Eye, EyeOff, ShieldAlert, ArrowRight, Info } from "lucide-react";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
 import Logo from "./Logo";
 
+/**
+ * Single page handles BOTH login and "registration" (which is disabled).
+ * mode = "login" or "register".
+ */
 export default function AuthPage({ mode = "login" }) {
   const nav = useNavigate();
   const loc = useLocation();
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -22,14 +25,18 @@ export default function AuthPage({ mode = "login" }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!email || !password) { toast.error(t("auth.warn_creds")); return; }
-    if (!isLogin && password.length < 8) { toast.error(t("auth.warn_pw_min")); return; }
     setBusy(true);
-    const res = isLogin ? await login(email, password) : await register(email, password, fullName);
+    const res = await login(email, password);
     setBusy(false);
     if (!res.ok) { toast.error(res.error); return; }
-    toast.success(isLogin ? t("auth.toast_login") : t("auth.toast_register"));
-    const next = loc.state?.next || "/app";
-    nav(next);
+    toast.success(t("auth.toast_login"));
+    // Route based on role
+    if (res.user?.role === "admin") {
+      nav("/admin/dashboard");
+    } else {
+      const next = loc.state?.next || "/app";
+      nav(next);
+    }
   };
 
   return (
@@ -41,59 +48,55 @@ export default function AuthPage({ mode = "login" }) {
 
       <div className="relative flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md">
-          <div className="aif-card aif-glow p-7 md:p-9">
-            <h1 className="text-2xl md:text-3xl font-bold text-white">
-              {isLogin ? t("auth.welcome") : t("auth.create")}
-            </h1>
-            <p className="text-[13px] text-[var(--aif-text-dim)] mt-1">
-              {isLogin ? t("auth.sub_login") : t("auth.sub_register")}
-            </p>
+          {!isLogin ? (
+            // REGISTRATION DISABLED VIEW
+            <div className="aif-card aif-glow p-7 md:p-9" data-testid="register-disabled">
+              <div className="w-12 h-12 rounded-xl bg-[#FFB454]/15 border border-[#FFB454]/40 flex items-center justify-center text-[#FFB454] mb-4">
+                <Info size={22}/>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{t("auth.register_disabled_short")}</h1>
+              <p className="mt-3 text-[14px] text-[var(--aif-text-dim)] leading-relaxed">{t("auth.register_disabled")}</p>
+              <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2 mt-6 w-full justify-center" data-testid="go-login">
+                {t("auth.go_login")} <ArrowRight size={16}/>
+              </Link>
+            </div>
+          ) : (
+            <div className="aif-card aif-glow p-7 md:p-9">
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{t("auth.welcome")}</h1>
+              <p className="text-[13px] text-[var(--aif-text-dim)] mt-1">{t("auth.sub_login")}</p>
 
-            <form onSubmit={submit} className="mt-6 space-y-4" data-testid="auth-form">
-              {!isLogin && (
+              <form onSubmit={submit} className="mt-6 space-y-4" data-testid="auth-form">
                 <div>
-                  <label className="aif-label">{t("auth.fullname")}</label>
+                  <label className="aif-label">{t("auth.email")}</label>
                   <div className="relative">
-                    <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
-                    <input className="aif-input pl-10" data-testid="auth-fullname"
-                      value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("auth.fullname_ph")}/>
+                    <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                    <input type="email" className="aif-input pl-10" data-testid="auth-email"
+                      value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("auth.email_ph")} required/>
                   </div>
                 </div>
-              )}
-              <div>
-                <label className="aif-label">{t("auth.email")}</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
-                  <input type="email" className="aif-input pl-10" data-testid="auth-email"
-                    value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("auth.email_ph")} required/>
+                <div>
+                  <label className="aif-label">{t("auth.password")}</label>
+                  <div className="relative">
+                    <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                    <input type={show ? "text" : "password"} className="aif-input pl-10 pr-10" data-testid="auth-password"
+                      value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t("auth.password_ph_login")} required/>
+                    <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white">
+                      {show ? <EyeOff size={16}/> : <Eye size={16}/>}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="aif-label">{t("auth.password")}</label>
-                <div className="relative">
-                  <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
-                  <input type={show ? "text" : "password"} className="aif-input pl-10 pr-10" data-testid="auth-password"
-                    value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isLogin ? t("auth.password_ph_login") : t("auth.password_ph_register")} required/>
-                  <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white">
-                    {show ? <EyeOff size={16}/> : <Eye size={16}/>}
-                  </button>
+
+                <button type="submit" disabled={busy} className="aif-btn-primary w-full inline-flex items-center justify-center gap-2 disabled:opacity-60" data-testid="auth-submit">
+                  {busy ? t("auth.wait") : t("auth.btn_login")} <ArrowRight size={16}/>
+                </button>
+
+                <div className="text-center text-[12px] text-[var(--aif-text-dim)]">
+                  {t("auth.register_disabled")}
                 </div>
-              </div>
-
-              <button type="submit" disabled={busy} className="aif-btn-primary w-full inline-flex items-center justify-center gap-2 disabled:opacity-60" data-testid="auth-submit">
-                {busy ? t("auth.wait") : (isLogin ? t("auth.btn_login") : t("auth.btn_register"))} <ArrowRight size={16}/>
-              </button>
-
-              <div className="text-center text-[13px] text-[var(--aif-text-dim)]">
-                {isLogin ? (
-                  <>{t("auth.no_account")} <Link to="/register" className="aif-link" data-testid="auth-switch">{t("auth.go_register")}</Link></>
-                ) : (
-                  <>{t("auth.have_account")} <Link to="/login" className="aif-link" data-testid="auth-switch">{t("auth.go_login")}</Link></>
-                )}
-              </div>
-            </form>
-          </div>
+              </form>
+            </div>
+          )}
 
           <div className="mt-4 text-[12px] text-[var(--aif-text-dim)] flex items-start gap-2">
             <ShieldAlert size={14} className="text-[#FFB454] mt-0.5 shrink-0"/>

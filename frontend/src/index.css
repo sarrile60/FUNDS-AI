@@ -207,3 +207,14 @@ html, body {
 
 /* Print-friendly */
 @media print { .no-print { display: none !important; } body { background: white; color: black; } }
+
+/* Hide any externally-injected badges */
+#emergent-badge,
+[id*="emergent-badge"],
+[class*="made-with-emergent"],
+a[href*="emergent.sh"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
