@@ -127,11 +127,20 @@ html, body {
   border: 1px solid var(--aif-line);
   color: var(--aif-text);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 14px;
+  padding-right: 14px;
   width: 100%;
   outline: none;
   transition: border-color 150ms;
+  font-size: 14px;
+  line-height: 1.5;
 }
+.aif-input::placeholder { color: rgba(159,176,204,0.55); }
+/* When input has Tailwind padding utilities (pl-10, pr-10), they win over the base 14px */
+.aif-input.pl-10 { padding-left: 40px; }
+.aif-input.pr-10 { padding-right: 40px; }
 .aif-input:focus { border-color: rgba(95,227,201,0.6); box-shadow: 0 0 0 3px rgba(95,227,201,0.10); }
 
 .aif-label { color: var(--aif-text-dim); font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block; }
