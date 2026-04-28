@@ -153,19 +153,21 @@ function StartProcedure({ user, tier, setTier, consent, setConsent, busy, onStar
       <div className="aif-card aif-glow p-6 md:p-10 relative overflow-hidden">
         <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
         <div className="relative z-10 text-center">
-          {/* Welcome pill (centered, compact) */}
-          <div className="inline-flex items-center gap-3 aif-card !rounded-full !py-2 !px-4 mb-5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center text-[#06122A] font-bold text-[13px]">
-              {initials}
+          {/* Welcome pill + tag (centered, with breathing room) */}
+          <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-6">
+            <div className="inline-flex items-center gap-3 aif-card !rounded-full !py-2 !px-4">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center text-[#06122A] font-bold text-[13px]">
+                {initials}
+              </div>
+              <div className="text-left">
+                <div className="text-white font-semibold text-[13px] leading-tight">{user.first_name} {user.last_name}</div>
+                <div className="text-[11px] text-[var(--aif-text-dim)] leading-tight">{user.email}</div>
+              </div>
             </div>
-            <div className="text-left">
-              <div className="text-white font-semibold text-[13px] leading-tight">{user.first_name} {user.last_name}</div>
-              <div className="text-[11px] text-[var(--aif-text-dim)] leading-tight">{user.email}</div>
-            </div>
+            <div className="aif-chip"><Sparkles size={12} className="text-[#5FE3C9]"/> {t("proc.tag")}</div>
           </div>
 
-          <div className="aif-chip mx-auto"><Sparkles size={12} className="text-[#5FE3C9]"/> {t("proc.tag")}</div>
-          <h1 className="section-title mt-4 mx-auto max-w-3xl">{t("proc.title")}</h1>
+          <h1 className="section-title mt-2 mx-auto max-w-3xl">{t("proc.title")}</h1>
           <p className="text-[var(--aif-text-dim)] mt-4 max-w-2xl mx-auto leading-relaxed">{t("proc.subtitle")}</p>
         </div>
       </div>
