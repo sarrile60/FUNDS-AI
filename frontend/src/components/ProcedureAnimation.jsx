@@ -179,7 +179,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
   const stage = useMemo(() => STAGES.find(s => t01 >= s.from && t01 < s.to) || STAGES[STAGES.length - 1], [t01]);
   const stageProgress = (t01 - stage.from) / Math.max(0.0001, (stage.to - stage.from));
 
-  // Log/records generator — tied to stage
+  // Log/records generator — tied to stage. Slower pace for a calmer feel.
   useEffect(() => {
     const id = setInterval(() => {
       setLogs(prev => {
@@ -187,9 +187,9 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
         // keep last 12 lines
         return next.slice(-12);
       });
-      setRecords(r => r + Math.floor(Math.random() * 87 + 13));
-      if (Math.random() < 0.18) setMatches(m => m + 1);
-    }, 220);
+      setRecords(r => r + Math.floor(Math.random() * 42 + 8));
+      if (Math.random() < 0.13) setMatches(m => m + 1);
+    }, 480);
     return () => clearInterval(id);
   }, [stage.key]);
 
@@ -199,71 +199,71 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
   const destLabel = destination === "zenthos_wallet" ? t("trc.dest.zenthos_wallet") : t("trc.dest.chiantin_bank");
 
   return (
-    <div className="aif-card aif-glow p-5 md:p-7 relative overflow-hidden" data-testid="procedure-animation">
+    <div className="aif-card aif-glow p-6 md:p-9 lg:p-10 relative overflow-hidden mx-auto max-w-[1600px]" data-testid="procedure-animation">
       <div className="aif-grid-overlay absolute inset-0 opacity-40 pointer-events-none"/>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap relative z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-30 blur-md aif-pulse"/>
-            <div className="relative w-11 h-11 rounded-full bg-[#0E1A36] border border-[var(--aif-line)] flex items-center justify-center text-[#5FE3C9]">
-              <StageIcon size={20}/>
+            <div className="relative w-14 h-14 rounded-full bg-[#0E1A36] border border-[var(--aif-line)] flex items-center justify-center text-[#5FE3C9]">
+              <StageIcon size={26}/>
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] text-[#9FB0CC]">{t("trc.title")}</div>
-            <div className="text-white font-semibold">{t(stage.labelKey)}</div>
+            <div className="text-[12px] uppercase tracking-[0.22em] text-[#9FB0CC]">{t("trc.title")}</div>
+            <div className="text-white font-bold text-xl md:text-2xl mt-0.5">{t(stage.labelKey)}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="aif-chip text-[10px]"><Lock size={11}/> AES-256</div>
-          <div className="aif-chip text-[10px]"><Activity size={11}/> {t("trc.do_not_close")}</div>
+          <div className="aif-chip text-[11px]"><Lock size={12}/> AES-256</div>
+          <div className="aif-chip text-[11px]"><Activity size={12}/> {t("trc.do_not_close")}</div>
           <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2" title={t("trc.cancel")} data-testid="proc-cancel">
-            <X size={16}/>
+            <X size={18}/>
           </button>
         </div>
       </div>
 
       {/* Time & progress */}
-      <div className="grid sm:grid-cols-3 gap-3 mt-5 relative z-10">
+      <div className="grid sm:grid-cols-3 gap-4 mt-7 relative z-10">
         <TimeBox label={t("trc.elapsed")} value={fmtTime(elapsed)}/>
         <TimeBox label={t("trc.remaining")} value={fmtTime(remaining)} highlight/>
         <TimeBox label={t("trc.progress")} value={`${progressPct}%`}/>
       </div>
 
-      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mt-4 relative z-10">
+      <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden mt-5 relative z-10">
         <div className="h-full bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] transition-all duration-200" style={{ width: `${progressPct}%` }}/>
       </div>
 
       {/* Stages strip */}
-      <div className="grid grid-cols-8 gap-1 mt-3 relative z-10">
+      <div className="grid grid-cols-8 gap-1.5 mt-3 relative z-10">
         {STAGES.map((s, i) => (
-          <div key={s.key} className={`h-1 rounded-full transition-all ${t01 >= s.to ? "bg-[#5FE3C9]" : t01 >= s.from ? "bg-[#5FE3C9]/50" : "bg-white/5"}`}/>
+          <div key={s.key} className={`h-1.5 rounded-full transition-all ${t01 >= s.to ? "bg-[#5FE3C9]" : t01 >= s.from ? "bg-[#5FE3C9]/50" : "bg-white/5"}`}/>
         ))}
       </div>
 
       {/* Body — split: scan visual + logs */}
-      <div className="grid lg:grid-cols-5 gap-4 mt-6 relative z-10">
-        <div className="lg:col-span-2 aif-card !rounded-xl p-4 min-h-[260px] relative overflow-hidden">
+      <div className="grid lg:grid-cols-5 gap-5 mt-7 relative z-10">
+        <div className="lg:col-span-2 aif-card !rounded-xl p-5 min-h-[400px] relative overflow-hidden">
           <ScanVisual stage={stage.key} stageProgress={stageProgress}/>
-          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-[var(--aif-text-dim)]">
-            <span><Server size={11} className="inline -mt-0.5 mr-1"/> {t("trc.records")}: <span className="text-white font-semibold">{records.toLocaleString("it-IT")}</span></span>
-            <span><Database size={11} className="inline -mt-0.5 mr-1"/> {t("trc.matches")}: <span className="text-[#FFB454] font-semibold">{matches}</span></span>
+          <div className="mt-4 flex items-center justify-between gap-2 text-[12.5px] text-[var(--aif-text-dim)]">
+            <span><Server size={12} className="inline -mt-0.5 mr-1"/> {t("trc.records")}: <span className="text-white font-semibold">{records.toLocaleString("it-IT")}</span></span>
+            <span><Database size={12} className="inline -mt-0.5 mr-1"/> {t("trc.matches")}: <span className="text-[#FFB454] font-semibold">{matches}</span></span>
           </div>
         </div>
 
-        <div className="lg:col-span-3 aif-card !rounded-xl p-3 min-h-[260px] font-mono text-[11.5px] leading-snug overflow-hidden">
-          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)] mb-2 px-1">
+        <div className="lg:col-span-3 aif-card !rounded-xl p-4 min-h-[400px] font-mono text-[13px] leading-relaxed overflow-hidden">
+          <div className="flex items-center justify-between text-[10.5px] uppercase tracking-[0.22em] text-[var(--aif-text-dim)] mb-3 px-1">
             <span>{t("trc.scanning")} :: {stage.key}</span>
             <span className="aif-pulse">●</span>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <AnimatePresence initial={false}>
               {logs.map((l, i) => (
                 <motion.div key={l.id}
                   initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 0.4 + (i / logs.length) * 0.6, x: 0 }}
+                  animate={{ opacity: 0.45 + (i / logs.length) * 0.55, x: 0 }}
                   exit={{ opacity: 0 }}
                   className="text-[#9FE6D2] truncate"
                 >
@@ -276,8 +276,8 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       </div>
 
       {/* Disclaimer */}
-      <div className="mt-5 text-[11px] text-[var(--aif-text-dim)] text-center relative z-10 flex items-center justify-center gap-2">
-        <Lock size={11}/> {t("trc.disclaimer")}
+      <div className="mt-6 text-[12px] text-[var(--aif-text-dim)] text-center relative z-10 flex items-center justify-center gap-2">
+        <Lock size={12}/> {t("trc.disclaimer")}
       </div>
     </div>
   );
@@ -285,9 +285,9 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
 
 function TimeBox({ label, value, highlight = false }) {
   return (
-    <div className={`aif-card !rounded-xl p-3 ${highlight ? "!border-[#5FE3C9]" : ""}`}>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{label}</div>
-      <div className={`text-2xl md:text-3xl font-extrabold tabular-nums ${highlight ? "text-[#5FE3C9]" : "text-white"}`}>{value}</div>
+    <div className={`aif-card !rounded-xl p-4 ${highlight ? "!border-[#5FE3C9]" : ""}`}>
+      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--aif-text-dim)]">{label}</div>
+      <div className={`text-3xl md:text-4xl font-extrabold tabular-nums mt-1 ${highlight ? "text-[#5FE3C9]" : "text-white"}`}>{value}</div>
     </div>
   );
 }
@@ -305,8 +305,8 @@ function ScanVisual({ stage, stageProgress }) {
   }, [stage]);
 
   return (
-    <div className="relative w-full h-[200px]">
-      <svg viewBox="0 0 220 200" className="w-full h-full">
+    <div className="relative w-full h-[280px] md:h-[320px]">
+      <svg viewBox="0 0 220 200" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
         <defs>
           <radialGradient id="radar-bg" cx="50%" cy="50%" r="60%">
             <stop offset="0%" stopColor="#5FE3C9" stopOpacity="0.18"/>
@@ -325,9 +325,9 @@ function ScanVisual({ stage, stageProgress }) {
         <line x1="20" y1="100" x2="200" y2="100" stroke="rgba(120,160,230,0.12)"/>
         <line x1="110" y1="20" x2="110" y2="180" stroke="rgba(120,160,230,0.12)"/>
 
-        {/* sweep beam */}
+        {/* sweep beam — slowed for calmer feel */}
         <g style={{ transformOrigin: "110px 100px" }}>
-          <g style={{ animation: "aif-sweep 3.2s linear infinite" }}>
+          <g style={{ animation: "aif-sweep 5.5s linear infinite" }}>
             <path d="M 110 100 L 196 100 A 86 86 0 0 0 168 41 Z" fill="url(#sweep)" opacity="0.85"/>
           </g>
         </g>
@@ -348,6 +348,7 @@ function ScanVisual({ stage, stageProgress }) {
       </svg>
 
       <style>{`@keyframes aif-sweep { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }`}</style>
+      <style>{`.aif-card .aif-pulse { animation-duration: 3.6s !important; }`}</style>
     </div>
   );
 }

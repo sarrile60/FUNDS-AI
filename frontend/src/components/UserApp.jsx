@@ -83,8 +83,6 @@ export default function UserApp() {
               <motion.div key="idle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <StartProcedure
                   user={user}
-                  destLabel={destLabel}
-                  DestIcon={DestIcon}
                   tier={tier} setTier={setTier}
                   consent={consent} setConsent={setConsent}
                   busy={busy}
@@ -94,7 +92,8 @@ export default function UserApp() {
             )}
 
             {view === "animating" && (
-              <motion.div key="anim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key="anim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="!max-w-none -mx-5 lg:-mx-8">
                 <ProcedureAnimation
                   duration={120}
                   destination={destination}
@@ -145,7 +144,7 @@ export default function UserApp() {
 // ============================================================
 //   IDLE — pick tier + consent + start
 // ============================================================
-function StartProcedure({ user, destLabel, DestIcon, tier, setTier, consent, setConsent, busy, onStart }) {
+function StartProcedure({ user, tier, setTier, consent, setConsent, busy, onStart }) {
   const { t } = useI18n();
   return (
     <div className="space-y-5" data-testid="start-procedure">
@@ -157,19 +156,10 @@ function StartProcedure({ user, destLabel, DestIcon, tier, setTier, consent, set
           <h1 className="section-title mt-3">{t("proc.title")}</h1>
           <p className="text-[var(--aif-text-dim)] mt-3 max-w-3xl leading-relaxed">{t("proc.subtitle")}</p>
 
-          <div className="grid md:grid-cols-2 gap-3 mt-6">
-            <div className="aif-card !rounded-xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("proc.welcome")}</div>
-              <div className="text-white font-semibold mt-1">{user.first_name} {user.last_name}</div>
-              <div className="text-[12px] text-[var(--aif-text-dim)] mt-0.5">{user.email}</div>
-            </div>
-            <div className="aif-card !rounded-xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("proc.your_destination")}</div>
-              <div className="flex items-center gap-2 mt-1">
-                <DestIcon size={18} className="text-[#5FE3C9]"/>
-                <div className="text-white font-semibold">{destLabel}</div>
-              </div>
-            </div>
+          <div className="mt-6 aif-card !rounded-xl p-4 max-w-md">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("proc.welcome")}</div>
+            <div className="text-white font-semibold mt-1">{user.first_name} {user.last_name}</div>
+            <div className="text-[12px] text-[var(--aif-text-dim)] mt-0.5">{user.email}</div>
           </div>
         </div>
       </div>
