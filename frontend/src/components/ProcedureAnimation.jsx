@@ -73,6 +73,13 @@ const DATABASES = {
     "TradingMillionaireFX.io", "ETrade-Crypto.eu",
   ],
   aml:  [
+    "SEFIV cross-check", "SEFIV jurisdictional registry",
+    "OLAF anti-fraud database", "OLAF case correlation",
+    "BCE / ECB payment rails registry", "BCE supervisory data feed",
+    "Blockchain forensic graph", "Blockchain cluster correlation",
+    "ESMA supervisory cross-check", "ESMA warned-firms registry",
+    "FINRA disciplinary records", "FINRA broker check",
+    "S.F.O. financial-crime intelligence", "S.F.O. cross-border watchlist",
     "OFAC sanctions list", "EU consolidated list",
     "FATF high-risk jurisdictions", "Chainalysis KYT cluster",
     "TRM Labs forensic graph", "Elliptic risk score",
