@@ -19,7 +19,7 @@ set -euo pipefail
 # ===== CONFIG ================================================================
 DOMAIN="traccia-fondi.com"
 WWW_DOMAIN="www.traccia-fondi.com"
-GIT_REPO="https://github.com/sarrile60/FUNDS-AI.git"
+GIT_REPO="https://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@github.com/sarrile60/FUNDS-AI.git"
 GIT_BRANCH="main"
 APP_DIR="/var/www/traccia-fondi"
 ADMIN_EMAIL_FOR_LETSENCRYPT="support@traccia-fondi.com"
