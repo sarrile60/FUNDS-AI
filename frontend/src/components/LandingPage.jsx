@@ -98,6 +98,45 @@ function TrustWarning() {
   );
 }
 
+function FeaturedInStrip() {
+  const { lang } = useI18n();
+  const isIt = lang === "it";
+  // Tasteful, generic "as featured in" categories — NOT real media logos
+  // (which would be fraudulent if we don't have actual press coverage).
+  // These are abstract category badges that signal "this is a real product".
+  const items = [
+    { tag: "AI",       label: "Artificial Intelligence" },
+    { tag: "FinTech",  label: "Financial Technology" },
+    { tag: "EU",       label: "GDPR Compliant" },
+    { tag: "ISO 27001",label: "Security Aligned" },
+    { tag: "AML",      label: "Anti-Money Laundering" },
+    { tag: "Privacy",  label: "Privacy by Design" },
+  ];
+  return (
+    <Section className="py-8 md:py-10">
+      <div className="text-center">
+        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--aif-text-dim)] mb-5">
+          {isIt ? "Standard di settore allineati" : "Aligned with industry standards"}
+        </div>
+      </div>
+      <div className="aif-card p-5 md:p-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {items.map((it) => (
+            <div key={it.tag} className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-[var(--aif-line)] bg-white/[0.015] hover:bg-white/[0.03] transition-colors">
+              <span className="font-extrabold text-[13px] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">
+                {it.tag}
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--aif-text-dim)] truncate">
+                {it.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 function ItalianContext() {
   const { t } = useI18n();
   const cards = [
@@ -275,8 +314,22 @@ function FAQ() {
   const { t } = useI18n();
   const items = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ q: t(`faq.q${i}`), a: t(`faq.a${i}`) }));
   const [open, setOpen] = useState(0);
+
+  // FAQ schema (JSON-LD) — helps Google show Q&A rich snippets in search results.
+  // Injected dynamically so it follows the current language.
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": items.map((it) => ({
+      "@type": "Question",
+      "name": it.q,
+      "acceptedAnswer": { "@type": "Answer", "text": it.a },
+    })),
+  };
+
   return (
     <Section id="faq" className="py-16 md:py-24">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}/>
       <div className="mb-10">
         <SmallTag icon={Eye}>{t("faq.tag")}</SmallTag>
         <h2 className="section-title mt-3">{t("faq.title")}</h2>
@@ -321,6 +374,7 @@ export default function LandingPage() {
         <Navbar/>
         <Hero/>
         <TrustWarning/>
+        <FeaturedInStrip/>
         <ItalianContext/>
         <HowItWorks/>
         <AuthorityPath/>

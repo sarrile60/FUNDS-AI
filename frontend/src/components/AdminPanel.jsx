@@ -1,10 +1,10 @@
 // AdminPanel — admin login + dashboard with users + recovery requests.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Users, Inbox, Plus, Edit2, Trash2, Eye, EyeOff, Save, X,
-  Mail as MailIcon, ExternalLink, Building2, Wallet, Check, LogOut, Send, FileText
+  Mail as MailIcon, ExternalLink, Building2, Wallet, Check, LogOut, Send, FileText, Bell
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -18,11 +18,97 @@ const TIER_LABEL = {
   "100000_plus":  "100,000+ €",
 };
 
+const POLL_INTERVAL_MS = 30000; // 30 seconds
+const SEEN_KEY = "aif_admin_seen_requests";
+
+// Tiny synthesized "ding" using Web Audio API — no external file needed.
+function playDing() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    // Two-tone chime (E5 → A5, ~0.6s)
+    const tones = [659.25, 880.0];
+    tones.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + i * 0.18);
+      gain.gain.setValueAtTime(0.0001, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + i * 0.18 + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i * 0.18);
+      osc.stop(now + i * 0.18 + 0.55);
+    });
+    setTimeout(() => ctx.close && ctx.close(), 1500);
+  } catch {}
+}
+
 export default function AdminPanel() {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const nav = useNavigate();
   const [tab, setTab] = useState("users");
+  const [unread, setUnread] = useState(0);  // count of unread requests
+  const [requestsBump, setRequestsBump] = useState(0); // forces refetch on requests tab when new arrives
+  const seenIdsRef = useRef(new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")));
+
+  // Mark a request id as seen + persist
+  const markSeen = (ids) => {
+    ids.forEach((id) => seenIdsRef.current.add(id));
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current]));
+  };
+
+  const isAdmin = user && user.role === "admin";
+
+  // Poll for new pending recovery requests (only when admin is logged in)
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    let initial = true;
+    const tick = async () => {
+      try {
+        const list = await api.adminListRequests();
+        if (cancelled) return;
+        const newOnes = list.filter(
+          (r) => r.status === "pending" && !seenIdsRef.current.has(r.id)
+        );
+        const totalUnread = newOnes.length;
+
+        if (!initial && newOnes.length > 0) {
+          playDing();
+          newOnes.slice(0, 3).forEach((r) => {
+            toast.success(
+              `New recovery request: ${r.first_name} ${r.last_name}`,
+              { description: r.email, duration: 8000 }
+            );
+          });
+          setRequestsBump((n) => n + 1);
+        }
+        setUnread(totalUnread);
+        initial = false;
+      } catch {
+        // ignore — keep polling
+      }
+    };
+    tick();
+    const id = setInterval(tick, POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [isAdmin]);
+
+  // When admin opens the Requests tab, mark all currently pending as seen
+  useEffect(() => {
+    if (!isAdmin || tab !== "requests") return;
+    (async () => {
+      try {
+        const list = await api.adminListRequests();
+        markSeen(list.filter((r) => r.status === "pending").map((r) => r.id));
+        setUnread(0);
+      } catch {}
+    })();
+  }, [tab, isAdmin]);
 
   if (!user) return <Navigate to="/admin" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
@@ -38,31 +124,52 @@ export default function AdminPanel() {
               <Logo/>
               <span className="aif-chip text-[10px]">{t("adm.title")}</span>
             </div>
-            <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="adm-logout">
-              <LogOut size={14}/> {t("adm.logout")}
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Bell with badge */}
+              <button
+                onClick={() => setTab("requests")}
+                className="relative p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                title="Recovery requests"
+                data-testid="adm-bell"
+              >
+                <Bell size={18}/>
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6B7A] text-[#06122A] text-[10px] font-bold flex items-center justify-center aif-pulse">
+                    {unread > 9 ? "9+" : unread}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="adm-logout">
+                <LogOut size={14}/> {t("adm.logout")}
+              </button>
+            </div>
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto px-5 lg:px-8 py-8 space-y-5">
           <div className="flex items-center gap-2 flex-wrap">
             <TabBtn active={tab === "users"}    onClick={() => setTab("users")}    icon={Users}    label={t("adm.tab.users")}    testid="tab-users"/>
-            <TabBtn active={tab === "requests"} onClick={() => setTab("requests")} icon={Inbox}    label={t("adm.tab.requests")} testid="tab-requests"/>
+            <TabBtn active={tab === "requests"} onClick={() => setTab("requests")} icon={Inbox}    label={t("adm.tab.requests")} testid="tab-requests" badge={unread}/>
           </div>
 
-          {tab === "users" ? <UsersTab/> : <RequestsTab/>}
+          {tab === "users" ? <UsersTab/> : <RequestsTab refreshKey={requestsBump}/>}
         </main>
       </div>
     </div>
   );
 }
 
-function TabBtn({ active, onClick, icon: Icon, label, testid }) {
+function TabBtn({ active, onClick, icon: Icon, label, testid, badge }) {
   return (
     <button onClick={onClick} data-testid={testid}
-      className={`aif-card !rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition ${active ? "!border-[#5FE3C9] aif-glow" : ""}`}>
+      className={`aif-card !rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition relative ${active ? "!border-[#5FE3C9] aif-glow" : ""}`}>
       <Icon size={14} className={active ? "text-[#5FE3C9]" : "text-[var(--aif-text-dim)]"}/>
       <span className={active ? "text-white font-semibold" : "text-[var(--aif-text-dim)]"}>{label}</span>
+      {badge > 0 && (
+        <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6B7A] text-[#06122A] text-[10px] font-bold flex items-center justify-center">
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -301,7 +408,7 @@ function Field({ label, children }) {
 // ============================================================
 //   REQUESTS TAB
 // ============================================================
-function RequestsTab() {
+function RequestsTab({ refreshKey = 0 }) {
   const { t } = useI18n();
   const [list, setList] = useState([]);
   const [openId, setOpenId] = useState(null);
@@ -309,7 +416,7 @@ function RequestsTab() {
   const load = async () => {
     try { setList(await api.adminListRequests()); } catch { toast.error("Load failed"); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [refreshKey]);
 
   return (
     <div className="space-y-4">
