@@ -47,7 +47,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-[rgba(6,11,24,0.7)] border-b border-[var(--aif-line)]">
+    <header className="sticky top-0 z-50 bg-[rgba(6,11,24,0.92)] border-b border-[var(--aif-line)]">
       <div className="max-w-7xl mx-auto px-5 lg:px-8 h-16 flex items-center justify-between">
         <Link to="/" data-testid="nav-home"><Logo /></Link>
 

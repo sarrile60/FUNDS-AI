@@ -158,7 +158,7 @@ export default function LegalPage({ kind }) {
     <div className="aif-app-bg min-h-screen relative">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative">
-        <header className="border-b border-[var(--aif-line)] bg-[rgba(6,11,24,0.7)] backdrop-blur-xl">
+        <header className="border-b border-[var(--aif-line)] bg-[rgba(6,11,24,0.92)]">
           <div className="max-w-4xl mx-auto px-5 lg:px-8 h-16 flex items-center justify-between gap-4">
             <Link to="/" className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2">
               <ArrowLeft size={14}/> {t("nav.back")}

@@ -1,11 +1,11 @@
 // HeroNetwork — premium animated fund-tracing graph (pure SVG + CSS)
-// Shows victim → payment rails → recipient nodes → risk → report
-import React from "react";
+// Pauses animations when scrolled off-screen for performance.
+import React, { useEffect, useRef, useState } from "react";
 import { useI18n } from "../i18n";
 
-const NODE = ({ x, y, label, sub, icon, color = "#5FE3C9", size = 38, dataId }) => (
+const NODE = ({ x, y, label, sub, icon, color = "#5FE3C9", size = 38, dataId, animate = true }) => (
   <g transform={`translate(${x} ${y})`} data-testid={dataId}>
-    <circle r={size + 8} fill={color} opacity="0.08" className="aif-pulse" />
+    {animate && <circle r={size + 8} fill={color} opacity="0.08" className="aif-pulse" />}
     <circle r={size} fill="rgba(8,16,38,0.95)" stroke={color} strokeWidth="1.4" />
     <foreignObject x={-size + 6} y={-size + 6} width={(size - 6) * 2} height={(size - 6) * 2}>
       <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color, fontSize: 18 }}>
@@ -17,11 +17,11 @@ const NODE = ({ x, y, label, sub, icon, color = "#5FE3C9", size = 38, dataId }) 
   </g>
 );
 
-const LINK = ({ x1, y1, x2, y2, color = "#5FE3C9", delay = 0, dashed = true }) => (
+const LINK = ({ x1, y1, x2, y2, color = "#5FE3C9", delay = 0, dashed = true, animate = true }) => (
   <g>
     <path d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`}
           stroke={color} strokeOpacity="0.25" strokeWidth="1.4" fill="none"/>
-    {dashed && (
+    {dashed && animate && (
       <path d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`}
             stroke={color} strokeWidth="2" fill="none"
             className="aif-flow-line" style={{ animationDelay: `${delay}s` }} />
@@ -29,12 +29,28 @@ const LINK = ({ x1, y1, x2, y2, color = "#5FE3C9", delay = 0, dashed = true }) =
   </g>
 );
 
-export default function HeroNetwork() {
+export default function HeroNetwork({ animate = true }) {
   const { t, lang } = useI18n();
   const tag1 = t("hero.live");
   const tag2 = t("hero.risk");
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(true);
+
+  // Pause animations when off-screen (huge perf win)
+  useEffect(() => {
+    if (!ref.current || !animate) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { rootMargin: "120px" }
+    );
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [animate]);
+
+  const live = animate && visible;
+
   return (
-    <div className="relative w-full">
+    <div ref={ref} className="relative w-full">
       <svg viewBox="0 0 800 480" className="w-full h-auto" data-testid="hero-network">
         <defs>
           <radialGradient id="bgGlow" cx="50%" cy="50%" r="60%">
@@ -50,38 +66,38 @@ export default function HeroNetwork() {
         <rect x="0" y="0" width="800" height="480" fill="url(#bgGlow)"/>
 
         {/* lines (under nodes) */}
-        <LINK x1="100" y1="230" x2="280" y2="120" color="#5FE3C9" delay={0}/>
-        <LINK x1="100" y1="230" x2="280" y2="230" color="#5FE3C9" delay={0.5}/>
-        <LINK x1="100" y1="230" x2="280" y2="340" color="#5FE3C9" delay={1.0}/>
+        <LINK x1="100" y1="230" x2="280" y2="120" color="#5FE3C9" delay={0}    animate={live}/>
+        <LINK x1="100" y1="230" x2="280" y2="230" color="#5FE3C9" delay={0.5}  animate={live}/>
+        <LINK x1="100" y1="230" x2="280" y2="340" color="#5FE3C9" delay={1.0}  animate={live}/>
 
-        <LINK x1="280" y1="120" x2="500" y2="160" color="#6E8BFF" delay={0.4}/>
-        <LINK x1="280" y1="230" x2="500" y2="230" color="#6E8BFF" delay={0.9}/>
-        <LINK x1="280" y1="340" x2="500" y2="300" color="#6E8BFF" delay={1.3}/>
+        <LINK x1="280" y1="120" x2="500" y2="160" color="#6E8BFF" delay={0.4}  animate={live}/>
+        <LINK x1="280" y1="230" x2="500" y2="230" color="#6E8BFF" delay={0.9}  animate={live}/>
+        <LINK x1="280" y1="340" x2="500" y2="300" color="#6E8BFF" delay={1.3}  animate={live}/>
 
-        <LINK x1="500" y1="160" x2="690" y2="120" color="#FF8B6A" delay={0.8}/>
-        <LINK x1="500" y1="230" x2="690" y2="230" color="#FF8B6A" delay={1.4}/>
-        <LINK x1="500" y1="300" x2="690" y2="340" color="#FF8B6A" delay={1.8}/>
+        <LINK x1="500" y1="160" x2="690" y2="120" color="#FF8B6A" delay={0.8}  animate={live}/>
+        <LINK x1="500" y1="230" x2="690" y2="230" color="#FF8B6A" delay={1.4}  animate={live}/>
+        <LINK x1="500" y1="300" x2="690" y2="340" color="#FF8B6A" delay={1.8}  animate={live}/>
 
         {/* Nodes */}
-        <NODE x="100" y="230" label={t("hn.victim")} sub={lang === "en" ? "Italy" : "Italia"} color="#5FE3C9" size={32} icon="👤" dataId="node-victim"/>
+        <NODE x="100" y="230" label={t("hn.victim")} sub={lang === "en" ? "Italy" : "Italia"} color="#5FE3C9" size={32} icon="👤" dataId="node-victim" animate={live}/>
 
-        <NODE x="280" y="120" label={t("hn.sepa")}     sub={t("hn.sepa.sub")}    color="#5FE3C9" size={28} icon="🏦"/>
-        <NODE x="280" y="230" label="PostePay"          sub={t("hn.postepay.sub")} color="#5FE3C9" size={28} icon="💳"/>
-        <NODE x="280" y="340" label={t("hn.crypto")}    sub={t("hn.crypto.sub")}  color="#5FE3C9" size={28} icon="₿"/>
+        <NODE x="280" y="120" label={t("hn.sepa")}     sub={t("hn.sepa.sub")}    color="#5FE3C9" size={28} icon="🏦" animate={live}/>
+        <NODE x="280" y="230" label="PostePay"          sub={t("hn.postepay.sub")} color="#5FE3C9" size={28} icon="💳" animate={live}/>
+        <NODE x="280" y="340" label={t("hn.crypto")}    sub={t("hn.crypto.sub")}  color="#5FE3C9" size={28} icon="₿" animate={live}/>
 
-        <NODE x="500" y="160" label={t("hn.iban")}      sub={t("hn.iban.sub")}    color="#6E8BFF" size={24} icon="🏛️"/>
-        <NODE x="500" y="230" label={t("hn.merchant")}  sub={t("hn.merchant.sub")} color="#6E8BFF" size={24} icon="🔗"/>
-        <NODE x="500" y="300" label={t("hn.mule")}      sub={t("hn.mule.sub")}    color="#6E8BFF" size={24} icon="⚠"/>
+        <NODE x="500" y="160" label={t("hn.iban")}      sub={t("hn.iban.sub")}    color="#6E8BFF" size={24} icon="🏛️" animate={live}/>
+        <NODE x="500" y="230" label={t("hn.merchant")}  sub={t("hn.merchant.sub")} color="#6E8BFF" size={24} icon="🔗" animate={live}/>
+        <NODE x="500" y="300" label={t("hn.mule")}      sub={t("hn.mule.sub")}    color="#6E8BFF" size={24} icon="⚠" animate={live}/>
 
-        <NODE x="690" y="120" label={t("hn.bank_complaint")} sub="Recall SEPA"   color="#FFB454" size={24} icon="📄"/>
-        <NODE x="690" y="230" label={t("hn.freeze")}    sub="Compliance"          color="#FFB454" size={24} icon="❄"/>
-        <NODE x="690" y="340" label={t("hn.police")}    sub={t("hn.police.sub")}  color="#FF6B7A" size={24} icon="🛡"/>
+        <NODE x="690" y="120" label={t("hn.bank_complaint")} sub="Recall SEPA"   color="#FFB454" size={24} icon="📄" animate={live}/>
+        <NODE x="690" y="230" label={t("hn.freeze")}    sub="Compliance"          color="#FFB454" size={24} icon="❄" animate={live}/>
+        <NODE x="690" y="340" label={t("hn.police")}    sub={t("hn.police.sub")}  color="#FF6B7A" size={24} icon="🛡" animate={live}/>
 
-        {/* Particles */}
-        {[...Array(8)].map((_, i) => (
+        {/* Particles — only when animated AND visible, and only 4 (was 8) */}
+        {live && [...Array(4)].map((_, i) => (
           <circle key={i} r="2.5" fill="#5FE3C9" opacity="0.9">
-            <animateMotion dur={`${3 + (i % 4)}s`} repeatCount="indefinite" begin={`${i * 0.4}s`}
-              path={`M 100 230 C 250 ${120 + i * 10}, 420 ${230 + (i % 3) * 20}, 690 ${120 + (i % 3) * 110}`}/>
+            <animateMotion dur={`${4 + i}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}
+              path={`M 100 230 C 250 ${120 + i * 20}, 420 ${230 + (i % 3) * 20}, 690 ${120 + (i % 3) * 110}`}/>
           </circle>
         ))}
       </svg>

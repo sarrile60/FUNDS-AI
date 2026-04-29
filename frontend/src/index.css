@@ -77,11 +77,9 @@ html, body {
 }
 
 .aif-card {
-  background: linear-gradient(180deg, rgba(22,32,62,0.7), rgba(14,22,46,0.55));
+  background: linear-gradient(180deg, rgba(22,32,62,0.85), rgba(14,22,46,0.85));
   border: 1px solid var(--aif-line);
   border-radius: 18px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
 }
 
 .aif-glow {
@@ -152,7 +150,16 @@ html, body {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.15); }
 }
-.aif-pulse { animation: aif-pulse 2.4s ease-in-out infinite; }
+.aif-pulse {
+  animation: aif-pulse 2.4s ease-in-out infinite;
+  animation-play-state: running;
+}
+/* Pause animations when off-screen to save CPU/GPU */
+@media (prefers-reduced-motion: reduce) {
+  .aif-pulse, .aif-flow-line, .aif-shine, .aif-float, .aif-marquee {
+    animation: none !important;
+  }
+}
 
 @keyframes aif-flow {
   0% { stroke-dashoffset: 200; opacity: 0; }

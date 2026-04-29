@@ -32,7 +32,7 @@ export default function AdminPanel() {
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative">
         {/* Top bar */}
-        <header className="border-b border-[var(--aif-line)] bg-[rgba(6,11,24,0.7)] backdrop-blur-xl">
+        <header className="border-b border-[var(--aif-line)] bg-[rgba(6,11,24,0.92)]">
           <div className="max-w-7xl mx-auto px-5 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Logo/>
@@ -193,7 +193,7 @@ function UserForm({ initial, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="aif-card aif-glow w-full max-w-xl p-6" data-testid="user-form">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-white">{isNew ? t("adm.users.new") : t("adm.users.edit")}</h3>

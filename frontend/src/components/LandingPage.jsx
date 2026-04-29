@@ -118,14 +118,13 @@ function ItalianContext() {
         {cards.map((c, i) => {
           const Icon = c.icon;
           return (
-            <motion.div key={i} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}
-              className="aif-card p-6 hover:border-[#5FE3C9]/40 transition">
+            <div key={i} className="aif-card p-6 hover:border-[#5FE3C9]/40 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#5FE3C9]/20 to-[#6E8BFF]/20 border border-[var(--aif-line)] flex items-center justify-center text-[#5FE3C9]">
                 <Icon size={20}/>
               </div>
               <h3 className="text-white font-semibold text-lg mt-4">{t(`context.${c.k}.t`)}</h3>
               <p className="text-[var(--aif-text-dim)] text-[13px] mt-2 leading-relaxed">{t(`context.${c.k}.d`)}</p>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -212,7 +211,7 @@ function TracingTeaser() {
             </ul>
             <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2 mt-6">{t("tracing.cta")} <ArrowRight size={16}/></Link>
           </div>
-          <div className="lg:col-span-7"><HeroNetwork/></div>
+          <div className="lg:col-span-7"><HeroNetwork animate={false}/></div>
         </div>
       </div>
     </Section>
