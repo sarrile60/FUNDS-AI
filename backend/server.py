@@ -107,9 +107,9 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
 
 # Located amount per tier — well beyond the tier's high end so the user
 # always sees a "bonus" amount discovered. Numbers are randomized inside
-# the range so they look organic (e.g. 82,345 / 354,963 / 19,632).
+# the range so they look organic (e.g. 35,496 / 82,345 / 354,963).
 TIER_HIGH_END = {
-    "5000_20000":     (18000, 19999),
+    "5000_20000":     (28000, 39999),
     "20000_50000":    (78000, 89999),
     "50000_100000":   (140000, 169999),
     "100000_plus":    (320000, 489999),
