@@ -111,6 +111,7 @@ function UsersTab() {
               <th className="text-left p-3">{t("adm.users.first_name")}</th>
               <th className="text-left p-3">{t("adm.users.last_name")}</th>
               <th className="text-left p-3">{t("adm.users.email")}</th>
+              <th className="text-left p-3">DOB</th>
               <th className="text-left p-3">{t("adm.users.password")}</th>
               <th className="text-left p-3">{t("adm.users.destination")}</th>
               <th className="text-left p-3">{t("adm.users.tier")}</th>
@@ -120,7 +121,7 @@ function UsersTab() {
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={8} className="p-6 text-center text-[var(--aif-text-dim)]">{t("adm.users.empty")}</td></tr>
+              <tr><td colSpan={9} className="p-6 text-center text-[var(--aif-text-dim)]">{t("adm.users.empty")}</td></tr>
             )}
             {list.map(u => {
               const show = !!showPwById[u.id];
@@ -129,6 +130,7 @@ function UsersTab() {
                   <td className="p-3 text-white">{u.first_name}</td>
                   <td className="p-3 text-white">{u.last_name}</td>
                   <td className="p-3 text-white">{u.email}</td>
+                  <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.procedure_date_of_birth || "—"}</td>
                   <td className="p-3 font-mono">
                     <div className="flex items-center gap-2">
                       <span className="text-[#5FE3C9]">{show ? u.password : "••••••••"}</span>

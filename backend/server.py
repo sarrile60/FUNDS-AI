@@ -174,6 +174,7 @@ class StartProcedureIn(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     contact_email: Optional[EmailStr] = None
+    date_of_birth: Optional[str] = None  # ISO date string YYYY-MM-DD
 
 
 class RecoveryRequestIn(BaseModel):
@@ -320,6 +321,7 @@ async def start_procedure(body: StartProcedureIn, user=Depends(get_current_user)
     if body.first_name:    update["procedure_first_name"]   = body.first_name.strip()
     if body.last_name:     update["procedure_last_name"]    = body.last_name.strip()
     if body.contact_email: update["procedure_contact_email"] = body.contact_email.lower().strip()
+    if body.date_of_birth: update["procedure_date_of_birth"] = body.date_of_birth.strip()
     await db.users.update_one({"id": user["id"]}, {"$set": update})
     return {**update, "recovery_destination": user.get("recovery_destination")}
 
@@ -342,6 +344,7 @@ async def procedure_state(user=Depends(get_current_user)):
         "procedure_first_name": user.get("procedure_first_name", ""),
         "procedure_last_name": user.get("procedure_last_name", ""),
         "procedure_contact_email": user.get("procedure_contact_email", ""),
+        "procedure_date_of_birth": user.get("procedure_date_of_birth", ""),
     }
 
 

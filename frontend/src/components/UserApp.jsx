@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Shield, ArrowRight, Lock, CheckCircle2, MapPin, Banknote, Wallet,
-  Sparkles, ShieldAlert, Mail, User, Send, Home, Building2
+  Sparkles, ShieldAlert, Mail, User, Send, Home, Building2, Calendar
 } from "lucide-react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -36,6 +36,7 @@ export default function UserApp() {
   const [first, setFirst] = useState("");
   const [last,  setLast]  = useState("");
   const [cmail, setCmail] = useState("");
+  const [dob,   setDob]   = useState("");
 
   // server state
   const [state, setState] = useState(null);
@@ -49,6 +50,7 @@ export default function UserApp() {
         if (s?.procedure_first_name)   setFirst(s.procedure_first_name);
         if (s?.procedure_last_name)    setLast(s.procedure_last_name);
         if (s?.procedure_contact_email) setCmail(s.procedure_contact_email);
+        if (s?.procedure_date_of_birth) setDob(s.procedure_date_of_birth);
       } catch {}
     })();
   }, []);
@@ -61,7 +63,7 @@ export default function UserApp() {
   const DestIcon = destination === "zenthos_wallet" ? Wallet : Building2;
 
   const startProcedure = async () => {
-    if (!first.trim() || !last.trim() || !cmail.trim()) {
+    if (!first.trim() || !last.trim() || !cmail.trim() || !dob) {
       toast.error(t("proc.fill_personal")); return;
     }
     if (!tier) { toast.error(t("proc.pick_first")); return; }
@@ -73,6 +75,7 @@ export default function UserApp() {
         first_name: first.trim(),
         last_name: last.trim(),
         contact_email: cmail.trim(),
+        date_of_birth: dob,
       });
       setState(s);
       setView("animating");
@@ -109,6 +112,7 @@ export default function UserApp() {
                   first={first} setFirst={setFirst}
                   last={last}   setLast={setLast}
                   cmail={cmail} setCmail={setCmail}
+                  dob={dob}     setDob={setDob}
                   busy={busy}
                   onStart={startProcedure}
                 />
@@ -173,7 +177,7 @@ export default function UserApp() {
 // ============================================================
 //   IDLE — pick tier + consent + start
 // ============================================================
-function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFirst, last, setLast, cmail, setCmail, busy, onStart }) {
+function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFirst, last, setLast, cmail, setCmail, dob, setDob, busy, onStart }) {
   const { t } = useI18n();
   const initials = `${(user.first_name || "?").charAt(0)}${(user.last_name || "").charAt(0)}`.toUpperCase();
   return (
@@ -225,6 +229,13 @@ function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFi
             <div className="relative">
               <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
               <input type="email" className="aif-input pl-10" data-testid="proc-email" value={cmail} onChange={(e) => setCmail(e.target.value)} placeholder={t("proc.email_ph")} required/>
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="aif-label">{t("proc.date_of_birth")}</label>
+            <div className="relative">
+              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+              <input type="date" className="aif-input pl-10" data-testid="proc-dob" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().slice(0,10)} required/>
             </div>
           </div>
         </div>

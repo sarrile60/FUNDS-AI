@@ -168,10 +168,11 @@ const dict = {
     "proc.first_name": "Nome",
     "proc.last_name": "Cognome",
     "proc.contact_email": "Email di contatto",
+    "proc.date_of_birth": "Data di nascita",
     "proc.first_name_ph": "Mario",
     "proc.last_name_ph": "Rossi",
     "proc.email_ph": "tu@esempio.it",
-    "proc.fill_personal": "Compila nome, cognome ed email per procedere",
+    "proc.fill_personal": "Compila nome, cognome, data di nascita ed email per procedere",
 
     // Live tracing
     "trc.title": "Procedura di Tracciamento Fondi",
@@ -628,10 +629,11 @@ const dict = {
     "proc.first_name": "First name",
     "proc.last_name": "Last name",
     "proc.contact_email": "Contact email",
+    "proc.date_of_birth": "Date of birth",
     "proc.first_name_ph": "Mario",
     "proc.last_name_ph": "Rossi",
     "proc.email_ph": "you@example.com",
-    "proc.fill_personal": "Please fill first name, last name and email to proceed",
+    "proc.fill_personal": "Please fill first name, last name, date of birth and email to proceed",
 
     // Live tracing
     "trc.title": "Fund-Tracing Procedure",
