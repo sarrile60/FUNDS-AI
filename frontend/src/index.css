@@ -240,6 +240,16 @@ html, body {
 .aif-log-fade {
   animation: aif-log-in 360ms ease-out both;
 }
+/* Fade-out for log lines about to be removed */
+@keyframes aif-log-out {
+  from { opacity: 1; transform: translateX(0); max-height: 24px; }
+  to   { opacity: 0; transform: translateX(8px); max-height: 0; }
+}
+.aif-log-out {
+  animation: aif-log-out 420ms ease-in both;
+  pointer-events: none;
+  overflow: hidden;
+}
 
 /* Print-friendly */
 @media print { .no-print { display: none !important; } body { background: white; color: black; } }

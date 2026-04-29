@@ -286,47 +286,145 @@ function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFi
 }
 
 // ============================================================
-//   LOCATED — final reveal
+//   LOCATED — final reveal (professional congratulations)
 // ============================================================
 function FundsLocated({ destination, destLabel, DestIcon, amount, onContinue }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isIt = lang === "it";
+
+  const summaryRows = isIt ? [
+    ["Stato procedura", "Completata con successo"],
+    ["Tipo di scansione", "Multi-livello (Bancaria · SEPA · Crypto · AML)"],
+    ["Esito", "Fondi localizzati"],
+    ["Posizione confermata", destLabel],
+    ["Standard di sicurezza", "AES-256 · TLS 1.3 · GDPR"],
+  ] : [
+    ["Procedure status", "Completed successfully"],
+    ["Scan type", "Multi-layer (Banking · SEPA · Crypto · AML)"],
+    ["Outcome", "Funds located"],
+    ["Confirmed location", destLabel],
+    ["Security standards", "AES-256 · TLS 1.3 · GDPR"],
+  ];
+
+  const nextSteps = isIt ? [
+    "Compila la richiesta formale di recupero con i tuoi dati",
+    "Riceverai via email le credenziali di accesso al conto di recupero",
+    "Accedi al portale per visualizzare e ritirare i fondi localizzati",
+  ] : [
+    "Submit the formal recovery request with your details",
+    "You will receive by email the credentials to access your recovery account",
+    "Log in to the portal to view and withdraw the located funds",
+  ];
+
   return (
-    <div className="aif-card aif-glow p-7 md:p-12 relative overflow-hidden text-center" data-testid="funds-located">
-      <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
-      <div className="relative z-10">
-        <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}
-          className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#4ADE80]/15 border-2 border-[#4ADE80]/40 mb-4 relative">
-          <div className="absolute inset-0 rounded-full bg-[#4ADE80] blur-2xl opacity-25"/>
-          <CheckCircle2 size={56} className="text-[#4ADE80] relative"/>
-        </motion.div>
+    <div className="space-y-5" data-testid="funds-located">
+      {/* Hero card with gradient + check */}
+      <div className="aif-card aif-glow p-7 md:p-12 relative overflow-hidden text-center">
+        <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
+        <div className="relative z-10">
+          <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}
+            className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#4ADE80]/15 border-2 border-[#4ADE80]/40 mb-4 relative">
+            <div className="absolute inset-0 rounded-full bg-[#4ADE80] blur-2xl opacity-25"/>
+            <CheckCircle2 size={56} className="text-[#4ADE80] relative"/>
+          </motion.div>
 
-        <div className="text-[11px] uppercase tracking-[0.3em] text-[#4ADE80] font-semibold">{t("trc.found.label")}</div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+            className="aif-chip !border-[#4ADE80]/40 !text-[#4ADE80]">
+            <Sparkles size={12}/> {isIt ? "Procedura completata" : "Procedure completed"}
+          </motion.div>
 
-        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-          className="mt-3 text-5xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">
-          € {amount.toLocaleString("it-IT")}
-        </motion.div>
-        <div className="text-[12px] text-[var(--aif-text-dim)] mt-2">{t("trc.found.amount")}</div>
+          <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+            className="section-title mt-4 max-w-2xl mx-auto">
+            {isIt ? "Congratulazioni, i tuoi fondi sono stati localizzati." : "Congratulations, your funds have been located."}
+          </motion.h2>
 
-        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
-          className="mt-7 inline-flex items-center gap-3 aif-card !rounded-2xl px-5 py-4">
-          <DestIcon size={28} className="text-[#5FE3C9]"/>
-          <div className="text-left">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("trc.found.location")}</div>
-            <div className="text-xl font-bold text-white">{destLabel}</div>
+          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+            className="mt-4 text-[var(--aif-text-dim)] max-w-2xl mx-auto leading-relaxed text-[14.5px]">
+            {isIt
+              ? "Il sistema Traccia Fondi ha completato con successo la procedura di tracciamento durata 2 minuti. Dopo aver analizzato reti bancarie italiane, circuiti SEPA, wallet fintech, blockchain e cluster AML, i tuoi fondi sono stati localizzati. Il prossimo passo è formalizzare la richiesta di recupero per ricevere le credenziali di accesso al conto."
+              : "The Traccia Fondi system has successfully completed the 2-minute tracing procedure. After analyzing Italian banking rails, SEPA networks, fintech wallets, blockchain, and AML clusters, your funds have been located. The next step is to formalize the recovery request to receive the access credentials to the recovery account."}
+          </motion.p>
+
+          {/* Big amount */}
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 }}
+            className="mt-8 text-[10px] uppercase tracking-[0.3em] text-[#4ADE80] font-semibold">
+            {t("trc.found.label")}
+          </motion.div>
+          <motion.div initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55, type: "spring", stiffness: 110 }}
+            className="mt-2 text-5xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] leading-none">
+            € {amount.toLocaleString("it-IT")}
+          </motion.div>
+          <div className="text-[12px] text-[var(--aif-text-dim)] mt-2">{t("trc.found.amount")}</div>
+
+          {/* Location badge */}
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
+            className="mt-7 inline-flex items-center gap-3 aif-card !rounded-2xl px-5 py-4">
+            <DestIcon size={28} className="text-[#5FE3C9]"/>
+            <div className="text-left">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)]">{t("trc.found.location")}</div>
+              <div className="text-xl font-bold text-white">{destLabel}</div>
+            </div>
+          </motion.div>
+
+          {/* CTA */}
+          <div className="mt-8">
+            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.85 }}
+              onClick={onContinue} className="aif-btn-primary inline-flex items-center gap-2 text-[15px] !px-6 !py-3.5" data-testid="goto-request">
+              {t("trc.found.cta")} <ArrowRight size={16}/>
+            </motion.button>
           </div>
-        </motion.div>
 
-        <div className="mt-8">
-          <button onClick={onContinue} className="aif-btn-primary inline-flex items-center gap-2" data-testid="goto-request">
-            {t("trc.found.cta")} <ArrowRight size={16}/>
-          </button>
-        </div>
-
-        <div className="mt-6 text-[11px] text-[var(--aif-text-dim)] flex items-center justify-center gap-2">
-          <Lock size={11}/> {t("trc.disclaimer")}
+          <div className="mt-6 text-[11px] text-[var(--aif-text-dim)] flex items-center justify-center gap-2">
+            <Lock size={11}/> {t("trc.disclaimer")}
+          </div>
         </div>
       </div>
+
+      {/* Procedure summary table */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}
+        className="aif-card p-6 md:p-7">
+        <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
+          {isIt ? "Riepilogo procedura" : "Procedure summary"}
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {summaryRows.map(([k, v]) => (
+            <div key={k} className="aif-card !rounded-xl p-3.5 flex items-start justify-between gap-3">
+              <span className="text-[12px] text-[var(--aif-text-dim)]">{k}</span>
+              <span className="text-[13px] text-white font-medium text-right">{v}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Next steps */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.15 }}
+        className="aif-card p-6 md:p-7">
+        <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
+          {isIt ? "Prossimi passi" : "Next steps"}
+        </div>
+        <ol className="space-y-3">
+          {nextSteps.map((s, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] font-bold text-[12px] flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+              <span className="text-[14px] text-white leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+      </motion.div>
+
+      {/* Final safety notice */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }}
+        className="aif-card p-5 !border-l-4 !border-l-[#FFB454]">
+        <div className="flex items-start gap-3">
+          <ShieldAlert size={18} className="text-[#FFB454] mt-0.5 shrink-0"/>
+          <div className="text-[13px] text-[var(--aif-text-dim)] leading-relaxed">
+            <strong className="text-[#FFB454]">{isIt ? "Promemoria sicurezza." : "Security reminder."}</strong>{" "}
+            {isIt
+              ? "Traccia Fondi non ti chiederà mai password, codici OTP, seed phrase, o l'installazione di software di accesso remoto. Tutte le comunicazioni ufficiali avvengono via email da @traccia-fondi.com."
+              : "Traccia Fondi will never ask for passwords, OTP codes, seed phrases, or for you to install remote-access software. All official communications come from @traccia-fondi.com email addresses."}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

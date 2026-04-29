@@ -237,13 +237,31 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
   const stageProgress = (t01 - stage.from) / Math.max(0.0001, (stage.to - stage.from));
 
   // Log/records generator — tied to stage. Slower pace for a calmer feel.
+  // Lines fade in on mount, then fade out ~400ms before being fully removed
+  // so old entries gracefully exit instead of just popping out.
   useEffect(() => {
+    const VISIBLE = 8;
+    const FADE_OUT_MS = 450;
     const id = setInterval(() => {
       setLogs(prev => {
-        const next = [...prev, { id: Math.random(), text: _line(stage.key, lang), ts: Date.now() }];
-        // keep last 8 lines (was 12) — fewer DOM nodes, less paint cost
-        return next.slice(-8);
+        // Add new line
+        const next = [...prev, { id: Math.random(), text: _line(stage.key, lang), leaving: false }];
+        // Mark anything past the visible window as "leaving" (only the ones that
+        // weren't already leaving — this triggers their CSS fade-out exactly once).
+        const overflow = next.length - VISIBLE;
+        if (overflow > 0) {
+          for (let i = 0; i < overflow; i++) {
+            if (!next[i].leaving) next[i] = { ...next[i], leaving: true };
+          }
+        }
+        // Hard-cap: keep VISIBLE + a small buffer of leavers so DOM stays small
+        return next.slice(-(VISIBLE + 4));
       });
+      // Schedule cleanup: a tick later, remove anything still flagged leaving
+      setTimeout(() => {
+        setLogs(prev => prev.filter((l) => !l.leaving));
+      }, FADE_OUT_MS);
+
       setRecords(r => r + Math.floor(Math.random() * 42 + 8));
       if (Math.random() < 0.13) setMatches(m => m + 1);
     }, 600);
@@ -317,7 +335,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
           </div>
           <div className="space-y-1.5">
             {logs.map((l) => (
-              <div key={l.id} className="text-[#9FE6D2] truncate aif-log-fade">
+              <div key={l.id} className={`text-[#9FE6D2] truncate ${l.leaving ? "aif-log-out" : "aif-log-fade"}`}>
                 {l.text}
               </div>
             ))}
