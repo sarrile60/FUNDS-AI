@@ -11,6 +11,20 @@ export const api = {
   // recovery requests (user)
   createRecoveryRequest: (data) => axios.post(`${API}/recovery-requests`, data).then(r => r.data),
 
+  // documents
+  listDocuments:    () => axios.get(`${API}/documents`).then(r => r.data),
+  uploadDocument:   (file, onProgress) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return axios.post(`${API}/documents/upload`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      },
+    }).then(r => r.data);
+  },
+  deleteDocument:   (id) => axios.delete(`${API}/documents/${id}`).then(r => r.data),
+
   // admin
   adminListUsers:    () => axios.get(`${API}/admin/users`).then(r => r.data),
   adminCreateUser:   (data) => axios.post(`${API}/admin/users`, data).then(r => r.data),
@@ -21,4 +35,6 @@ export const api = {
   adminUpdateRequest:  (id, data) => axios.put(`${API}/admin/recovery-requests/${id}`, data).then(r => r.data),
   adminMarkSent:       (id) => axios.post(`${API}/admin/recovery-requests/${id}/mark-sent`).then(r => r.data),
   adminDeleteRequest:  (id) => axios.delete(`${API}/admin/recovery-requests/${id}`).then(r => r.data),
+
+  adminListUserDocuments: (userId) => axios.get(`${API}/admin/users/${userId}/documents`).then(r => r.data),
 };

@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Users, Inbox, Plus, Edit2, Trash2, Eye, EyeOff, Save, X,
-  Mail as MailIcon, ExternalLink, Building2, Wallet, Check, LogOut, Send
+  Mail as MailIcon, ExternalLink, Building2, Wallet, Check, LogOut, Send, FileText
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -75,6 +75,8 @@ function UsersTab() {
   const [list, setList] = useState([]);
   const [editing, setEditing] = useState(null); // null | {} new | existing
   const [showPwById, setShowPwById] = useState({});
+  const [docsOpenId, setDocsOpenId] = useState(null);
+  const [docsByUser, setDocsByUser] = useState({});
 
   const load = async () => {
     try { setList(await api.adminListUsers()); } catch { toast.error("Load failed"); }
@@ -82,6 +84,17 @@ function UsersTab() {
   useEffect(() => { load(); }, []);
 
   const togglePw = (id) => setShowPwById(s => ({ ...s, [id]: !s[id] }));
+
+  const toggleDocs = async (u) => {
+    if (docsOpenId === u.id) { setDocsOpenId(null); return; }
+    setDocsOpenId(u.id);
+    if (!docsByUser[u.id]) {
+      try {
+        const docs = await api.adminListUserDocuments(u.id);
+        setDocsByUser((d) => ({ ...d, [u.id]: docs }));
+      } catch { toast.error("Failed to load documents"); }
+    }
+  };
 
   const remove = async (u) => {
     if (!window.confirm(t("adm.users.delete_confirm"))) return;
@@ -126,7 +139,8 @@ function UsersTab() {
             {list.map(u => {
               const show = !!showPwById[u.id];
               return (
-                <tr key={u.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
+                <React.Fragment key={u.id}>
+                <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                   <td className="p-3 text-white">{u.first_name}</td>
                   <td className="p-3 text-white">{u.last_name}</td>
                   <td className="p-3 text-white">{u.email}</td>
@@ -148,11 +162,52 @@ function UsersTab() {
                   <td className="p-3 text-white">{u.located_amount ? `€ ${u.located_amount.toLocaleString("it-IT")}` : "—"}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => toggleDocs(u)} className={`p-1.5 transition ${docsOpenId === u.id ? "text-[#5FE3C9]" : "text-[var(--aif-text-dim)] hover:text-[#5FE3C9]"}`} title="Documents" data-testid={`adm-docs-${u.id}`}>
+                        <FileText size={14}/>
+                      </button>
                       <button onClick={() => setEditing(u)} className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] p-1.5" title="Edit"><Edit2 size={14}/></button>
                       <button onClick={() => remove(u)} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-1.5" title="Delete"><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>
+                {docsOpenId === u.id && (
+                  <tr className="bg-white/[0.015]">
+                    <td colSpan={9} className="p-4">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-2">Uploaded documents</div>
+                      {(docsByUser[u.id] === undefined) && <div className="text-[12px] text-[var(--aif-text-dim)]">Loading…</div>}
+                      {(docsByUser[u.id] !== undefined) && docsByUser[u.id].length === 0 && (
+                        <div className="text-[12px] text-[var(--aif-text-dim)]">No documents uploaded by this user.</div>
+                      )}
+                      {docsByUser[u.id] && docsByUser[u.id].length > 0 && (
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {docsByUser[u.id].map((d) => {
+                            const isImg = d.mime_type?.startsWith("image/");
+                            return (
+                              <a key={d.id} href={d.url} target="_blank" rel="noopener noreferrer"
+                                className="aif-card !rounded-xl p-3 flex items-center gap-3 hover:!border-[#5FE3C9]/50 transition">
+                                {isImg && d.thumbnail_url ? (
+                                  <img src={d.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover bg-[#0E1A36]"/>
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-[#5FE3C9]/15 border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9]">
+                                    <FileText size={16}/>
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[12px] text-white truncate">{d.original_name}</div>
+                                  <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
+                                    {d.mime_type} · {((d.size_bytes || 0) / 1024).toFixed(0)} KB
+                                  </div>
+                                </div>
+                                <span className="text-[11px] text-[#5FE3C9]">Open ↗</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>

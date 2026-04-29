@@ -20,7 +20,7 @@ NOTE: This is an UI-driven product. The "tracing" is staged animation. There is
 NO real fund recovery happening.
 """
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -33,6 +33,8 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
+import cloudinary
+import cloudinary.uploader
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -46,7 +48,21 @@ JWT_ALG = "HS256"
 JWT_EXP_HOURS = 24 * 7
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@traccia-fondi.com").lower()
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminAIF#2026!")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminTF#2026!")
+
+# --- Cloudinary ---
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.environ.get("CLOUDINARY_API_KEY", ""),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", ""),
+    secure=True,
+)
+MAX_DOCS_PER_USER = 5
+MAX_FILE_BYTES = 25 * 1024 * 1024  # 25 MB
+ALLOWED_MIME = {
+    "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif",
+    "application/pdf",
+}
 
 app = FastAPI(title="Traccia Fondi API", version="2.0.0")
 api = APIRouter(prefix="/api")
@@ -406,6 +422,104 @@ async def admin_mark_sent(req_id: str, _=Depends(require_admin)):
 async def admin_delete_request(req_id: str, _=Depends(require_admin)):
     await db.recovery_requests.delete_one({"id": req_id})
     return {"ok": True}
+
+
+# ============================================================
+#   Documents — Cloudinary signed uploads (per user)
+# ============================================================
+
+@api.get("/documents")
+async def list_documents(user=Depends(get_current_user)):
+    """List all documents uploaded by the current user."""
+    docs = await db.documents.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return docs
+
+
+@api.post("/documents/upload")
+async def upload_document(file: UploadFile = File(...), user=Depends(get_current_user)):
+    """
+    Upload a single document for the current user. The file is sent to
+    Cloudinary using server-side signed upload (the user never sees Cloudinary
+    credentials and we control the folder/limits).
+    """
+    # Per-user document cap
+    count = await db.documents.count_documents({"user_id": user["id"]})
+    if count >= MAX_DOCS_PER_USER:
+        raise HTTPException(400, f"Maximum {MAX_DOCS_PER_USER} documents per user")
+
+    # MIME check
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(400, f"File type not allowed: {file.content_type}")
+
+    # Size check (read into memory — fine for our 25 MB cap)
+    contents = await file.read()
+    if len(contents) > MAX_FILE_BYTES:
+        raise HTTPException(400, f"File too large (max {MAX_FILE_BYTES // (1024*1024)} MB)")
+
+    # Upload to Cloudinary
+    folder = f"traccia-fondi/users/{user['id']}"
+    is_pdf = file.content_type == "application/pdf"
+    try:
+        # 'auto' resource_type lets Cloudinary handle PDFs as 'image' for thumbnails too,
+        # but we use 'raw' for PDFs to keep them as-is and 'image' for images.
+        resource_type = "raw" if is_pdf else "image"
+        result = cloudinary.uploader.upload(
+            contents,
+            folder=folder,
+            resource_type=resource_type,
+            use_filename=True,
+            unique_filename=True,
+            overwrite=False,
+            tags=["traccia-fondi", "user-doc", user["id"]],
+        )
+    except Exception as e:
+        logger.exception("Cloudinary upload failed")
+        raise HTTPException(500, f"Upload failed: {e}")
+
+    doc = {
+        "id": _new_id(),
+        "user_id": user["id"],
+        "original_name": file.filename or "document",
+        "mime_type": file.content_type,
+        "size_bytes": len(contents),
+        "cloudinary_public_id": result.get("public_id"),
+        "cloudinary_resource_type": resource_type,
+        "url": result.get("secure_url"),
+        "thumbnail_url": (result.get("secure_url") if not is_pdf else None),
+        "created_at": _now_iso(),
+    }
+    await db.documents.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str, user=Depends(get_current_user)):
+    """Delete a document the user owns (also removes it from Cloudinary)."""
+    d = await db.documents.find_one({"id": doc_id, "user_id": user["id"]}, {"_id": 0})
+    if not d:
+        raise HTTPException(404, "Document not found")
+    try:
+        cloudinary.uploader.destroy(
+            d["cloudinary_public_id"],
+            resource_type=d.get("cloudinary_resource_type", "image"),
+            invalidate=True,
+        )
+    except Exception:
+        logger.warning("Cloudinary destroy failed for %s", d["cloudinary_public_id"])
+    await db.documents.delete_one({"id": doc_id})
+    return {"ok": True}
+
+
+@api.get("/admin/users/{user_id}/documents")
+async def admin_list_user_documents(user_id: str, _=Depends(require_admin)):
+    """Admin: list all documents for a specific user."""
+    docs = await db.documents.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return docs
 
 
 # ============================================================

@@ -11,6 +11,7 @@ import {
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import ProcedureAnimation from "./ProcedureAnimation";
+import DocumentUploader from "./DocumentUploader";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
 import { api } from "../api";
@@ -240,6 +241,9 @@ function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFi
           </div>
         </div>
       </div>
+
+      {/* Documents (optional) */}
+      <DocumentUploader/>
 
       {/* Tier picker */}
       <div className="aif-card p-6 md:p-8">
