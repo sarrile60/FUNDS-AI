@@ -41,11 +41,22 @@ from collections import defaultdict, deque
 import time as _time
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+env_path = ROOT_DIR / ".env"
 
-mongo_url = os.environ["MONGO_URL"]
+# Force load .env file - critical for production
+if env_path.exists():
+    load_dotenv(env_path, override=True)
+    print(f"[STARTUP] Loaded .env from {env_path}")
+else:
+    print(f"[STARTUP] WARNING: .env not found at {env_path}")
+
+# Get MongoDB URL with fallback
+mongo_url = os.environ.get("MONGO_URL", os.getenv("MONGO_URL"))
+if not mongo_url:
+    raise RuntimeError(f"MONGO_URL not set! Check .env at {env_path}")
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get("DB_NAME", "ai_funds")]
+db = client[os.environ.get("DB_NAME", "traccia_fondi")]
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "traccia-fondi-dev-secret-change-me")
 JWT_ALG = "HS256"
