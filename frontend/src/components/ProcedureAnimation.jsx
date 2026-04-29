@@ -71,33 +71,82 @@ const DATABASES = {
     "BlockchainExpertsRecovery.com (recovery scam)",
     "TradingMillionaireFX.io", "ETrade-Crypto.eu",
   ],
-  aml:  [
-    "SEFIV cross-check", "SEFIV jurisdictional registry",
-    "OLAF anti-fraud database", "OLAF case correlation",
-    "BCE / ECB payment rails registry", "BCE supervisory data feed",
-    "Blockchain forensic graph", "Blockchain cluster correlation",
-    "ESMA supervisory cross-check", "ESMA warned-firms registry",
-    "FINRA disciplinary records", "FINRA broker check",
-    "S.F.O. financial-crime intelligence", "S.F.O. cross-border watchlist",
-    "OFAC sanctions list", "EU consolidated list",
-    "FATF high-risk jurisdictions", "Chainalysis KYT cluster",
-    "TRM Labs forensic graph", "Elliptic risk score",
-    "GAFI grey list", "AMLD6 reporting node",
-    "Banca d'Italia UIF reports (public summaries)",
-    "EUROPOL fraud cluster", "INTERPOL bulletins",
-    "AML pattern: pig-butchering", "AML pattern: layering",
-    "AML pattern: smurfing", "AML pattern: mule cluster",
-  ],
-  locating: [
-    "Cross-correlating final cluster…", "Ranking exposure scores…",
-    "Validating IBAN/Wallet match…", "Decrypting destination ID…",
-    "Generating recovery vector…", "Sealing case dossier…",
-  ],
-  init: [
-    "Generating session UUID…", "Negotiating TLS 1.3…",
-    "Loading forensic agents…", "Verifying integrity hashes…",
-    "Mounting encrypted volumes…",
-  ],
+  aml:  {
+    en: [
+      "SEFIV cross-check", "SEFIV jurisdictional registry",
+      "OLAF anti-fraud database", "OLAF case correlation",
+      "BCE / ECB payment rails registry", "BCE supervisory data feed",
+      "Blockchain forensic graph", "Blockchain cluster correlation",
+      "ESMA supervisory cross-check", "ESMA warned-firms registry",
+      "FINRA disciplinary records", "FINRA broker check",
+      "S.F.O. financial-crime intelligence", "S.F.O. cross-border watchlist",
+      "OFAC sanctions list", "EU consolidated list",
+      "FATF high-risk jurisdictions", "Chainalysis KYT cluster",
+      "TRM Labs forensic graph", "Elliptic risk score",
+      "GAFI grey list", "AMLD6 reporting node",
+      "Banca d'Italia UIF reports (public summaries)",
+      "EUROPOL fraud cluster", "INTERPOL bulletins",
+      "AML pattern: pig-butchering", "AML pattern: layering",
+      "AML pattern: smurfing", "AML pattern: mule cluster",
+    ],
+    it: [
+      "Controllo SEFIV", "Registro giurisdizionale SEFIV",
+      "Database antifrode OLAF", "Correlazione casi OLAF",
+      "Registro circuiti di pagamento BCE", "Flusso dati supervisione BCE",
+      "Grafo forense blockchain", "Correlazione cluster blockchain",
+      "Controllo supervisione ESMA", "Registro società segnalate ESMA",
+      "Archivio disciplinare FINRA", "Verifica broker FINRA",
+      "Intelligence crimini finanziari S.F.O.", "Watchlist transfrontaliera S.F.O.",
+      "Lista sanzioni OFAC", "Lista consolidata UE",
+      "Giurisdizioni ad alto rischio FATF", "Cluster KYT Chainalysis",
+      "Grafo forense TRM Labs", "Punteggio di rischio Elliptic",
+      "Lista grigia GAFI", "Nodo di reporting AMLD6",
+      "Report UIF Banca d'Italia (sintesi pubbliche)",
+      "Cluster frodi EUROPOL", "Bollettini INTERPOL",
+      "Pattern AML: pig-butchering", "Pattern AML: stratificazione",
+      "Pattern AML: smurfing", "Pattern AML: cluster di prestanome",
+    ],
+  },
+  locating: {
+    en: [
+      "Cross-correlating final cluster…", "Ranking exposure scores…",
+      "Validating IBAN/Wallet match…", "Decrypting destination ID…",
+      "Generating recovery vector…", "Sealing case dossier…",
+    ],
+    it: [
+      "Correlazione finale del cluster…", "Calcolo punteggi di esposizione…",
+      "Validazione corrispondenza IBAN/Wallet…", "Decrittazione ID destinazione…",
+      "Generazione vettore di recupero…", "Sigillatura dossier del caso…",
+    ],
+  },
+  init: {
+    en: [
+      "Generating session UUID…", "Negotiating TLS 1.3…",
+      "Loading forensic agents…", "Verifying integrity hashes…",
+      "Mounting encrypted volumes…",
+    ],
+    it: [
+      "Generazione UUID di sessione…", "Negoziazione TLS 1.3…",
+      "Caricamento agenti forensi…", "Verifica hash di integrità…",
+      "Montaggio volumi crittografati…",
+    ],
+  },
+};
+
+// Stage-key labels in the log header (the "SCANSIONE :: XXX" line)
+const STAGE_KEY_LABEL = {
+  en: { init: "INIT", italian_banks: "BANKS", sepa: "SEPA", fintech: "FINTECH", crypto: "CRYPTO", brokers: "BROKERS", aml: "AML", locating: "CORE" },
+  it: { init: "AVVIO", italian_banks: "BANCHE", sepa: "SEPA", fintech: "FINTECH", crypto: "CRYPTO", brokers: "BROKER", aml: "AML", locating: "CORE" },
+};
+
+// Status-word & prefix translations
+const STATUS_I18N = {
+  en: { scanned: "scanned", clean: "clean", ok: "ok", flagged: "FLAGGED", suspect: "SUSPECT", tainted: "TAINTED", match: "match", acct: "acct", txn: "txn", tx: "tx", exposure: "exposure", cluster_score: "cluster_score" },
+  it: { scanned: "scansionato", clean: "pulito", ok: "ok", flagged: "SEGNALATO", suspect: "SOSPETTO", tainted: "COMPROMESSO", match: "match", acct: "conto", txn: "txn", tx: "tx", exposure: "esposizione", cluster_score: "punteggio_cluster" },
+};
+const PREFIX_I18N = {
+  en: { BANK: "BANK", SEPA: "SEPA", FINTECH: "FINTECH", CHAIN: "CHAIN", BROKER: "BROKER", AML: "AML", CORE: "CORE", INIT: "INIT" },
+  it: { BANK: "BANCA", SEPA: "SEPA", FINTECH: "FINTECH", CHAIN: "CHAIN", BROKER: "BROKER", AML: "AML", CORE: "CORE", INIT: "INIT" },
 };
 
 function _hex(len) {
@@ -111,39 +160,41 @@ function _iban() {
   for (let i = 0; i < 22; i++) s += "0123456789"[Math.floor(Math.random() * 10)];
   return s;
 }
-function _line(stageKey) {
+function _line(stageKey, lang = "it") {
   const r = Math.random();
+  const S = STATUS_I18N[lang] || STATUS_I18N.it;
+  const P = PREFIX_I18N[lang] || PREFIX_I18N.it;
   if (stageKey === "italian_banks") {
     const ds = DATABASES.italian_banks;
     const item = ds[Math.floor(Math.random() * ds.length)];
-    return `[BANK] ${item}  ·  acct=${_iban().slice(0, 18)}…  match=${r < 0.07 ? "FLAGGED" : "clean"}`;
+    return `[${P.BANK}] ${item}  ·  ${S.acct}=${_iban().slice(0, 18)}…  ${S.match}=${r < 0.07 ? S.flagged : S.clean}`;
   }
   if (stageKey === "sepa") {
     const ds = DATABASES.sepa;
-    return `[SEPA] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${_iban()}  ·  €${Math.floor(Math.random() * 90000 + 1000)}`;
+    return `[${P.SEPA}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${_iban()}  ·  €${Math.floor(Math.random() * 90000 + 1000)}`;
   }
   if (stageKey === "fintech") {
     const ds = DATABASES.fintech;
-    return `[FINTECH] ${ds[Math.floor(Math.random() * ds.length)]}  ·  txn=${_hex(10).slice(2)}  ·  ${r < 0.1 ? "SUSPECT" : "ok"}`;
+    return `[${P.FINTECH}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.txn}=${_hex(10).slice(2)}  ·  ${r < 0.1 ? S.suspect : S.ok}`;
   }
   if (stageKey === "crypto") {
     const ds = DATABASES.crypto;
-    return `[CHAIN] ${ds[Math.floor(Math.random() * ds.length)]}  ·  tx ${_hex(20)}…  ·  ${r < 0.08 ? "TAINTED" : "scanned"}`;
+    return `[${P.CHAIN}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.tx} ${_hex(20)}…  ·  ${r < 0.08 ? S.tainted : S.scanned}`;
   }
   if (stageKey === "brokers") {
     const ds = DATABASES.brokers;
-    return `[BROKER] ${ds[Math.floor(Math.random() * ds.length)]}  ·  exposure=${(Math.random() * 100).toFixed(1)}%`;
+    return `[${P.BROKER}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.exposure}=${(Math.random() * 100).toFixed(1)}%`;
   }
   if (stageKey === "aml") {
-    const ds = DATABASES.aml;
-    return `[AML] ${ds[Math.floor(Math.random() * ds.length)]}  ·  cluster_score=${(Math.random()).toFixed(3)}`;
+    const ds = DATABASES.aml[lang] || DATABASES.aml.it;
+    return `[${P.AML}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.cluster_score}=${(Math.random()).toFixed(3)}`;
   }
   if (stageKey === "locating") {
-    const ds = DATABASES.locating;
-    return `[CORE] ${ds[Math.floor(Math.random() * ds.length)]}`;
+    const ds = DATABASES.locating[lang] || DATABASES.locating.it;
+    return `[${P.CORE}] ${ds[Math.floor(Math.random() * ds.length)]}`;
   }
-  const ds = DATABASES.init;
-  return `[INIT] ${ds[Math.floor(Math.random() * ds.length)]}`;
+  const ds = DATABASES.init[lang] || DATABASES.init.it;
+  return `[${P.INIT}] ${ds[Math.floor(Math.random() * ds.length)]}`;
 }
 
 function fmtTime(seconds) {
@@ -154,7 +205,7 @@ function fmtTime(seconds) {
 
 // =============================================================================
 export default function ProcedureAnimation({ duration = 120, destination, locatedAmount, onComplete, onCancel }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [elapsed, setElapsed] = useState(0);   // seconds
   const [logs, setLogs] = useState([]);
   const [matches, setMatches] = useState(0);
@@ -189,7 +240,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
   useEffect(() => {
     const id = setInterval(() => {
       setLogs(prev => {
-        const next = [...prev, { id: Math.random(), text: _line(stage.key), ts: Date.now() }];
+        const next = [...prev, { id: Math.random(), text: _line(stage.key, lang), ts: Date.now() }];
         // keep last 8 lines (was 12) — fewer DOM nodes, less paint cost
         return next.slice(-8);
       });
@@ -197,7 +248,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       if (Math.random() < 0.13) setMatches(m => m + 1);
     }, 600);
     return () => clearInterval(id);
-  }, [stage.key]);
+  }, [stage.key, lang]);
 
   const StageIcon = stage.icon;
   const remaining = Math.max(0, duration - elapsed);
@@ -261,7 +312,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
 
         <div className="lg:col-span-3 aif-card !rounded-xl p-3 sm:p-4 min-h-[280px] lg:min-h-[400px] font-mono text-[11.5px] sm:text-[13px] leading-relaxed overflow-hidden">
           <div className="flex items-center justify-between text-[10.5px] uppercase tracking-[0.22em] text-[var(--aif-text-dim)] mb-3 px-1">
-            <span>{t("trc.scanning")} :: {stage.key}</span>
+            <span>{t("trc.scanning")} :: {(STAGE_KEY_LABEL[lang] || STAGE_KEY_LABEL.it)[stage.key] || stage.key}</span>
             <span className="aif-pulse">●</span>
           </div>
           <div className="space-y-1.5">
