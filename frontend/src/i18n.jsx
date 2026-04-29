@@ -17,7 +17,7 @@ const dict = {
     "nav.back": "Indietro",
 
     // Hero
-    "hero.tag": "AI-assisted fund tracing",
+    "hero.tag": "Tracciamento fondi assistito da IA",
     "hero.title": "Traccia, organizza e prepara il tuo caso dopo una truffa online.",
     "hero.subtitle": "Traccia Fondi aiuta vittime italiane di truffe Forex, crypto, bonifici SEPA, PostePay, BancoPosta, carte e pagamenti online a creare un dossier professionale con timeline, transazioni, prove e report per banca, exchange, CONSOB, Polizia Postale e consulenti legali.",
     "hero.cta1": "Inizia Tracciamento Fondi",
@@ -26,7 +26,7 @@ const dict = {
     "hero.stat1": "Tipi di scam",
     "hero.stat2": "Report generabili",
     "hero.stat3": "Lingue",
-    "hero.live": "Live tracing",
+    "hero.live": "Tracciamento live",
     "hero.risk": "Rilevamento rischi",
 
     // Trust warning
