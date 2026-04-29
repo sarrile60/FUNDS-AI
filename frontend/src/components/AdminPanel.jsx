@@ -119,12 +119,12 @@ export default function AdminPanel() {
       <div className="relative">
         {/* Top bar */}
         <header className="border-b border-[var(--aif-line)] bg-[rgba(6,11,24,0.92)]">
-          <div className="max-w-7xl mx-auto px-5 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <Logo/>
-              <span className="aif-chip text-[10px]">{t("adm.title")}</span>
+              <span className="aif-chip text-[10px] hidden md:inline-flex">{t("adm.title")}</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Bell with badge */}
               <button
                 onClick={() => setTab("requests")}
@@ -139,8 +139,8 @@ export default function AdminPanel() {
                   </span>
                 )}
               </button>
-              <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" data-testid="adm-logout">
-                <LogOut size={14}/> {t("adm.logout")}
+              <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
+                <LogOut size={14}/> <span className="hidden sm:inline">{t("adm.logout")}</span>
               </button>
             </div>
           </div>
