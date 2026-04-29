@@ -12,7 +12,6 @@
 //  - onComplete(): called when the timer reaches 0
 //  - onCancel():   called when user clicks Cancel
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, Activity, Lock, Database, Network, Server, Building2,
   CreditCard, Bitcoin, AlertTriangle, CheckCircle2, X, Cpu, FileSearch
@@ -163,7 +162,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
   const startedRef = useRef(Date.now());
   const completedRef = useRef(false);
 
-  // Tick every 100ms for smooth countdown
+  // Tick every 250ms — smooth enough for a per-second timer, ~4× fewer re-renders than 100ms.
   useEffect(() => {
     const id = setInterval(() => {
       const e = (Date.now() - startedRef.current) / 1000;
@@ -177,7 +176,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       } else {
         setElapsed(e);
       }
-    }, 100);
+    }, 250);
     return () => clearInterval(id);
   }, [duration, onComplete]);
 
@@ -191,12 +190,12 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
     const id = setInterval(() => {
       setLogs(prev => {
         const next = [...prev, { id: Math.random(), text: _line(stage.key), ts: Date.now() }];
-        // keep last 12 lines
-        return next.slice(-12);
+        // keep last 8 lines (was 12) — fewer DOM nodes, less paint cost
+        return next.slice(-8);
       });
       setRecords(r => r + Math.floor(Math.random() * 42 + 8));
       if (Math.random() < 0.13) setMatches(m => m + 1);
-    }, 480);
+    }, 600);
     return () => clearInterval(id);
   }, [stage.key]);
 
@@ -213,8 +212,8 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       <div className="flex items-center justify-between gap-4 flex-wrap relative z-10">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-30 blur-md aif-pulse"/>
-            <div className="relative w-14 h-14 rounded-full bg-[#0E1A36] border border-[var(--aif-line)] flex items-center justify-center text-[#5FE3C9]">
+            <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-20"/>
+            <div className="relative w-14 h-14 rounded-full bg-[#0E1A36] border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9]">
               <StageIcon size={26}/>
             </div>
           </div>
@@ -266,18 +265,11 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
             <span className="aif-pulse">●</span>
           </div>
           <div className="space-y-1.5">
-            <AnimatePresence initial={false}>
-              {logs.map((l, i) => (
-                <motion.div key={l.id}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 0.45 + (i / logs.length) * 0.55, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="text-[#9FE6D2] truncate"
-                >
-                  {l.text}
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {logs.map((l) => (
+              <div key={l.id} className="text-[#9FE6D2] truncate">
+                {l.text}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -300,7 +292,7 @@ function TimeBox({ label, value, highlight = false }) {
 }
 
 // === Scan visual: rotating radar + animated nodes ===========================
-function ScanVisual({ stage, stageProgress }) {
+const ScanVisual = React.memo(function ScanVisual({ stage, stageProgress }) {
   // Radar sweep + scattered points changing per stage
   const points = useMemo(() => {
     return Array.from({ length: 18 }).map((_, i) => ({
@@ -358,4 +350,4 @@ function ScanVisual({ stage, stageProgress }) {
       <style>{`.aif-card .aif-pulse { animation-duration: 3.6s !important; }`}</style>
     </div>
   );
-}
+});
