@@ -7,7 +7,7 @@ const dict = {
     "nav.how": "Come funziona",
     "nav.scams": "Truffe supportate",
     "nav.tracing": "Tracciamento fondi",
-    "nav.reports": "Report",
+    "nav.reports": "Documenti",
     "nav.faq": "FAQ",
     "nav.start": "Inizia ora",
     "nav.login": "Accedi",
