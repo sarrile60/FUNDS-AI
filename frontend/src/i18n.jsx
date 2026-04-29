@@ -47,7 +47,7 @@ const dict = {
     "context.c6.t": "Report per Banca, CONSOB, Polizia", "context.c6.d": "Documenti professionali pronti all'invio.",
 
     // How it works
-    "how.tag": "Workflow",
+    "how.tag": "Procedura",
     "how.title": "Come funziona",
     "how.s1": "Racconta cosa è successo",
     "how.s2": "Inserisci pagamenti, IBAN, wallet, ricevute e prove",
@@ -55,7 +55,7 @@ const dict = {
     "how.s4": "Il sistema visualizza il possibile percorso dei fondi",
     "how.s5": "Vengono rilevati red flag e urgenze",
     "how.s6": "Genera report professionali per banca, exchange, CONSOB, Polizia Postale o legale",
-    "how.step": "Step",
+    "how.step": "Fase",
 
     // Authority
     "auth.tag": "Percorso istituzionale",
