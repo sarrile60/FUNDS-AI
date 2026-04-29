@@ -232,6 +232,15 @@ html, body {
   border-radius: 18px;
 }
 
+/* Log line fade — runs once on mount, then static (cheap, no JS) */
+@keyframes aif-log-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.aif-log-fade {
+  animation: aif-log-in 360ms ease-out both;
+}
+
 /* Print-friendly */
 @media print { .no-print { display: none !important; } body { background: white; color: black; } }
 

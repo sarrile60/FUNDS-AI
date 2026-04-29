@@ -266,7 +266,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
           </div>
           <div className="space-y-1.5">
             {logs.map((l) => (
-              <div key={l.id} className="text-[#9FE6D2] truncate">
+              <div key={l.id} className="text-[#9FE6D2] truncate aif-log-fade">
                 {l.text}
               </div>
             ))}
