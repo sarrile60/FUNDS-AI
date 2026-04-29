@@ -410,7 +410,7 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       {/* Body — split: scan visual + logs */}
       <div className="grid lg:grid-cols-5 gap-4 lg:gap-5 mt-7 relative z-10">
         <div className="lg:col-span-2 aif-card !rounded-xl p-4 sm:p-5 min-h-[300px] lg:min-h-[400px] relative overflow-hidden">
-          <ScanVisual stage={stage.key} stageProgress={stageProgress}/>
+          <ScanVisual stage={stage.key} stageProgress={stageProgress} zoneLabel={t("trc.secure_zone")}/>
           <div className="mt-4 flex items-center justify-between gap-2 text-[11px] sm:text-[12.5px] text-[var(--aif-text-dim)]">
             <span><Server size={12} className="inline -mt-0.5 mr-1"/> {t("trc.records")}: <span className="text-white font-semibold">{records.toLocaleString("it-IT")}</span></span>
             <span><Database size={12} className="inline -mt-0.5 mr-1"/> {t("trc.matches")}: <span className="text-[#FFB454] font-semibold">{matches}</span></span>
@@ -450,7 +450,7 @@ function TimeBox({ label, value, highlight = false }) {
 }
 
 // === Scan visual: rotating radar + animated nodes ===========================
-const ScanVisual = React.memo(function ScanVisual({ stage, stageProgress }) {
+const ScanVisual = React.memo(function ScanVisual({ stage, stageProgress, zoneLabel }) {
   // Radar sweep + scattered points changing per stage
   const points = useMemo(() => {
     return Array.from({ length: 18 }).map((_, i) => ({
@@ -501,7 +501,7 @@ const ScanVisual = React.memo(function ScanVisual({ stage, stageProgress }) {
           );
         })}
 
-        <text x="110" y="194" textAnchor="middle" fontSize="9" fill="#9FB0CC" letterSpacing="0.2em">SECURE SCAN ZONE</text>
+        <text x="110" y="194" textAnchor="middle" fontSize="9" fill="#9FB0CC" letterSpacing="0.2em">{(zoneLabel || "SECURE SCAN ZONE").toUpperCase()}</text>
       </svg>
 
       <style>{`@keyframes aif-sweep { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }`}</style>

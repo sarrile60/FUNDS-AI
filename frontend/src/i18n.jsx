@@ -13,7 +13,7 @@ const dict = {
     "nav.login": "Accedi",
     "nav.register": "Registrati",
     "nav.logout": "Esci",
-    "nav.dashboard": "Dashboard",
+    "nav.dashboard": "Pannello",
     "nav.back": "Indietro",
 
     // Hero
@@ -199,8 +199,9 @@ const dict = {
     "trc.dest.chiantin_bank": "Chiantin Bank",
     "trc.dest.zenthos_wallet": "Zenthos Wallet",
     "trc.scanning": "Scansione",
-    "trc.matches": "Match",
+    "trc.matches": "Corrispondenze",
     "trc.records": "Record analizzati",
+    "trc.secure_zone": "Zona scansione sicura",
 
     // Recovery request
     "rec.title": "Richiedi il recupero dei fondi",
@@ -662,6 +663,7 @@ const dict = {
     "trc.scanning": "Scanning",
     "trc.matches": "Matches",
     "trc.records": "Records analyzed",
+    "trc.secure_zone": "Secure scan zone",
 
     // Recovery request
     "rec.title": "Request the recovery of your funds",
