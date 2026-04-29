@@ -30,49 +30,109 @@ const STAGES = [
   { key: "locating",      icon: FileSearch,    from: 0.94, to: 1.00, labelKey: "trc.s.locating" },
 ];
 
-// --- Italian-context databases per stage --------------------------------------
+// --- Italian-context databases per stage ---
+// These names reflect institutions, fintech apps, exchanges, and warned
+// platforms that Italian victims of online financial scams actually
+// recognize — making the procedure feel real and locally relevant.
 const DATABASES = {
   italian_banks: [
-    "Intesa Sanpaolo", "UniCredit", "BPER Banca", "Banco BPM", "Mediolanum",
-    "Banca Sella", "Fineco Bank", "Crédit Agricole Italia", "Monte dei Paschi",
-    "Banca Popolare di Sondrio", "Credem", "BNL", "Cariparma", "Iccrea",
-    "Cassa Centrale Banca", "Banca Generali", "Banca Mediolanum", "Webank",
-    "Hype", "Illimity Bank", "BPER Card", "BancoPosta", "Poste Italiane",
+    // Top retail banks
+    "Intesa Sanpaolo", "UniCredit", "Banco BPM", "BPER Banca",
+    "Monte dei Paschi di Siena", "Credit Agricole Italia", "BNL — BNP Paribas",
+    "Banca Mediolanum", "Banca Generali", "Banca Sella", "Fineco Bank",
+    "Banca Popolare di Sondrio", "Banca Popolare dell'Emilia Romagna",
+    "Credem", "Banca Carige", "Cariparma", "Banca Popolare di Bari",
+    // Postal & cooperative
+    "BancoPosta — Poste Italiane", "Iccrea Banca", "Cassa Centrale Banca",
+    "BCC — Credito Cooperativo", "Banca di Bologna", "BCC Roma",
+    // Online & mobile-first
+    "Hype (Banca Sella)", "Webank (Banco BPM)", "Buddybank (UniCredit)",
+    "Illimity Bank", "Banca Progetto", "Aidexa", "Flowe",
+    "Tinaba (Banca Profilo)", "ING Italia", "CheBanca! (Mediobanca)",
+    // Cards & prepaid
+    "BPER Card", "Nexi Pay", "Nexi prepaid", "PostePay Evolution",
+    "PostePay Standard", "PostePay Connect",
   ],
   sepa: [
-    "DE-IBAN cluster (Frankfurt)", "LT-IBAN cluster (Vilnius)",
+    // Country IBAN clusters Italians often see in scam wires
+    "DE-IBAN cluster (Frankfurt)", "DE-IBAN cluster (Berlin)",
+    "LT-IBAN cluster (Vilnius)", "LT-IBAN cluster (Kaunas)",
     "MT-IBAN cluster (Valletta)", "CY-IBAN cluster (Limassol)",
     "BG-IBAN cluster (Sofia)", "EE-IBAN cluster (Tallinn)",
     "LV-IBAN cluster (Riga)", "PL-IBAN cluster (Warsaw)",
     "HU-IBAN cluster (Budapest)", "RO-IBAN cluster (Bucharest)",
+    "SK-IBAN cluster (Bratislava)", "CZ-IBAN cluster (Prague)",
     "NL-IBAN cluster (Amsterdam)", "ES-IBAN cluster (Madrid)",
-    "Instant SEPA gateway", "TARGET2 settlement", "STEP2 ACH",
+    "FR-IBAN cluster (Paris)", "BE-IBAN cluster (Brussels)",
+    "GB-IBAN cluster (London)", "CH-IBAN cluster (Zurich)",
+    "LU-IBAN cluster (Luxembourg)",
+    // Settlement & clearing systems
+    "Instant SEPA gateway (SCT Inst)", "TARGET2 settlement",
+    "STEP2 ACH (EBA Clearing)", "TIPS — TARGET Instant Payment",
+    "SWIFT gpi tracker", "SEPA Direct Debit (SDD CORE)",
+    "SEPA Direct Debit (SDD B2B)",
   ],
   fintech: [
+    // Mainstream Italian wallets & apps
     "PostePay Evolution", "PostePay Standard", "BancoPosta online",
-    "Revolut IT", "Revolut <3>", "Wise EUR ledger", "N26 EU",
-    "Satispay merchant pool", "Hype prepaid", "Mooney digital",
-    "SisalPay", "Skrill EU", "Neteller EU", "Paysafecard vouchers",
-    "Western Union MTCN", "MoneyGram EU corridor", "PayPal IT",
+    "PostePay Connect", "Postepay Digital",
+    "Satispay merchant pool", "Satispay P2P", "Hype prepaid",
+    "Hype Premium", "Tinaba wallet", "Flowe wallet", "Oval Money",
+    "Yap (Banca Sella)", "Mooney digital", "SisalPay", "Lottomatica wallet",
+    // International (heavily used in Italy)
+    "Revolut IT", "Revolut <3>", "Revolut Junior",
+    "Wise EUR ledger", "Wise GBP ledger", "N26 EU", "N26 You",
+    "Skrill EU", "Neteller EU", "Paysafecard vouchers",
+    // Money transfer corridors
+    "Western Union MTCN", "MoneyGram EU corridor", "Ria Money Transfer",
+    "TransferGo", "WorldRemit",
+    // Card schemes / processors
+    "PayPal IT", "Stripe IT", "Nexi acquiring", "SumUp IT",
+    "Adyen acquiring", "Worldline", "Banca Sella POS network",
   ],
   crypto: [
-    "Bitcoin (BTC) mempool", "Ethereum (ETH) mainnet", "Tron (TRC20-USDT)",
-    "BNB Chain (BSC)", "Polygon (MATIC)", "Solana (SOL)",
-    "Arbitrum L2", "Optimism L2", "Base L2", "Avalanche C-Chain",
+    // Layer 1 / Layer 2 chains
+    "Bitcoin (BTC) mempool", "Ethereum (ETH) mainnet",
+    "Tron (TRC20-USDT)", "BNB Chain (BSC)", "Polygon (MATIC)",
+    "Solana (SOL)", "Arbitrum L2", "Optimism L2", "Base L2",
+    "Avalanche C-Chain", "zkSync Era", "Linea", "Cardano (ADA)",
+    "XRP Ledger", "Litecoin (LTC)", "Bitcoin Cash (BCH)",
+    // Major exchanges (where Italians often hold funds)
     "Binance hot wallets", "Kraken cluster", "Coinbase prime",
     "OKX EU", "KuCoin EU", "MEXC global", "Bitstamp", "Bitfinex",
-    "Bybit EU", "ByBit OTC", "Mixer cluster #4471", "ChainHopper #221",
+    "Bybit EU", "ByBit OTC", "Crypto.com EU", "Gate.io",
+    // Italian / EU-licensed exchanges
+    "Young Platform (Italia)", "Conio", "The Rock Trading (Italia)",
+    "Bitpanda IT", "Coinbar", "Coinbase Italia",
+    // Mixers & privacy services (red-flag clusters)
+    "Mixer cluster #4471", "ChainHopper #221", "Tornado Cash residual",
+    "Wasabi CoinJoin pool", "Samourai Whirlpool",
   ],
   brokers: [
+    // CONSOB-warned style names (similar to public delibere format)
     "FXOpenMarkets.io (CONSOB warned)", "TradeProElite.com (CONSOB warned)",
-    "GoldenFXCapital.com", "EuroBitBroker.net", "AlphaTradePro.eu",
-    "InvestFastTrust.com", "MaxiFundsCapital.io", "PrimeBitTrade.io",
-    "CoinReturns.club", "RecoveryFundsEU.org (recovery scam)",
-    "BlockchainExpertsRecovery.com (recovery scam)",
+    "GoldenFXCapital.com (CONSOB warned)", "EuroBitBroker.net (CONSOB warned)",
+    "AlphaTradePro.eu (CONSOB warned)", "InvestFastTrust.com (CONSOB warned)",
+    "MaxiFundsCapital.io (CONSOB warned)", "PrimeBitTrade.io (CONSOB warned)",
     "TradingMillionaireFX.io", "ETrade-Crypto.eu",
+    "WiseTradeCapital.io", "CryptoLeaderInvest.com",
+    "RoyalFXMarkets.eu", "DigitalGlobalCapital.io",
+    "EuroFinanceCapital.net", "GlobalCryptoInvestments.io",
+    // Recovery-scam (secondary scam) platforms
+    "CoinReturns.club (recovery scam)",
+    "RecoveryFundsEU.org (recovery scam)",
+    "BlockchainExpertsRecovery.com (recovery scam)",
+    "AssetRecoveryEU.io (recovery scam)",
+    "FundsBackPro.com (recovery scam)",
+    "ItalyCryptoRecovery.net (recovery scam)",
+    // Pig-butchering / romance investment apps
+    "MetaProTrading app (pig-butchering)",
+    "GlobalCoinPro app (pig-butchering)",
+    "QuantumWealthApp (pig-butchering)",
   ],
   aml:  {
     en: [
+      // International authorities
       "SEFIV cross-check", "SEFIV jurisdictional registry",
       "OLAF anti-fraud database", "OLAF case correlation",
       "BCE / ECB payment rails registry", "BCE supervisory data feed",
@@ -80,16 +140,31 @@ const DATABASES = {
       "ESMA supervisory cross-check", "ESMA warned-firms registry",
       "FINRA disciplinary records", "FINRA broker check",
       "S.F.O. financial-crime intelligence", "S.F.O. cross-border watchlist",
-      "OFAC sanctions list", "EU consolidated list",
-      "FATF high-risk jurisdictions", "Chainalysis KYT cluster",
-      "TRM Labs forensic graph", "Elliptic risk score",
-      "GAFI grey list", "AMLD6 reporting node",
-      "Banca d'Italia UIF reports (public summaries)",
+      "OFAC sanctions list", "EU consolidated sanctions list",
+      "FATF high-risk jurisdictions", "GAFI grey list",
+      "Chainalysis KYT cluster", "TRM Labs forensic graph",
+      "Elliptic risk score", "AMLD6 reporting node",
       "EUROPOL fraud cluster", "INTERPOL bulletins",
+      "Egmont Group FIU exchange",
+      // Italian authorities & registries
+      "Banca d'Italia UIF reports (public summaries)",
+      "Banca d'Italia Centrale Allarme Interbancaria (CAI)",
+      "CONSOB warning list (offerte abusive)",
+      "OAM register (cambiavalute & money transfer)",
+      "IVASS insurance fraud register",
+      "Guardia di Finanza Nucleo Speciale Polizia Valutaria",
+      "DIA — Direzione Investigativa Antimafia",
+      "Polizia Postale CNAIPIC database",
+      "AGID PEC trust list",
+      "ABI — Associazione Bancaria Italiana fraud feed",
+      "Agenzia delle Entrate anti-fraud cluster",
+      // AML patterns
       "AML pattern: pig-butchering", "AML pattern: layering",
       "AML pattern: smurfing", "AML pattern: mule cluster",
+      "AML pattern: trade-based laundering",
     ],
     it: [
+      // Autorità internazionali
       "Controllo SEFIV", "Registro giurisdizionale SEFIV",
       "Database antifrode OLAF", "Correlazione casi OLAF",
       "Registro circuiti di pagamento BCE", "Flusso dati supervisione BCE",
@@ -97,14 +172,28 @@ const DATABASES = {
       "Controllo supervisione ESMA", "Registro società segnalate ESMA",
       "Archivio disciplinare FINRA", "Verifica broker FINRA",
       "Intelligence crimini finanziari S.F.O.", "Watchlist transfrontaliera S.F.O.",
-      "Lista sanzioni OFAC", "Lista consolidata UE",
-      "Giurisdizioni ad alto rischio FATF", "Cluster KYT Chainalysis",
-      "Grafo forense TRM Labs", "Punteggio di rischio Elliptic",
-      "Lista grigia GAFI", "Nodo di reporting AMLD6",
-      "Report UIF Banca d'Italia (sintesi pubbliche)",
+      "Lista sanzioni OFAC", "Lista consolidata sanzioni UE",
+      "Giurisdizioni ad alto rischio FATF", "Lista grigia GAFI",
+      "Cluster KYT Chainalysis", "Grafo forense TRM Labs",
+      "Punteggio di rischio Elliptic", "Nodo di reporting AMLD6",
       "Cluster frodi EUROPOL", "Bollettini INTERPOL",
+      "Egmont Group — scambio UIF",
+      // Autorità e registri italiani
+      "Report UIF Banca d'Italia (sintesi pubbliche)",
+      "Centrale Allarme Interbancaria (CAI) — Banca d'Italia",
+      "Lista CONSOB offerte abusive (delibere)",
+      "Registro OAM cambiavalute & money transfer",
+      "Registro frodi IVASS",
+      "Guardia di Finanza — Nucleo Speciale Polizia Valutaria",
+      "DIA — Direzione Investigativa Antimafia",
+      "Database Polizia Postale CNAIPIC",
+      "Lista PEC certificate AGID",
+      "Feed antifrode ABI — Associazione Bancaria Italiana",
+      "Cluster antifrode Agenzia delle Entrate",
+      // Pattern AML
       "Pattern AML: pig-butchering", "Pattern AML: stratificazione",
       "Pattern AML: smurfing", "Pattern AML: cluster di prestanome",
+      "Pattern AML: trade-based laundering",
     ],
   },
   locating: {
