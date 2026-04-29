@@ -1,5 +1,5 @@
 """
-AI-FUNDS Backend (Admin-controlled accounts)
+Traccia Fondi Backend (Admin-controlled accounts)
 ============================================
 
 - Public user registration is DISABLED (returns helpful message).
@@ -41,14 +41,14 @@ mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get("DB_NAME", "ai_funds")]
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "ai-funds-dev-secret-change-me")
+JWT_SECRET = os.environ.get("JWT_SECRET", "traccia-fondi-dev-secret-change-me")
 JWT_ALG = "HS256"
 JWT_EXP_HOURS = 24 * 7
 
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ai-funds.it").lower()
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@traccia-fondi.com").lower()
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminAIF#2026!")
 
-app = FastAPI(title="AI-FUNDS API", version="2.0.0")
+app = FastAPI(title="Traccia Fondi API", version="2.0.0")
 api = APIRouter(prefix="/api")
 
 # ============================================================
@@ -422,7 +422,7 @@ app.add_middleware(
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("ai-funds")
+logger = logging.getLogger("traccia-fondi")
 
 
 @app.on_event("shutdown")

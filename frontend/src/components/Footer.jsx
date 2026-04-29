@@ -15,7 +15,7 @@ export default function Footer() {
           <Logo/>
           <p className="text-[12.5px] text-[var(--aif-text-dim)] mt-3 leading-relaxed max-w-md">{t("footer.intro")}</p>
           <div className="mt-5 space-y-2 text-[12px] text-[var(--aif-text-dim)]">
-            <div className="flex items-center gap-2"><Mail size={13} className="text-[#5FE3C9]"/> support@ai-funds.it</div>
+            <div className="flex items-center gap-2"><Mail size={13} className="text-[#5FE3C9]"/> support@traccia-fondi.com</div>
             <div className="flex items-center gap-2"><MapPin size={13} className="text-[#5FE3C9]"/> {isIt ? "Italia · Servizio EU/EEA" : "Italy · EU/EEA service"}</div>
           </div>
         </div>
@@ -36,12 +36,12 @@ export default function Footer() {
             <li><Link to="/terms"   className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Termini di Servizio" : "Terms of Service"}</Link></li>
             <li><Link to="/privacy" className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Informativa Privacy" : "Privacy Policy"}</Link></li>
             <li><Link to="/cookies" className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">Cookie Policy</Link></li>
-            <li><a href="mailto:legal@ai-funds.it" className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Contatto legale" : "Legal contact"}</a></li>
+            <li><a href="mailto:legal@traccia-fondi.com" className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Contatto legale" : "Legal contact"}</a></li>
           </ul>
         </div>
       </div>
       <div className="text-center text-[11px] text-[var(--aif-text-dim)] py-4 border-t border-[var(--aif-line)]">
-        © {new Date().getFullYear()} AI-FUNDS — {t("footer.copy")}
+        © {new Date().getFullYear()} Traccia Fondi — {t("footer.copy")}
       </div>
     </footer>
   );

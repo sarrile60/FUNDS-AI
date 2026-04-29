@@ -1,4 +1,4 @@
-# robots.txt — AI-FUNDS
+# robots.txt — Traccia Fondi
 # Allow all major search engines to index the public site.
 
 User-agent: *
@@ -20,4 +20,4 @@ Disallow: /app
 Disallow: /admin
 
 # Sitemap location
-Sitemap: https://ai-funds.it/sitemap.xml
+Sitemap: https://traccia-fondi.com/sitemap.xml

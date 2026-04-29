@@ -1,4 +1,4 @@
-// AI-FUNDS lightweight i18n. IT (default) + EN.
+// Traccia Fondi lightweight i18n. IT (default) + EN.
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 const dict = {
@@ -19,7 +19,7 @@ const dict = {
     // Hero
     "hero.tag": "AI-assisted fund tracing • Italia",
     "hero.title": "Traccia, organizza e prepara il tuo caso dopo una truffa online.",
-    "hero.subtitle": "AI-FUNDS aiuta vittime italiane di truffe Forex, crypto, bonifici SEPA, PostePay, BancoPosta, carte e pagamenti online a creare un dossier professionale con timeline, transazioni, prove e report per banca, exchange, CONSOB, Polizia Postale e consulenti legali.",
+    "hero.subtitle": "Traccia Fondi aiuta vittime italiane di truffe Forex, crypto, bonifici SEPA, PostePay, BancoPosta, carte e pagamenti online a creare un dossier professionale con timeline, transazioni, prove e report per banca, exchange, CONSOB, Polizia Postale e consulenti legali.",
     "hero.cta1": "Inizia Tracciamento Fondi",
     "hero.cta2": "Scopri Come Funziona",
     "hero.disclaimer": "Analisi avanzata basata sulle informazioni fornite. Il nostro team ti accompagna fino al recupero dei tuoi fondi.",
@@ -33,12 +33,12 @@ const dict = {
     "trust.tag": "Avviso importante",
     "trust.title": "Attenzione alle truffe di recupero fondi",
     "trust.body": "Molte vittime vengono ricontattate da falsi avvocati, falsi broker, falsi funzionari o presunti esperti blockchain che promettono il recupero del denaro in cambio di tasse, commissioni AML, gas fee, certificati o costi di sblocco.",
-    "trust.never": "AI-FUNDS non ti chiederà mai seed phrase, private key, password bancarie, codici OTP o pagamenti per 'sbloccare' fondi.",
+    "trust.never": "Traccia Fondi non ti chiederà mai seed phrase, private key, password bancarie, codici OTP o pagamenti per 'sbloccare' fondi.",
 
     // Italian context
     "context.tag": "Italia • Scenari reali",
     "context.title": "Costruito per il contesto italiano",
-    "context.body": "AI-FUNDS organizza il tuo caso secondo le informazioni normalmente richieste da banche, provider di pagamento, exchange crypto, CONSOB, Polizia Postale e professionisti legali. Ti aiuta a preparare timeline, ricevute, IBAN, CRO/TRN, wallet address, transaction hash, screenshot, chat e report chiari.",
+    "context.body": "Traccia Fondi organizza il tuo caso secondo le informazioni normalmente richieste da banche, provider di pagamento, exchange crypto, CONSOB, Polizia Postale e professionisti legali. Ti aiuta a preparare timeline, ricevute, IBAN, CRO/TRN, wallet address, transaction hash, screenshot, chat e report chiari.",
     "context.c1.t": "Bonifici SEPA e Istantanei", "context.c1.d": "CRO/TRN, IBAN, recall: tutto strutturato per la banca.",
     "context.c2.t": "Forex e Broker Falsi", "context.c2.d": "Dashboard, prelievi bloccati, profitti garantiti, segnalazioni CONSOB.",
     "context.c3.t": "Crypto Wallet Tracking", "context.c3.d": "Network, hash, wallet, exchange esposti, freeze request.",
@@ -60,7 +60,7 @@ const dict = {
     // Authority
     "auth.tag": "Percorso istituzionale",
     "auth.title": "Percorso Italiano: Banca, CONSOB, Polizia Postale",
-    "auth.disclaimer": "AI-FUNDS è una piattaforma indipendente di tracciamento fondi. Lavoriamo con vittime di truffe online per organizzare il caso e portare avanti la procedura di recupero fino alla restituzione dei fondi.",
+    "auth.disclaimer": "Traccia Fondi è una piattaforma indipendente di tracciamento fondi. Lavoriamo con vittime di truffe online per organizzare il caso e portare avanti la procedura di recupero fino alla restituzione dei fondi.",
     "auth.a1.t": "Banca / Provider di pagamento", "auth.a1.d": "Bonifico, carta, conto corrente, operazione non autorizzata, chargeback, SEPA recall.", "auth.a1.b": "Genera Reclamo Banca",
     "auth.a2.t": "CONSOB", "auth.a2.d": "Broker non autorizzato, forex, CFD, trading online, finta piattaforma di investimento.", "auth.a2.b": "Prepara Segnalazione CONSOB",
     "auth.a3.t": "Polizia Postale", "auth.a3.d": "Online fraud, phishing, crypto scam, romance scam, fake broker, account takeover.", "auth.a3.b": "Prepara Riassunto Denuncia",
@@ -88,12 +88,12 @@ const dict = {
     // FAQ
     "faq.tag": "FAQ",
     "faq.title": "Domande frequenti",
-    "faq.q1": "AI-FUNDS recupera davvero i fondi?",
-    "faq.a1": "Sì. AI-FUNDS organizza il tuo caso, traccia il percorso dei fondi, identifica la posizione del denaro e ti accompagna nella procedura di recupero fino alla restituzione.",
+    "faq.q1": "Traccia Fondi recupera davvero i fondi?",
+    "faq.a1": "Sì. Traccia Fondi organizza il tuo caso, traccia il percorso dei fondi, identifica la posizione del denaro e ti accompagna nella procedura di recupero fino alla restituzione.",
     "faq.q2": "Devo inserire seed phrase o password?",
-    "faq.a2": "No. Non inserire mai seed phrase, private key, password bancarie, codici OTP o credenziali exchange. AI-FUNDS non te le chiederà mai.",
-    "faq.q3": "AI-FUNDS è affiliato a CONSOB o Polizia Postale?",
-    "faq.a3": "No. AI-FUNDS non è affiliato ad autorità pubbliche. Aiuta solo a preparare informazioni e report da inviare attraverso i canali ufficiali.",
+    "faq.a2": "No. Non inserire mai seed phrase, private key, password bancarie, codici OTP o credenziali exchange. Traccia Fondi non te le chiederà mai.",
+    "faq.q3": "Traccia Fondi è affiliato a CONSOB o Polizia Postale?",
+    "faq.a3": "No. Traccia Fondi non è affiliato ad autorità pubbliche. Aiuta solo a preparare informazioni e report da inviare attraverso i canali ufficiali.",
     "faq.q4": "Posso usare il report per la banca?",
     "faq.a4": "Sì. Il sistema genera un report strutturato che puoi usare come base per contattare banca o provider di pagamento.",
     "faq.q5": "Supporta bonifici SEPA e PostePay?",
@@ -101,7 +101,7 @@ const dict = {
     "faq.q6": "Supporta crypto transaction hash?",
     "faq.a6": "Sì. Puoi inserire network, wallet address, transaction hash, exchange usato e importo, e generare richieste freeze.",
     "faq.q7": "Cosa succede se ho già pagato un falso recuperatore?",
-    "faq.a7": "AI-FUNDS rileva segnali di falso recupero fondi (secondary scam) e genera un warning report con prove e prossimi passi.",
+    "faq.a7": "Traccia Fondi rileva segnali di falso recupero fondi (secondary scam) e genera un warning report con prove e prossimi passi.",
 
     // CTA banner
     "cta.tag": "Privacy-first • GDPR aware",
@@ -114,8 +114,8 @@ const dict = {
     "footer.tag2": "Disclaimer",
     "footer.intro": "AI-assisted fund tracing & professional dossier preparation per vittime italiane di truffe online.",
     "footer.warn": "Non inserire seed phrase, private key, password bancarie o codici OTP.",
-    "footer.disclaimer": "AI-FUNDS è una piattaforma di tracciamento fondi e recupero per vittime di truffe online.",
-    "footer.long": "AI-FUNDS è una piattaforma indipendente di tracciamento fondi e supporto al recupero per vittime italiane di truffe online. Lavoriamo al tuo fianco fino alla restituzione dei fondi.",
+    "footer.disclaimer": "Traccia Fondi è una piattaforma di tracciamento fondi e recupero per vittime di truffe online.",
+    "footer.long": "Traccia Fondi è una piattaforma indipendente di tracciamento fondi e supporto al recupero per vittime italiane di truffe online. Lavoriamo al tuo fianco fino alla restituzione dei fondi.",
     "footer.copy": "Italia. Privacy-first • GDPR aware.",
 
     // Auth pages
@@ -143,7 +143,7 @@ const dict = {
     "auth.toast_register": "Account creato",
     "auth.error_login": "Errore di accesso",
     "auth.error_register": "Errore di registrazione",
-    "auth.never_warn": "Non inserire mai seed phrase, private key, password bancarie o codici OTP. AI-FUNDS non te le chiederà mai.",
+    "auth.never_warn": "Non inserire mai seed phrase, private key, password bancarie o codici OTP. Traccia Fondi non te le chiederà mai.",
     "auth.register_disabled": "Registrazione attualmente non disponibile. Contatta il tuo amministratore per ricevere le credenziali.",
     "auth.register_disabled_short": "Registrazione non disponibile",
 
@@ -480,7 +480,7 @@ const dict = {
     // Hero
     "hero.tag": "AI-assisted fund tracing • Italy",
     "hero.title": "Trace, organize and prepare your case after an online scam.",
-    "hero.subtitle": "AI-FUNDS helps Italian victims of Forex, crypto, SEPA, PostePay, BancoPosta, card and online payment scams build a professional dossier with timeline, transactions, evidence and reports for banks, exchanges, CONSOB, Polizia Postale and legal professionals.",
+    "hero.subtitle": "Traccia Fondi helps Italian victims of Forex, crypto, SEPA, PostePay, BancoPosta, card and online payment scams build a professional dossier with timeline, transactions, evidence and reports for banks, exchanges, CONSOB, Polizia Postale and legal professionals.",
     "hero.cta1": "Start Fund Tracing",
     "hero.cta2": "How it works",
     "hero.disclaimer": "Advanced analysis based on the information you provide. Our team supports you all the way to the recovery of your funds.",
@@ -494,12 +494,12 @@ const dict = {
     "trust.tag": "Important notice",
     "trust.title": "Beware of recovery scams",
     "trust.body": "Many victims are contacted again by fake lawyers, brokers, officials or self-claimed blockchain experts promising recovery in exchange for taxes, AML fees, gas, certificates or unlock costs.",
-    "trust.never": "AI-FUNDS will never ask you for a seed phrase, private key, banking password, OTP code or any payment to 'unlock' funds.",
+    "trust.never": "Traccia Fondi will never ask you for a seed phrase, private key, banking password, OTP code or any payment to 'unlock' funds.",
 
     // Italian context
     "context.tag": "Italy • Real scenarios",
     "context.title": "Built for the Italian context",
-    "context.body": "AI-FUNDS organizes your case using the information typically required by banks, payment providers, crypto exchanges, CONSOB, Polizia Postale and legal professionals. It helps you prepare timeline, receipts, IBAN, CRO/TRN, wallet address, transaction hash, screenshots, chats and clear reports.",
+    "context.body": "Traccia Fondi organizes your case using the information typically required by banks, payment providers, crypto exchanges, CONSOB, Polizia Postale and legal professionals. It helps you prepare timeline, receipts, IBAN, CRO/TRN, wallet address, transaction hash, screenshots, chats and clear reports.",
     "context.c1.t": "SEPA & Instant transfers", "context.c1.d": "CRO/TRN, IBAN, recall: structured for the bank.",
     "context.c2.t": "Forex & fake brokers", "context.c2.d": "Dashboards, blocked withdrawals, guaranteed profits, CONSOB filings.",
     "context.c3.t": "Crypto wallet tracking", "context.c3.d": "Network, hash, wallets, exchange exposure, freeze requests.",
@@ -521,7 +521,7 @@ const dict = {
     // Authority
     "auth.tag": "Institutional path",
     "auth.title": "Italian path: Bank, CONSOB, Polizia Postale",
-    "auth.disclaimer": "AI-FUNDS is an independent fund-tracing platform. We work with victims of online scams to organize the case and carry out the recovery procedure all the way to the return of the funds.",
+    "auth.disclaimer": "Traccia Fondi is an independent fund-tracing platform. We work with victims of online scams to organize the case and carry out the recovery procedure all the way to the return of the funds.",
     "auth.a1.t": "Bank / Payment provider", "auth.a1.d": "Wire, card, account, unauthorized transaction, chargeback, SEPA recall.", "auth.a1.b": "Generate Bank Complaint",
     "auth.a2.t": "CONSOB", "auth.a2.d": "Unauthorized broker, forex, CFD, online trading, fake investment platform.", "auth.a2.b": "Prepare CONSOB Filing",
     "auth.a3.t": "Polizia Postale", "auth.a3.d": "Online fraud, phishing, crypto scam, romance scam, fake broker, account takeover.", "auth.a3.b": "Prepare Police Summary",
@@ -549,12 +549,12 @@ const dict = {
     // FAQ
     "faq.tag": "FAQ",
     "faq.title": "Frequently asked questions",
-    "faq.q1": "Does AI-FUNDS really recover funds?",
-    "faq.a1": "Yes. AI-FUNDS organizes your case, traces the path of the funds, identifies where the money is and supports you through the recovery procedure all the way to the return of the funds.",
+    "faq.q1": "Does Traccia Fondi really recover funds?",
+    "faq.a1": "Yes. Traccia Fondi organizes your case, traces the path of the funds, identifies where the money is and supports you through the recovery procedure all the way to the return of the funds.",
     "faq.q2": "Do I need to enter a seed phrase or password?",
-    "faq.a2": "No. Never enter a seed phrase, private key, banking password, OTP code or exchange credentials. AI-FUNDS will never ask for them.",
-    "faq.q3": "Is AI-FUNDS affiliated with CONSOB or Polizia Postale?",
-    "faq.a3": "No. AI-FUNDS is not affiliated with public authorities. It only helps prepare information and reports to send through official channels.",
+    "faq.a2": "No. Never enter a seed phrase, private key, banking password, OTP code or exchange credentials. Traccia Fondi will never ask for them.",
+    "faq.q3": "Is Traccia Fondi affiliated with CONSOB or Polizia Postale?",
+    "faq.a3": "No. Traccia Fondi is not affiliated with public authorities. It only helps prepare information and reports to send through official channels.",
     "faq.q4": "Can I use the report for the bank?",
     "faq.a4": "Yes. The system generates a structured report you can use as a basis to contact your bank or payment provider.",
     "faq.q5": "Does it support SEPA wires and PostePay?",
@@ -562,7 +562,7 @@ const dict = {
     "faq.q6": "Does it support crypto transaction hashes?",
     "faq.a6": "Yes. You can enter network, wallet address, transaction hash, exchange used and amount, then generate freeze requests.",
     "faq.q7": "What if I already paid a fake recovery agent?",
-    "faq.a7": "AI-FUNDS detects signals of fake recovery scams (secondary scams) and generates a warning report with evidence and next steps.",
+    "faq.a7": "Traccia Fondi detects signals of fake recovery scams (secondary scams) and generates a warning report with evidence and next steps.",
 
     // CTA banner
     "cta.tag": "Privacy-first • GDPR aware",
@@ -575,8 +575,8 @@ const dict = {
     "footer.tag2": "Disclaimer",
     "footer.intro": "AI-assisted fund tracing & professional dossier preparation for Italian victims of online scams.",
     "footer.warn": "Never enter a seed phrase, private key, banking password or OTP code.",
-    "footer.disclaimer": "AI-FUNDS is a fund-tracing and recovery platform for victims of online scams.",
-    "footer.long": "AI-FUNDS is an independent fund-tracing and recovery-support platform for Italian victims of online scams. We stand by your side all the way to the return of your funds.",
+    "footer.disclaimer": "Traccia Fondi is a fund-tracing and recovery platform for victims of online scams.",
+    "footer.long": "Traccia Fondi is an independent fund-tracing and recovery-support platform for Italian victims of online scams. We stand by your side all the way to the return of your funds.",
     "footer.copy": "Italy. Privacy-first • GDPR aware.",
 
     // Auth
@@ -604,7 +604,7 @@ const dict = {
     "auth.toast_register": "Account created",
     "auth.error_login": "Sign-in error",
     "auth.error_register": "Registration error",
-    "auth.never_warn": "Never enter a seed phrase, private key, banking password or OTP code. AI-FUNDS will never ask for them.",
+    "auth.never_warn": "Never enter a seed phrase, private key, banking password or OTP code. Traccia Fondi will never ask for them.",
     "auth.register_disabled": "Registration is currently unavailable. Please contact your administrator to receive your credentials.",
     "auth.register_disabled_short": "Registration unavailable",
 

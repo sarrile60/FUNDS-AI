@@ -1,4 +1,4 @@
-// LandingPage — composes all sections of the AI-FUNDS marketing page.
+// LandingPage — composes all sections of the Traccia Fondi marketing page.
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";

@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ai-funds.it/</loc>
+    <loc>https://traccia-fondi.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://ai-funds.it/login</loc>
+    <loc>https://traccia-fondi.com/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://ai-funds.it/terms</loc>
+    <loc>https://traccia-fondi.com/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://ai-funds.it/privacy</loc>
+    <loc>https://traccia-fondi.com/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://ai-funds.it/cookies</loc>
+    <loc>https://traccia-fondi.com/cookies</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

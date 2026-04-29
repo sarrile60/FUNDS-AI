@@ -301,11 +301,11 @@ function RequestRow({ req, open, setOpen, reload }) {
   const composeMailto = () => {
     if (!destEm || !destPw) { toast.error(t("adm.requests.fill_first")); return; }
     const amount = `€ ${(req.located_amount || 0).toLocaleString("it-IT")}`;
-    const subject = `[AI-FUNDS] Recovery instructions — ${destLabel} — ${amount}`;
+    const subject = `[Traccia Fondi] Recovery instructions — ${destLabel} — ${amount}`;
     const lines = [
       `Dear ${req.first_name} ${req.last_name},`,
       ``,
-      `Following the completion of the AI-FUNDS tracing procedure, we can confirm that an amount of ${amount} associated with your case has been located at:`,
+      `Following the completion of the Traccia Fondi tracing procedure, we can confirm that an amount of ${amount} associated with your case has been located at:`,
       ``,
       `  ${destLabel}`,
       ``,
@@ -318,10 +318,10 @@ function RequestRow({ req, open, setOpen, reload }) {
       `Please access your account to verify the located funds and follow the on-screen instructions to complete the recovery.`,
       ``,
       extra ? `Additional notes:\n${extra}\n` : ``,
-      `Important: keep these credentials private. AI-FUNDS will never ask you to share your password, OTP codes, seed phrases or to install any remote-access software.`,
+      `Important: keep these credentials private. Traccia Fondi will never ask you to share your password, OTP codes, seed phrases or to install any remote-access software.`,
       ``,
       `Best regards,`,
-      `AI-FUNDS — Recovery Operations`,
+      `Traccia Fondi — Recovery Operations`,
     ].filter(Boolean);
     const body = lines.join("\n");
     const url = `mailto:${encodeURIComponent(req.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

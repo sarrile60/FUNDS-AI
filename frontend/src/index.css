@@ -1,4 +1,4 @@
-/* AI-FUNDS global styles + premium fintech/cybersecurity theme */
+/* Traccia Fondi global styles + premium fintech/cybersecurity theme */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -57,7 +57,7 @@ html, body {
   * { @apply border-border; }
 }
 
-/* === AI-FUNDS premium background === */
+/* === Traccia Fondi premium background === */
 .aif-app-bg {
   background:
     radial-gradient(1200px 700px at 90% -20%, rgba(95,227,201,0.12), transparent 60%),
