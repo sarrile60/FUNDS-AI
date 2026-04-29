@@ -9,6 +9,8 @@ import AuthPage from "./components/AuthPage";
 import UserApp from "./components/UserApp";
 import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
+import LegalPage from "./components/LegalPage";
+import CookieBanner from "./components/CookieBanner";
 
 function RequireAdmin({ children }) {
   const { user } = useAuth();
@@ -29,8 +31,12 @@ function App() {
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/admin" element={<AdminLogin/>}/>
             <Route path="/admin/dashboard" element={<RequireAdmin><AdminPanel/></RequireAdmin>}/>
+            <Route path="/terms"   element={<LegalPage kind="terms"/>}/>
+            <Route path="/privacy" element={<LegalPage kind="privacy"/>}/>
+            <Route path="/cookies" element={<LegalPage kind="cookies"/>}/>
             <Route path="*" element={<LandingPage/>}/>
           </Routes>
+          <CookieBanner/>
         </BrowserRouter>
         <Toaster theme="dark" position="top-right" richColors/>
       </AuthProvider>

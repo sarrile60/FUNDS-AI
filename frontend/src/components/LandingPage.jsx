@@ -249,6 +249,29 @@ function ReportsGallery() {
   );
 }
 
+function TrustStrip() {
+  const { t, lang } = useI18n();
+  const isIt = lang === "it";
+  const stats = [
+    { v: "256-bit", k: isIt ? "Crittografia AES" : "AES Encryption" },
+    { v: "TLS 1.3", k: isIt ? "Connessione sicura" : "Secure connection" },
+    { v: "GDPR",    k: isIt ? "Privacy europea" : "EU privacy" },
+    { v: "24/7",    k: isIt ? "Procedure attive" : "Active procedures" },
+  ];
+  return (
+    <Section className="py-10 md:py-14">
+      <div className="aif-card p-6 md:p-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <div key={s.v} className="text-center">
+            <div className="text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">{s.v}</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--aif-text-dim)] mt-1">{s.k}</div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function FAQ() {
   const { t } = useI18n();
   const items = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ q: t(`faq.q${i}`), a: t(`faq.a${i}`) }));
@@ -304,6 +327,7 @@ export default function LandingPage() {
         <AuthorityPath/>
         <TracingTeaser/>
         <ReportsGallery/>
+        <TrustStrip/>
         <FAQ/>
         <CtaBanner/>
         <Footer/>

@@ -1,0 +1,23 @@
+# robots.txt — AI-FUNDS
+# Allow all major search engines to index the public site.
+
+User-agent: *
+Allow: /
+# Don't index private user / admin areas
+Disallow: /app
+Disallow: /admin
+Disallow: /admin/
+
+# Common bots — explicit allow on public content
+User-agent: Googlebot
+Allow: /
+Disallow: /app
+Disallow: /admin
+
+User-agent: Bingbot
+Allow: /
+Disallow: /app
+Disallow: /admin
+
+# Sitemap location
+Sitemap: https://ai-funds.it/sitemap.xml
