@@ -104,7 +104,7 @@ const dict = {
     "faq.a7": "Traccia Fondi rileva segnali di falso recupero fondi (secondary scam) e genera un warning report con prove e prossimi passi.",
 
     // CTA banner
-    "cta.tag": "Privacy-first • GDPR aware",
+    "cta.tag": "Privacy al primo posto • Conforme GDPR",
     "cta.title": "Inizia ora la tua analisi gratuita",
     "cta.body": "Nessuna seed phrase, nessuna OTP, nessun pagamento per 'sbloccare' fondi. Solo evidenze e report.",
     "cta.btn": "Avvia Analisi Gratuita",
@@ -116,7 +116,7 @@ const dict = {
     "footer.warn": "Non inserire seed phrase, private key, password bancarie o codici OTP.",
     "footer.disclaimer": "Traccia Fondi è una piattaforma di tracciamento fondi e recupero per vittime di truffe online.",
     "footer.long": "Traccia Fondi è una piattaforma indipendente di tracciamento fondi e supporto al recupero per vittime italiane di truffe online. Lavoriamo al tuo fianco fino alla restituzione dei fondi.",
-    "footer.copy": "Privacy-first • GDPR aware.",
+    "footer.copy": "Privacy al primo posto • Conforme GDPR.",
 
     // Auth pages
     "auth.welcome": "Bentornato",
