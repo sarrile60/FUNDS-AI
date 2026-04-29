@@ -18,7 +18,7 @@ export function downloadReportPDF({ title, content, caseRef }) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(159, 176, 204);
-  doc.text("Fund tracing & professional dossier — Italia", margin, 52);
+  doc.text("Fund tracing & professional dossier", margin, 52);
   if (caseRef) {
     doc.setTextColor(230, 237, 247);
     doc.text(`Caso: ${caseRef}`, pageW - margin, 36, { align: "right" });

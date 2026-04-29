@@ -79,7 +79,7 @@ export default function HeroNetwork({ animate = true }) {
         <LINK x1="500" y1="300" x2="690" y2="340" color="#FF8B6A" delay={1.8}  animate={live}/>
 
         {/* Nodes */}
-        <NODE x="100" y="230" label={t("hn.victim")} sub={lang === "en" ? "Italy" : "Italia"} color="#5FE3C9" size={32} icon="👤" dataId="node-victim" animate={live}/>
+        <NODE x="100" y="230" label={t("hn.victim")} sub="" color="#5FE3C9" size={32} icon="👤" dataId="node-victim" animate={live}/>
 
         <NODE x="280" y="120" label={t("hn.sepa")}     sub={t("hn.sepa.sub")}    color="#5FE3C9" size={28} icon="🏦" animate={live}/>
         <NODE x="280" y="230" label="PostePay"          sub={t("hn.postepay.sub")} color="#5FE3C9" size={28} icon="💳" animate={live}/>

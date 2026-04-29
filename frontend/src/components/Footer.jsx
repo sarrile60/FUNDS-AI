@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Logo from "./Logo";
 import { useI18n } from "../i18n";
-import { ShieldAlert, Mail, MapPin } from "lucide-react";
+import { ShieldAlert, Mail } from "lucide-react";
 
 export default function Footer() {
   const { t, lang } = useI18n();
@@ -16,7 +16,6 @@ export default function Footer() {
           <p className="text-[12.5px] text-[var(--aif-text-dim)] mt-3 leading-relaxed max-w-md">{t("footer.intro")}</p>
           <div className="mt-5 space-y-2 text-[12px] text-[var(--aif-text-dim)]">
             <div className="flex items-center gap-2"><Mail size={13} className="text-[#5FE3C9]"/> support@traccia-fondi.com</div>
-            <div className="flex items-center gap-2"><MapPin size={13} className="text-[#5FE3C9]"/> {isIt ? "Italia · Servizio EU/EEA" : "Italy · EU/EEA service"}</div>
           </div>
         </div>
 

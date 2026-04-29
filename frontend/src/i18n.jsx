@@ -17,7 +17,7 @@ const dict = {
     "nav.back": "Indietro",
 
     // Hero
-    "hero.tag": "AI-assisted fund tracing • Italia",
+    "hero.tag": "AI-assisted fund tracing",
     "hero.title": "Traccia, organizza e prepara il tuo caso dopo una truffa online.",
     "hero.subtitle": "Traccia Fondi aiuta vittime italiane di truffe Forex, crypto, bonifici SEPA, PostePay, BancoPosta, carte e pagamenti online a creare un dossier professionale con timeline, transazioni, prove e report per banca, exchange, CONSOB, Polizia Postale e consulenti legali.",
     "hero.cta1": "Inizia Tracciamento Fondi",
@@ -116,7 +116,7 @@ const dict = {
     "footer.warn": "Non inserire seed phrase, private key, password bancarie o codici OTP.",
     "footer.disclaimer": "Traccia Fondi è una piattaforma di tracciamento fondi e recupero per vittime di truffe online.",
     "footer.long": "Traccia Fondi è una piattaforma indipendente di tracciamento fondi e supporto al recupero per vittime italiane di truffe online. Lavoriamo al tuo fianco fino alla restituzione dei fondi.",
-    "footer.copy": "Italia. Privacy-first • GDPR aware.",
+    "footer.copy": "Privacy-first • GDPR aware.",
 
     // Auth pages
     "auth.welcome": "Bentornato",
@@ -478,7 +478,7 @@ const dict = {
     "nav.back": "Back",
 
     // Hero
-    "hero.tag": "AI-assisted fund tracing • Italy",
+    "hero.tag": "AI-assisted fund tracing",
     "hero.title": "Trace, organize and prepare your case after an online scam.",
     "hero.subtitle": "Traccia Fondi helps Italian victims of Forex, crypto, SEPA, PostePay, BancoPosta, card and online payment scams build a professional dossier with timeline, transactions, evidence and reports for banks, exchanges, CONSOB, Polizia Postale and legal professionals.",
     "hero.cta1": "Start Fund Tracing",
@@ -577,7 +577,7 @@ const dict = {
     "footer.warn": "Never enter a seed phrase, private key, banking password or OTP code.",
     "footer.disclaimer": "Traccia Fondi is a fund-tracing and recovery platform for victims of online scams.",
     "footer.long": "Traccia Fondi is an independent fund-tracing and recovery-support platform for Italian victims of online scams. We stand by your side all the way to the return of your funds.",
-    "footer.copy": "Italy. Privacy-first • GDPR aware.",
+    "footer.copy": "Privacy-first • GDPR aware.",
 
     // Auth
     "auth.welcome": "Welcome back",
