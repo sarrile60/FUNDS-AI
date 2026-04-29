@@ -4,7 +4,7 @@ export const API = `${BACKEND_URL}/api`;
 
 export const api = {
   // procedure
-  startProcedure:    (amount_tier) => axios.post(`${API}/procedure/start`, { amount_tier }).then(r => r.data),
+  startProcedure:    (data) => axios.post(`${API}/procedure/start`, data).then(r => r.data),
   completeProcedure: () => axios.post(`${API}/procedure/complete`).then(r => r.data),
   procedureState:    () => axios.get(`${API}/procedure/state`).then(r => r.data),
 

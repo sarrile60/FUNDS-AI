@@ -105,20 +105,26 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
     return payload
 
 
-# Hi-end amount per tier (with random jitter near the high end)
+# Located amount per tier — well beyond the tier's high end so the user
+# always sees a "bonus" amount discovered. Numbers are randomized inside
+# the range so they look organic (e.g. 82,345 / 354,963 / 19,632).
 TIER_HIGH_END = {
     "5000_20000":     (18000, 19999),
-    "20000_50000":    (45000, 49999),
-    "50000_100000":   (92000, 99999),
-    "100000_plus":    (210000, 489999),
+    "20000_50000":    (78000, 89999),
+    "50000_100000":   (140000, 169999),
+    "100000_plus":    (320000, 489999),
 }
 
 
 def _located_amount_for(tier: str) -> int:
     lo, hi = TIER_HIGH_END.get(tier, (18000, 19999))
     n = random.randint(lo, hi)
-    # round to nearest 50 to look "real"
-    return int(round(n / 50) * 50)
+    # Add jitter on the units digit so it doesn't look round (e.g. 82345 not 82500)
+    units = random.randint(0, 999)
+    n = (n // 1000) * 1000 + units
+    if n < lo: n = lo + units
+    if n > hi: n = hi - random.randint(0, 500)
+    return int(n)
 
 
 # ============================================================
@@ -165,6 +171,9 @@ class AdminUserUpdate(BaseModel):
 # --- User actions ---
 class StartProcedureIn(BaseModel):
     amount_tier: str  # 5000_20000 / 20000_50000 / 50000_100000 / 100000_plus
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
 
 
 class RecoveryRequestIn(BaseModel):
@@ -306,6 +315,11 @@ async def start_procedure(body: StartProcedureIn, user=Depends(get_current_user)
         "procedure_started_at": _now_iso(),
         "procedure_completed_at": None,
     }
+    # Save the user-provided name/surname/email so the recovery-request form
+    # can prefill them when the procedure completes.
+    if body.first_name:    update["procedure_first_name"]   = body.first_name.strip()
+    if body.last_name:     update["procedure_last_name"]    = body.last_name.strip()
+    if body.contact_email: update["procedure_contact_email"] = body.contact_email.lower().strip()
     await db.users.update_one({"id": user["id"]}, {"$set": update})
     return {**update, "recovery_destination": user.get("recovery_destination")}
 
@@ -325,6 +339,9 @@ async def procedure_state(user=Depends(get_current_user)):
         "recovery_destination": user.get("recovery_destination"),
         "procedure_started_at": user.get("procedure_started_at"),
         "procedure_completed_at": user.get("procedure_completed_at"),
+        "procedure_first_name": user.get("procedure_first_name", ""),
+        "procedure_last_name": user.get("procedure_last_name", ""),
+        "procedure_contact_email": user.get("procedure_contact_email", ""),
     }
 
 

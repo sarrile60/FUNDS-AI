@@ -32,13 +32,24 @@ export default function UserApp() {
   const [tier, setTier] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Personal info — collected on this screen, saved on backend, prefilled later.
+  const [first, setFirst] = useState("");
+  const [last,  setLast]  = useState("");
+  const [cmail, setCmail] = useState("");
 
   // server state
   const [state, setState] = useState(null);
 
   useEffect(() => {
     (async () => {
-      try { setState(await api.procedureState()); } catch {}
+      try {
+        const s = await api.procedureState();
+        setState(s);
+        // restore previously saved values if user reloads
+        if (s?.procedure_first_name)   setFirst(s.procedure_first_name);
+        if (s?.procedure_last_name)    setLast(s.procedure_last_name);
+        if (s?.procedure_contact_email) setCmail(s.procedure_contact_email);
+      } catch {}
     })();
   }, []);
 
@@ -50,15 +61,25 @@ export default function UserApp() {
   const DestIcon = destination === "zenthos_wallet" ? Wallet : Building2;
 
   const startProcedure = async () => {
+    if (!first.trim() || !last.trim() || !cmail.trim()) {
+      toast.error(t("proc.fill_personal")); return;
+    }
     if (!tier) { toast.error(t("proc.pick_first")); return; }
     if (!consent) { toast.error(t("proc.consent_first")); return; }
     setBusy(true);
     try {
-      const s = await api.startProcedure(tier);
+      const s = await api.startProcedure({
+        amount_tier: tier,
+        first_name: first.trim(),
+        last_name: last.trim(),
+        contact_email: cmail.trim(),
+      });
       setState(s);
       setView("animating");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Error starting procedure");
+      const d = e?.response?.data?.detail;
+      const msg = typeof d === "string" ? d : Array.isArray(d) ? d.map(x => x?.msg || JSON.stringify(x)).join(", ") : "Error starting procedure";
+      toast.error(msg);
     } finally { setBusy(false); }
   };
 
@@ -85,6 +106,9 @@ export default function UserApp() {
                   user={user}
                   tier={tier} setTier={setTier}
                   consent={consent} setConsent={setConsent}
+                  first={first} setFirst={setFirst}
+                  last={last}   setLast={setLast}
+                  cmail={cmail} setCmail={setCmail}
                   busy={busy}
                   onStart={startProcedure}
                 />
@@ -120,6 +144,11 @@ export default function UserApp() {
               <motion.div key="req" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
                 <RecoveryRequest
                   destLabel={destLabel}
+                  prefill={{
+                    first: state?.procedure_first_name || first,
+                    last:  state?.procedure_last_name  || last,
+                    email: state?.procedure_contact_email || cmail,
+                  }}
                   onDone={() => setView("requested")}
                 />
               </motion.div>
@@ -144,7 +173,7 @@ export default function UserApp() {
 // ============================================================
 //   IDLE — pick tier + consent + start
 // ============================================================
-function StartProcedure({ user, tier, setTier, consent, setConsent, busy, onStart }) {
+function StartProcedure({ user, tier, setTier, consent, setConsent, first, setFirst, last, setLast, cmail, setCmail, busy, onStart }) {
   const { t } = useI18n();
   const initials = `${(user.first_name || "?").charAt(0)}${(user.last_name || "").charAt(0)}`.toUpperCase();
   return (
@@ -169,6 +198,35 @@ function StartProcedure({ user, tier, setTier, consent, setConsent, busy, onStar
 
           <h1 className="section-title mt-2 mx-auto max-w-3xl">{t("proc.title")}</h1>
           <p className="text-[var(--aif-text-dim)] mt-4 max-w-2xl mx-auto leading-relaxed">{t("proc.subtitle")}</p>
+        </div>
+      </div>
+
+      {/* Personal info card */}
+      <div className="aif-card p-6 md:p-8" data-testid="personal-info">
+        <div className="text-[12px] uppercase tracking-[0.2em] text-[#5FE3C9]">{t("proc.personal.title")}</div>
+        <p className="text-[13px] text-[var(--aif-text-dim)] mt-1">{t("proc.personal.subtitle")}</p>
+        <div className="grid sm:grid-cols-2 gap-3 mt-5">
+          <div>
+            <label className="aif-label">{t("proc.first_name")}</label>
+            <div className="relative">
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+              <input className="aif-input pl-10" data-testid="proc-first" value={first} onChange={(e) => setFirst(e.target.value)} placeholder={t("proc.first_name_ph")} required/>
+            </div>
+          </div>
+          <div>
+            <label className="aif-label">{t("proc.last_name")}</label>
+            <div className="relative">
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+              <input className="aif-input pl-10" data-testid="proc-last" value={last} onChange={(e) => setLast(e.target.value)} placeholder={t("proc.last_name_ph")} required/>
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="aif-label">{t("proc.contact_email")}</label>
+            <div className="relative">
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+              <input type="email" className="aif-input pl-10" data-testid="proc-email" value={cmail} onChange={(e) => setCmail(e.target.value)} placeholder={t("proc.email_ph")} required/>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -261,13 +319,13 @@ function FundsLocated({ destination, destLabel, DestIcon, amount, onContinue }) 
 // ============================================================
 //   RECOVERY REQUEST FORM
 // ============================================================
-function RecoveryRequest({ destLabel, onDone }) {
+function RecoveryRequest({ destLabel, prefill, onDone }) {
   const { t } = useI18n();
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
-  const [em, setEm] = useState("");
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [first, setFirst] = useState(prefill?.first || "");
+  const [last,  setLast]  = useState(prefill?.last  || "");
+  const [em,    setEm]    = useState(prefill?.email || "");
+  const [msg,   setMsg]   = useState("");
+  const [busy,  setBusy]  = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();

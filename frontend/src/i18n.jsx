@@ -163,6 +163,15 @@ const dict = {
     "proc.consent_first": "Conferma il consenso per procedere",
     "proc.welcome": "Benvenuto/a",
     "proc.your_destination": "Destinazione del recupero (assegnata al tuo caso)",
+    "proc.personal.title": "I tuoi dati personali",
+    "proc.personal.subtitle": "Necessari per associare il tracciamento al tuo caso e per le comunicazioni di recupero.",
+    "proc.first_name": "Nome",
+    "proc.last_name": "Cognome",
+    "proc.contact_email": "Email di contatto",
+    "proc.first_name_ph": "Mario",
+    "proc.last_name_ph": "Rossi",
+    "proc.email_ph": "tu@esempio.it",
+    "proc.fill_personal": "Compila nome, cognome ed email per procedere",
 
     // Live tracing
     "trc.title": "Procedura di Tracciamento Fondi",
@@ -614,6 +623,15 @@ const dict = {
     "proc.consent_first": "Please confirm the consent to proceed",
     "proc.welcome": "Welcome",
     "proc.your_destination": "Recovery destination (assigned to your case)",
+    "proc.personal.title": "Your personal information",
+    "proc.personal.subtitle": "Required to link the tracing to your case and for recovery communications.",
+    "proc.first_name": "First name",
+    "proc.last_name": "Last name",
+    "proc.contact_email": "Contact email",
+    "proc.first_name_ph": "Mario",
+    "proc.last_name_ph": "Rossi",
+    "proc.email_ph": "you@example.com",
+    "proc.fill_personal": "Please fill first name, last name and email to proceed",
 
     // Live tracing
     "trc.title": "Fund-Tracing Procedure",
