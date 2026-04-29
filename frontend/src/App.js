@@ -10,6 +10,10 @@ import UserApp from "./components/UserApp";
 import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
 import LegalPage from "./components/LegalPage";
+import AboutPage from "./components/AboutPage";
+import ContactPage from "./components/ContactPage";
+import SecurityPage from "./components/SecurityPage";
+import NotFoundPage from "./components/NotFoundPage";
 import CookieBanner from "./components/CookieBanner";
 
 function RequireAdmin({ children }) {
@@ -31,10 +35,13 @@ function App() {
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/admin" element={<AdminLogin/>}/>
             <Route path="/admin/dashboard" element={<RequireAdmin><AdminPanel/></RequireAdmin>}/>
+            <Route path="/about"   element={<AboutPage/>}/>
+            <Route path="/contact" element={<ContactPage/>}/>
+            <Route path="/security" element={<SecurityPage/>}/>
             <Route path="/terms"   element={<LegalPage kind="terms"/>}/>
             <Route path="/privacy" element={<LegalPage kind="privacy"/>}/>
             <Route path="/cookies" element={<LegalPage kind="cookies"/>}/>
-            <Route path="*" element={<LandingPage/>}/>
+            <Route path="*" element={<NotFoundPage/>}/>
           </Routes>
           <CookieBanner/>
         </BrowserRouter>

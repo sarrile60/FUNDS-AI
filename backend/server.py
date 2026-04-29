@@ -20,7 +20,7 @@ NOTE: This is an UI-driven product. The "tracing" is staged animation. There is
 NO real fund recovery happening.
 """
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -35,6 +35,10 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import cloudinary
 import cloudinary.uploader
+import resend
+import asyncio
+from collections import defaultdict, deque
+import time as _time
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -63,6 +67,35 @@ ALLOWED_MIME = {
     "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif",
     "application/pdf",
 }
+
+# --- Resend (transactional email) ---
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+RESEND_FROM_RECOVERY = os.environ.get("RESEND_FROM_RECOVERY", "Traccia Fondi <recovery@traccia-fondi.com>")
+RESEND_FROM_NOREPLY = os.environ.get("RESEND_FROM_NOREPLY", "Traccia Fondi <noreply@traccia-fondi.com>")
+RESEND_REPLY_TO = os.environ.get("RESEND_REPLY_TO", "support@traccia-fondi.com")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
+
+# --- In-memory rate limiter (per IP, per route) ---
+# Simple fixed-window-ish sliding bucket. For production scale you'd swap to Redis.
+_rate_buckets: Dict[str, deque] = defaultdict(deque)
+
+
+def _rate_limit(key: str, max_requests: int, window_seconds: int):
+    """Raise 429 if `key` has made more than `max_requests` in the last window."""
+    now = _time.time()
+    q = _rate_buckets[key]
+    # drop old entries
+    while q and (now - q[0]) > window_seconds:
+        q.popleft()
+    if len(q) >= max_requests:
+        retry = int(window_seconds - (now - q[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Please try again in {retry} seconds.",
+        )
+    q.append(now)
 
 app = FastAPI(title="Traccia Fondi API", version="2.0.0")
 api = APIRouter(prefix="/api")
@@ -218,12 +251,16 @@ async def health():
 
 
 @api.post("/auth/login", response_model=AuthOut)
-async def login(body: LoginIn):
+async def login(body: LoginIn, request: Request):
     """
     Single login endpoint for both admin and regular users.
     - Admin: matches ADMIN_EMAIL/ADMIN_PASSWORD from .env.
     - Users: created by admin with plaintext passwords.
+    Rate-limited: 8 attempts per IP per 5 minutes.
     """
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"login:{ip}", max_requests=8, window_seconds=300)
+
     em = body.email.lower().strip()
 
     if em == ADMIN_EMAIL and body.password == ADMIN_PASSWORD:
@@ -369,7 +406,9 @@ async def procedure_state(user=Depends(get_current_user)):
 # ============================================================
 
 @api.post("/recovery-requests")
-async def create_recovery_request(body: RecoveryRequestIn, user=Depends(get_current_user)):
+async def create_recovery_request(body: RecoveryRequestIn, request: Request, user=Depends(get_current_user)):
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"recreq:{ip}", max_requests=5, window_seconds=600)
     doc = {
         "id": _new_id(),
         "user_id": user["id"],
@@ -414,6 +453,121 @@ async def admin_mark_sent(req_id: str, _=Depends(require_admin)):
     await db.recovery_requests.update_one(
         {"id": req_id},
         {"$set": {"status": "sent", "sent_at": _now_iso()}},
+    )
+    return await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
+
+
+@api.post("/admin/recovery-requests/{req_id}/send-email")
+async def admin_send_email(req_id: str, _=Depends(require_admin)):
+    """
+    Admin sends the recovery-instructions email via Resend.
+    Requires the admin to have filled destination_login_email and
+    destination_login_password on the request first.
+    """
+    r = await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Request not found")
+    if not r.get("destination_login_email") or not r.get("destination_login_password"):
+        raise HTTPException(400, "Fill destination_login_email and destination_login_password first")
+    if not RESEND_API_KEY:
+        raise HTTPException(500, "Resend API key is not configured")
+
+    dest_label = "Zenthos Wallet" if r.get("recovery_destination") == "zenthos_wallet" else "Chiantin Bank"
+    default_url = (
+        "https://app.zenthos-wallet.com/login"
+        if r.get("recovery_destination") == "zenthos_wallet"
+        else "https://secure.chiantin-bank.com/login"
+    )
+    login_url = (r.get("destination_login_url") or default_url).strip()
+    amount = f"€ {(r.get('located_amount') or 0):,.0f}".replace(",", ".")
+    extra = (r.get("extra_notes") or "").strip()
+
+    subject = f"[Traccia Fondi] Istruzioni di recupero — {dest_label} — {amount}"
+    text_body = (
+        f"Gentile {r.get('first_name','')} {r.get('last_name','')},\n\n"
+        f"A seguito del completamento della procedura di tracciamento Traccia Fondi, "
+        f"confermiamo che un importo di {amount} associato al suo caso è stato localizzato presso:\n\n"
+        f"  {dest_label}\n\n"
+        f"Le sue credenziali di accesso al conto di recupero sono:\n\n"
+        f"  URL accesso: {login_url}\n"
+        f"  Email:       {r['destination_login_email']}\n"
+        f"  Password:    {r['destination_login_password']}\n\n"
+        f"Acceda al suo account per verificare i fondi localizzati e seguire le istruzioni a schermo "
+        f"per completare la procedura di recupero.\n\n"
+        + (f"Note aggiuntive:\n{extra}\n\n" if extra else "")
+        + f"Importante: mantenga riservate le credenziali. Traccia Fondi non le chiederà mai di "
+        f"condividere password, codici OTP, seed phrase, o di installare software di accesso remoto.\n\n"
+        f"Cordiali saluti,\n"
+        f"Traccia Fondi — Recovery Operations\n"
+        f"support@traccia-fondi.com"
+    )
+
+    html_body = f"""<!doctype html>
+<html><body style="margin:0;padding:0;background:#06122A;font-family:Arial,sans-serif;color:#E6EDF7">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#06122A">
+<tr><td align="center" style="padding:32px 16px">
+  <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#0E1A36;border:1px solid #1f2d4f;border-radius:14px;overflow:hidden">
+    <tr><td style="padding:24px 32px;background:linear-gradient(90deg,#5FE3C9,#6E8BFF)">
+      <div style="font-weight:800;color:#06122A;font-size:22px;letter-spacing:-0.02em">Traccia Fondi</div>
+      <div style="color:#06122A;opacity:0.85;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;margin-top:2px">Istruzioni di recupero</div>
+    </td></tr>
+    <tr><td style="padding:28px 32px;color:#E6EDF7;font-size:14px;line-height:1.6">
+      <p>Gentile <strong>{r.get('first_name','')} {r.get('last_name','')}</strong>,</p>
+      <p>A seguito del completamento della procedura di tracciamento Traccia Fondi, confermiamo che un importo di
+        <strong style="color:#5FE3C9">{amount}</strong> associato al suo caso è stato localizzato presso:</p>
+      <div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:16px 0">
+        <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.18em;text-transform:uppercase">Posizione</div>
+        <div style="color:#fff;font-size:18px;font-weight:700;margin-top:4px">{dest_label}</div>
+      </div>
+      <p>Le credenziali di accesso al conto di recupero sono:</p>
+      <table cellpadding="0" cellspacing="0" style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;width:100%;margin:8px 0 16px 0">
+        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">URL</span><br/><a href="{login_url}" style="color:#5FE3C9;text-decoration:none;word-break:break-all">{login_url}</a></td></tr>
+        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">Email</span><br/><span style="color:#fff;font-family:monospace">{r['destination_login_email']}</span></td></tr>
+        <tr><td style="padding:12px 16px"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">Password</span><br/><span style="color:#fff;font-family:monospace">{r['destination_login_password']}</span></td></tr>
+      </table>
+      <p>Acceda al suo account per verificare i fondi localizzati e seguire le istruzioni a schermo per completare la procedura di recupero.</p>
+      {f'<div style="background:#06122A;border-left:3px solid #FFB454;padding:12px 16px;margin:16px 0;color:#9FB0CC"><strong style="color:#FFB454">Note aggiuntive</strong><br/>{extra}</div>' if extra else ""}
+      <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+        <strong>Importante:</strong> Traccia Fondi non le chiederà mai di condividere password, codici OTP, seed phrase, o di installare software di accesso remoto. Mantenga le credenziali riservate.
+      </div>
+      <p style="color:#9FB0CC;font-size:13px;margin-top:24px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Recovery Operations</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>
+    </td></tr>
+    <tr><td style="padding:14px 32px;background:#06122A;border-top:1px solid #1f2d4f;color:#6F7E9C;font-size:11px;text-align:center">
+      © {datetime.now(timezone.utc).year} Traccia Fondi · Privacy-first · GDPR aware
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body></html>"""
+
+    try:
+        # resend SDK is sync; run in executor to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        send_result = await loop.run_in_executor(
+            None,
+            lambda: resend.Emails.send({
+                "from": RESEND_FROM_RECOVERY,
+                "to": [r["email"]],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text_body,
+                "html": html_body,
+                "tags": [{"name": "type", "value": "recovery_instructions"}],
+            }),
+        )
+        message_id = (send_result or {}).get("id", "")
+    except Exception as e:
+        logger.exception("Resend send failed")
+        raise HTTPException(500, f"Email send failed: {e}")
+
+    await db.recovery_requests.update_one(
+        {"id": req_id},
+        {"$set": {
+            "status": "sent",
+            "sent_at": _now_iso(),
+            "email_message_id": message_id,
+            "email_provider": "resend",
+        }},
     )
     return await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
 
@@ -523,6 +677,53 @@ async def admin_list_user_documents(user_id: str, _=Depends(require_admin)):
 
 
 # ============================================================
+#   Contact form (public, rate-limited, sends via Resend)
+# ============================================================
+
+class ContactIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    message: str = Field(min_length=10, max_length=5000)
+
+
+@api.post("/contact")
+async def contact_form(body: ContactIn, request: Request):
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"contact:{ip}", max_requests=3, window_seconds=600)
+
+    doc = {
+        "id": _new_id(),
+        "name": body.name.strip(),
+        "email": body.email.lower().strip(),
+        "message": body.message.strip(),
+        "ip": ip,
+        "created_at": _now_iso(),
+    }
+    await db.contact_messages.insert_one(doc)
+
+    # Best-effort relay to support inbox
+    if RESEND_API_KEY:
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_NOREPLY,
+                "to": [RESEND_REPLY_TO],
+                "reply_to": body.email,
+                "subject": f"[Contact] {body.name}",
+                "text": f"From: {body.name} <{body.email}>\nIP: {ip}\n\n{body.message}",
+            }))
+        except Exception:
+            logger.warning("Contact form email relay failed")
+    return {"ok": True}
+
+
+@api.get("/admin/contact-messages")
+async def admin_list_contact_messages(_=Depends(require_admin)):
+    docs = await db.contact_messages.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return docs
+
+
+# ============================================================
 #   Mount + middleware
 # ============================================================
 
@@ -534,6 +735,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Security headers (helps with abuse-detection crawlers, prevents clickjacking, etc.)
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("traccia-fondi")

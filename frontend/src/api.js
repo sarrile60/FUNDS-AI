@@ -34,6 +34,7 @@ export const api = {
   adminListRequests:   () => axios.get(`${API}/admin/recovery-requests`).then(r => r.data),
   adminUpdateRequest:  (id, data) => axios.put(`${API}/admin/recovery-requests/${id}`, data).then(r => r.data),
   adminMarkSent:       (id) => axios.post(`${API}/admin/recovery-requests/${id}/mark-sent`).then(r => r.data),
+  adminSendEmail:      (id) => axios.post(`${API}/admin/recovery-requests/${id}/send-email`).then(r => r.data),
   adminDeleteRequest:  (id) => axios.delete(`${API}/admin/recovery-requests/${id}`).then(r => r.data),
 
   adminListUserDocuments: (userId) => axios.get(`${API}/admin/users/${userId}/documents`).then(r => r.data),

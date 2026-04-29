@@ -10,7 +10,6 @@ export default function Footer() {
   return (
     <footer className="border-t border-[var(--aif-line)] mt-16">
       <div className="max-w-7xl mx-auto px-5 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
-        {/* Brand */}
         <div className="md:col-span-2">
           <Logo/>
           <p className="text-[12.5px] text-[var(--aif-text-dim)] mt-3 leading-relaxed max-w-md">{t("footer.intro")}</p>
@@ -19,16 +18,19 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Security column */}
         <div>
-          <div className="text-white font-semibold mb-2 text-[14px]">{t("footer.tag1")}</div>
+          <div className="text-white font-semibold mb-2 text-[14px]">{isIt ? "Azienda" : "Company"}</div>
+          <ul className="space-y-1.5 text-[12.5px]">
+            <li><Link to="/about"    className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Chi siamo" : "About us"}</Link></li>
+            <li><Link to="/contact"  className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Contatti" : "Contact"}</Link></li>
+            <li><Link to="/security" className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition">{isIt ? "Avvertimento truffe" : "Scam awareness"}</Link></li>
+          </ul>
+          <div className="text-white font-semibold mb-2 text-[14px] mt-5">{t("footer.tag1")}</div>
           <div className="flex items-start gap-2 text-[12px] text-[#FFB454]">
             <ShieldAlert size={13} className="mt-0.5 shrink-0"/> {t("footer.warn")}
           </div>
-          <div className="text-[12px] text-[var(--aif-text-dim)] mt-3 leading-relaxed">{t("footer.disclaimer")}</div>
         </div>
 
-        {/* Legal column */}
         <div>
           <div className="text-white font-semibold mb-2 text-[14px]">{isIt ? "Legale" : "Legal"}</div>
           <ul className="space-y-1.5 text-[12.5px]">

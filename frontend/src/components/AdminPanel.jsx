@@ -339,6 +339,7 @@ function RequestRow({ req, open, setOpen, reload }) {
   const [destUrl, setDestUrl] = useState(req.destination_login_url || "");
   const [extra, setExtra] = useState(req.extra_notes || "");
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const destLabel = req.recovery_destination === "zenthos_wallet" ? "Zenthos Wallet" : "Chiantin Bank";
   const DestIcon = req.recovery_destination === "zenthos_wallet" ? Wallet : Building2;
@@ -351,6 +352,21 @@ function RequestRow({ req, open, setOpen, reload }) {
       reload();
     } catch { toast.error("Save error"); }
     finally { setBusy(false); }
+  };
+
+  const sendViaResend = async () => {
+    if (!destEm || !destPw) { toast.error(t("adm.requests.fill_first")); return; }
+    setSending(true);
+    try {
+      // Save latest values first
+      await api.adminUpdateRequest(req.id, { destination_login_email: destEm, destination_login_password: destPw, destination_login_url: destUrl, extra_notes: extra });
+      await api.adminSendEmail(req.id);
+      toast.success("Email sent");
+      reload();
+    } catch (e) {
+      const d = e?.response?.data?.detail;
+      toast.error(typeof d === "string" ? d : "Send failed");
+    } finally { setSending(false); }
   };
 
   const composeMailto = () => {
@@ -450,8 +466,11 @@ function RequestRow({ req, open, setOpen, reload }) {
             <button onClick={saveCreds} disabled={busy} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2 disabled:opacity-60">
               <Save size={14}/> {t("adm.users.save")}
             </button>
-            <button onClick={composeMailto} className="aif-btn-primary !py-2 !text-sm inline-flex items-center gap-2" data-testid={`req-mailto-${req.id}`}>
-              <Send size={14}/> {t("adm.requests.send_email")} <ExternalLink size={12}/>
+            <button onClick={composeMailto} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" title="Open in your mail client" data-testid={`req-mailto-${req.id}`}>
+              <ExternalLink size={14}/> Mailto
+            </button>
+            <button onClick={sendViaResend} disabled={sending} className="aif-btn-primary !py-2 !text-sm inline-flex items-center gap-2 disabled:opacity-60" data-testid={`req-send-${req.id}`}>
+              <Send size={14}/> {sending ? "Sending…" : "Send via Email"}
             </button>
           </div>
         </div>
