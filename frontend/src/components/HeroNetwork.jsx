@@ -1,7 +1,13 @@
-// HeroNetwork — premium animated fund-tracing graph (pure SVG + CSS)
-// Pauses animations when scrolled off-screen for performance.
-import React, { useEffect, useRef, useState } from "react";
+// HeroNetwork — premium fund-tracing graph (pure SVG + CSS)
+// Optimized for mobile: reduced animations, simpler rendering.
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useI18n } from "../i18n";
+
+// Check if user prefers reduced motion or is on mobile
+const prefersReducedMotion = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || window.innerWidth < 768;
+};
 
 const NODE = ({ x, y, label, sub, icon, color = "#5FE3C9", size = 38, dataId, animate = true }) => (
   <g transform={`translate(${x} ${y})`} data-testid={dataId}>
@@ -30,24 +36,32 @@ const LINK = ({ x1, y1, x2, y2, color = "#5FE3C9", delay = 0, dashed = true, ani
 );
 
 export default function HeroNetwork({ animate = true }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const tag1 = t("hero.live");
   const tag2 = t("hero.risk");
   const ref = useRef(null);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
+  
+  // Memoize reduced motion check
+  const reducedMotion = useMemo(() => prefersReducedMotion(), []);
 
   // Pause animations when off-screen (huge perf win)
   useEffect(() => {
-    if (!ref.current || !animate) return;
+    if (!ref.current || !animate || reducedMotion) {
+      setVisible(true); // Show static version immediately
+      return;
+    }
+    
     const obs = new IntersectionObserver(
       ([entry]) => setVisible(entry.isIntersecting),
-      { rootMargin: "120px" }
+      { rootMargin: "50px", threshold: 0.1 }
     );
     obs.observe(ref.current);
     return () => obs.disconnect();
-  }, [animate]);
+  }, [animate, reducedMotion]);
 
-  const live = animate && visible;
+  // On mobile or reduced motion: show static, no animations
+  const live = animate && visible && !reducedMotion;
 
   return (
     <div ref={ref} className="relative w-full">
@@ -57,10 +71,6 @@ export default function HeroNetwork({ animate = true }) {
             <stop offset="0%" stopColor="#5FE3C9" stopOpacity="0.12"/>
             <stop offset="100%" stopColor="#5FE3C9" stopOpacity="0"/>
           </radialGradient>
-          <linearGradient id="grad-line" x1="0" x2="1">
-            <stop offset="0" stopColor="#5FE3C9"/>
-            <stop offset="1" stopColor="#6E8BFF"/>
-          </linearGradient>
         </defs>
 
         <rect x="0" y="0" width="800" height="480" fill="url(#bgGlow)"/>
@@ -93,10 +103,10 @@ export default function HeroNetwork({ animate = true }) {
         <NODE x="690" y="230" label={t("hn.freeze")}    sub="Compliance"          color="#FFB454" size={24} icon="❄" animate={live}/>
         <NODE x="690" y="340" label={t("hn.police")}    sub={t("hn.police.sub")}  color="#FF6B7A" size={24} icon="🛡" animate={live}/>
 
-        {/* Particles — only when animated AND visible, and only 4 (was 8) */}
-        {live && [...Array(4)].map((_, i) => (
+        {/* Particles — only on desktop when animated AND visible */}
+        {live && [...Array(3)].map((_, i) => (
           <circle key={i} r="2.5" fill="#5FE3C9" opacity="0.9">
-            <animateMotion dur={`${4 + i}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}
+            <animateMotion dur={`${5 + i}s`} repeatCount="indefinite" begin={`${i * 1}s`}
               path={`M 100 230 C 250 ${120 + i * 20}, 420 ${230 + (i % 3) * 20}, 690 ${120 + (i % 3) * 110}`}/>
           </circle>
         ))}

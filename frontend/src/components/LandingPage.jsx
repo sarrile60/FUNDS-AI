@@ -1,7 +1,7 @@
 // LandingPage — composes all sections of the Traccia Fondi marketing page.
-import React, { useState } from "react";
+// Optimized for mobile: no heavy animations, reduced motion.
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   Building2, TrendingUp, Bitcoin, CreditCard, Wallet, FileCheck2,
   ShieldAlert, ShieldCheck, Banknote, Network, AlertTriangle, ChevronDown,
@@ -11,8 +11,6 @@ import Navbar from "./Navbar";
 import HeroNetwork from "./HeroNetwork";
 import { useI18n } from "../i18n";
 import Footer from "./Footer";
-
-const FADE_UP = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 function Section({ id, children, className = "" }) {
   return <section id={id} className={`relative max-w-7xl mx-auto px-5 lg:px-8 ${className}`}>{children}</section>;
@@ -24,28 +22,33 @@ function SmallTag({ children, icon: Icon = Sparkles }) {
 
 function Hero() {
   const { t } = useI18n();
+  const [loaded, setLoaded] = useState(false);
+  
+  useEffect(() => {
+    // Simple fade-in on mount, no re-triggers
+    const timer = setTimeout(() => setLoaded(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <Section id="hero" className="pt-12 md:pt-20 pb-16 md:pb-24">
       <div className="grid lg:grid-cols-12 gap-10 items-center">
-        <div className="lg:col-span-6">
-          <motion.div initial="hidden" animate="show" variants={FADE_UP}><SmallTag icon={Sparkles}>{t("hero.tag")}</SmallTag></motion.div>
-          <motion.h1 initial="hidden" animate="show" variants={FADE_UP} transition={{ delay: 0.05 }}
-            className="mt-5 text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] section-title">
+        <div className={`lg:col-span-6 transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
+          <SmallTag icon={Sparkles}>{t("hero.tag")}</SmallTag>
+          <h1 className="mt-5 text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] section-title">
             {t("hero.title")}
-          </motion.h1>
-          <motion.p initial="hidden" animate="show" variants={FADE_UP} transition={{ delay: 0.12 }}
-            className="mt-5 text-[15px] md:text-base text-[var(--aif-text-dim)] max-w-xl leading-relaxed">
+          </h1>
+          <p className="mt-5 text-[15px] md:text-base text-[var(--aif-text-dim)] max-w-xl leading-relaxed">
             {t("hero.subtitle")}
-          </motion.p>
-          <motion.div initial="hidden" animate="show" variants={FADE_UP} transition={{ delay: 0.2 }}
-            className="mt-8 flex flex-wrap gap-3">
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2" data-testid="hero-cta-start">
               {t("hero.cta1")} <ArrowRight size={16}/>
             </Link>
             <a href="#how" className="aif-btn-ghost inline-flex items-center gap-2" data-testid="hero-cta-how">
               {t("hero.cta2")}
             </a>
-          </motion.div>
+          </div>
           <p className="mt-4 text-[12px] text-[var(--aif-text-dim)] max-w-md">{t("hero.disclaimer")}</p>
 
           <div className="mt-8 grid grid-cols-3 gap-3 max-w-md">
@@ -55,11 +58,10 @@ function Hero() {
           </div>
         </div>
 
-        <div className="lg:col-span-6">
-          <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
-            className="aif-card aif-glow p-3 md:p-5">
+        <div className={`lg:col-span-6 transition-opacity duration-700 delay-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="aif-card aif-glow p-3 md:p-5">
             <HeroNetwork/>
-          </motion.div>
+          </div>
         </div>
       </div>
     </Section>
