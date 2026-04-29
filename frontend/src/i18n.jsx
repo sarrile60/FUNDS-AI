@@ -78,8 +78,8 @@ const dict = {
     "tracing.cta": "Avvia Tracciamento",
 
     // Reports gallery
-    "reports.tag": "Report",
-    "reports.title": "Report professionali generati dal tuo caso",
+    "reports.tag": "Documenti",
+    "reports.title": "Documenti professionali generati dal tuo caso",
     "reports.note": "PDF generabile dal dashboard",
     "reports.r1": "Reclamo banca", "reports.r2": "Richiesta chargeback", "reports.r3": "Segnalazione PostePay/BancoPosta",
     "reports.r4": "Segnalazione CONSOB", "reports.r5": "Riassunto Polizia Postale", "reports.r6": "Richiesta freeze exchange",
