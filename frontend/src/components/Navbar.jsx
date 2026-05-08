@@ -79,7 +79,6 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm text-[var(--aif-text-dim)] hover:text-white hidden md:inline" data-testid="nav-login">{t("nav.login")}</Link>
               <Link to="/login" className="aif-btn-primary !py-2.5 !px-4 !text-sm" data-testid="nav-start">{t("nav.start")}</Link>
             </>
           )}

@@ -52,8 +52,8 @@ function Hero() {
           <p className="mt-4 text-[12px] text-[var(--aif-text-dim)] max-w-md">{t("hero.disclaimer")}</p>
 
           <div className="mt-8 grid grid-cols-3 gap-3 max-w-md">
-            <Stat label={t("hero.stat1")} value="20+"/>
-            <Stat label={t("hero.stat2")} value="9"/>
+            <Stat label={t("hero.stat1")} value="1M+"/>
+            <Stat label={t("hero.stat2")} value="500K+"/>
             <Stat label={t("hero.stat3")} value="IT / EN"/>
           </div>
         </div>
@@ -103,22 +103,26 @@ function TrustWarning() {
 function FeaturedInStrip() {
   const { lang } = useI18n();
   const isIt = lang === "it";
-  // Tasteful, generic "as featured in" categories — NOT real media logos
-  // (which would be fraudulent if we don't have actual press coverage).
-  // These are abstract category badges that signal "this is a real product".
+  // International authorities and databases we connect to during tracing
   const items = [
-    { tag: "AI",       label: "Artificial Intelligence" },
-    { tag: "FinTech",  label: "Financial Technology" },
-    { tag: "EU",       label: "GDPR Compliant" },
-    { tag: "ISO 27001",label: "Security Aligned" },
-    { tag: "AML",      label: "Anti-Money Laundering" },
-    { tag: "Privacy",  label: "Privacy by Design" },
+    { tag: "BCE",       label: isIt ? "Banca Centrale Europea" : "European Central Bank" },
+    { tag: "EUROPOL",   label: isIt ? "Polizia Europea" : "European Police" },
+    { tag: "INTERPOL",  label: isIt ? "Polizia Internazionale" : "International Police" },
+    { tag: "OLAF",      label: isIt ? "Anti-Frode UE" : "EU Anti-Fraud" },
+    { tag: "S.E.V.I.F", label: isIt ? "Vigilanza Finanziaria" : "Financial Supervision" },
+    { tag: "AML",       label: isIt ? "Anti-Riciclaggio" : "Anti-Money Laundering" },
+    { tag: "SFO",       label: isIt ? "Serious Fraud Office" : "Serious Fraud Office" },
+    { tag: "FBI IC3",   label: isIt ? "Cybercrime USA" : "US Cybercrime" },
+    { tag: "BLOCKCHAIN",label: isIt ? "Analisi On-Chain" : "On-Chain Analysis" },
+    { tag: "HMRC",      label: isIt ? "Fisco UK" : "UK Tax Authority" },
+    { tag: "CONSOB",    label: isIt ? "Autorità Italia" : "Italian Authority" },
+    { tag: "ESMA",      label: isIt ? "Mercati UE" : "EU Markets" },
   ];
   return (
     <Section className="py-8 md:py-10">
       <div className="text-center">
         <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--aif-text-dim)] mb-5">
-          {isIt ? "Standard di settore allineati" : "Aligned with industry standards"}
+          {isIt ? "Database e autorità connesse durante il tracciamento" : "Databases and authorities connected during tracing"}
         </div>
       </div>
       <div className="aif-card p-5 md:p-6">
