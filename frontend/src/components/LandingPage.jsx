@@ -5,7 +5,8 @@ import { Link } from "react-router-dom";
 import {
   Building2, TrendingUp, Bitcoin, CreditCard, Wallet, FileCheck2,
   ShieldAlert, ShieldCheck, Banknote, Network, AlertTriangle, ChevronDown,
-  ArrowRight, CheckCircle2, Sparkles, Lock, Eye, Layers, FileWarning, Coins
+  ArrowRight, CheckCircle2, Sparkles, Lock, Eye, Layers, FileWarning, Coins,
+  Globe, Scale, Search, Landmark, Link2, FileText
 } from "lucide-react";
 import Navbar from "./Navbar";
 import HeroNetwork from "./HeroNetwork";
@@ -202,22 +203,41 @@ function HowItWorks() {
 }
 
 function AuthorityPath() {
-  const { t } = useI18n();
-  const cards = [
+  const { t, lang } = useI18n();
+  const isIt = lang === "it";
+  
+  // Italian authorities
+  const italianCards = [
     { icon: Building2,   color: "#5FE3C9", k: "a1" },
     { icon: ShieldCheck, color: "#6E8BFF", k: "a2" },
     { icon: ShieldAlert, color: "#FFB454", k: "a3" },
     { icon: Coins,       color: "#5FE3C9", k: "a4" },
     { icon: CreditCard,  color: "#FF6B7A", k: "a5" },
   ];
+  
+  // International authorities
+  const internationalAuthorities = [
+    { icon: Landmark, color: "#5FE3C9", name: "BCE", full: isIt ? "Banca Centrale Europea" : "European Central Bank", desc: isIt ? "Vigilanza bancaria, stabilità finanziaria, coordinamento UE" : "Banking supervision, financial stability, EU coordination" },
+    { icon: Globe, color: "#6E8BFF", name: "EUROPOL", full: isIt ? "Polizia Europea" : "European Police", desc: isIt ? "Criminalità finanziaria transfrontaliera, cybercrime, frodi online" : "Cross-border financial crime, cybercrime, online fraud" },
+    { icon: Network, color: "#FFB454", name: "INTERPOL", full: isIt ? "Polizia Internazionale" : "International Police", desc: isIt ? "Coordinamento investigativo globale, ricerca latitanti" : "Global investigative coordination, fugitive search" },
+    { icon: ShieldCheck, color: "#FF6B7A", name: "OLAF", full: isIt ? "Ufficio Anti-Frode UE" : "EU Anti-Fraud Office", desc: isIt ? "Frodi contro il bilancio UE, corruzione, riciclaggio" : "Fraud against EU budget, corruption, money laundering" },
+    { icon: Scale, color: "#5FE3C9", name: "S.E.V.I.F.", full: isIt ? "Sistema Europeo Vigilanza Finanziaria" : "European Financial Supervision", desc: isIt ? "EBA, ESMA, EIOPA - autorità di vigilanza mercati UE" : "EBA, ESMA, EIOPA - EU market supervisory authorities" },
+    { icon: Search, color: "#6E8BFF", name: "AML", full: isIt ? "Anti-Riciclaggio" : "Anti-Money Laundering", desc: isIt ? "FATF/GAFI, UIF, segnalazioni operazioni sospette" : "FATF, FIU, suspicious transaction reporting" },
+    { icon: FileText, color: "#FFB454", name: "SFO", full: "Serious Fraud Office", desc: isIt ? "Autorità UK per frodi gravi e corruzione internazionale" : "UK authority for serious fraud and international corruption" },
+    { icon: Link2, color: "#5FE3C9", name: "BLOCKCHAIN", full: isIt ? "Analisi On-Chain" : "On-Chain Analysis", desc: isIt ? "Chainalysis, Elliptic - tracciamento wallet e transazioni crypto" : "Chainalysis, Elliptic - wallet and crypto transaction tracing" },
+    { icon: Landmark, color: "#FF6B7A", name: "HMRC", full: isIt ? "Fisco UK" : "UK Tax Authority", desc: isIt ? "Her Majesty's Revenue - autorità fiscale e anti-frode UK" : "Her Majesty's Revenue - UK tax and anti-fraud authority" },
+    { icon: Globe, color: "#6E8BFF", name: "FBI IC3", full: isIt ? "Cybercrime USA" : "US Cybercrime Center", desc: isIt ? "Internet Crime Complaint Center - segnalazioni frodi online USA" : "Internet Crime Complaint Center - US online fraud reports" },
+  ];
+
   return (
     <Section id="reports" className="py-16 md:py-24">
+      {/* Italian Path */}
       <div className="mb-10">
         <SmallTag icon={FileCheck2}>{t("auth.tag")}</SmallTag>
         <h2 className="section-title mt-3">{t("auth.title")}</h2>
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((c, i) => {
+        {italianCards.map((c, i) => {
           const Icon = c.icon;
           return (
             <div key={i} className="aif-card p-6">
@@ -233,6 +253,29 @@ function AuthorityPath() {
           );
         })}
       </div>
+      
+      {/* International Authorities */}
+      <div className="mt-16 mb-10">
+        <SmallTag icon={Globe}>{isIt ? "Autorità Internazionali" : "International Authorities"}</SmallTag>
+        <h2 className="section-title mt-3">{isIt ? "Connessione con database e autorità globali" : "Connected to global databases and authorities"}</h2>
+        <p className="text-[var(--aif-text-dim)] mt-3 max-w-3xl">{isIt ? "Durante il tracciamento, il sistema si interfaccia con le principali autorità finanziarie europee e internazionali per massimizzare le possibilità di recupero." : "During tracing, the system interfaces with major European and international financial authorities to maximize recovery chances."}</p>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3">
+        {internationalAuthorities.map((auth, i) => {
+          const Icon = auth.icon;
+          return (
+            <div key={i} className="aif-card p-4 hover:border-[var(--aif-accent)]/40 transition-colors">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${auth.color}20`, border: `1px solid ${auth.color}40`, color: auth.color }}>
+                <Icon size={18}/>
+              </div>
+              <div className="font-bold text-white text-sm">{auth.name}</div>
+              <div className="text-[11px] text-[var(--aif-accent)] mt-0.5">{auth.full}</div>
+              <p className="text-[var(--aif-text-dim)] text-[11px] mt-2 leading-relaxed">{auth.desc}</p>
+            </div>
+          );
+        })}
+      </div>
+      
       <p className="mt-6 text-[12px] text-[var(--aif-text-dim)] max-w-3xl">{t("auth.disclaimer")}</p>
     </Section>
   );
