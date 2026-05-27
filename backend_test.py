@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 # Configuration
-BACKEND_URL = "https://recovery-trace.preview.emergentagent.com/api"
+BACKEND_URL = "https://recovery-trace-1.preview.emergentagent.com/api"
 TIMEOUT = 30
 
 class AIFundsAPITester:
