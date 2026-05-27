@@ -235,6 +235,8 @@ function TraceForm({
   tier, setTier, consent, setConsent, docs, uploadDoc, removeDoc,
   busy, onStart, checkEmail, isIt 
 }) {
+  const nav = useNavigate();
+  
   const handleDrop = (e) => {
     e.preventDefault();
     const files = e.dataTransfer?.files;
@@ -245,6 +247,15 @@ function TraceForm({
 
   return (
     <div className="space-y-5" data-testid="trace-form">
+      {/* Back button */}
+      <button 
+        onClick={() => nav("/")} 
+        className="inline-flex items-center gap-2 text-[14px] text-[var(--aif-text-dim)] hover:text-white transition"
+        data-testid="back-home"
+      >
+        ← {isIt ? "Torna alla home" : "Back to home"}
+      </button>
+
       {/* Hero header */}
       <div className="aif-card aif-glow p-6 md:p-10 relative overflow-hidden">
         <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
