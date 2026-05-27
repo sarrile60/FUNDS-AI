@@ -1,114 +1,41 @@
-// AdminPanel — admin login + dashboard with users + recovery requests.
-import React, { useEffect, useRef, useState } from "react";
+// AdminPanel — admin dashboard with Settings, Traces, and legacy Users/Requests
+import React, { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Users, Inbox, Plus, Edit2, Trash2, Eye, EyeOff, Save, X,
-  Mail as MailIcon, ExternalLink, Building2, Wallet, Check, LogOut, Send, FileText, Bell
+  Users, Settings, BarChart3, Plus, Edit2, Trash2, Eye, EyeOff, Save, X,
+  Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
+  Calendar, DollarSign, Link2, Key
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
-import { api } from "../api";
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const TIER_LABEL = {
-  "5000_20000":   "5,000 – 20,000 €",
-  "20000_50000":  "20,000 – 50,000 €",
-  "50000_100000": "50,000 – 100,000 €",
-  "100000_plus":  "100,000+ €",
+  "5000_20000":   "€5,000 – €20,000",
+  "20000_50000":  "€20,000 – €50,000",
+  "50000_100000": "€50,000 – €100,000",
+  "100000_plus":  "€100,000+",
 };
 
-const POLL_INTERVAL_MS = 30000; // 30 seconds
-const SEEN_KEY = "aif_admin_seen_requests";
-
-// Tiny synthesized "ding" using Web Audio API — no external file needed.
-function playDing() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const now = ctx.currentTime;
-    // Two-tone chime (E5 → A5, ~0.6s)
-    const tones = [659.25, 880.0];
-    tones.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + i * 0.18);
-      gain.gain.setValueAtTime(0.0001, now + i * 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.18, now + i * 0.18 + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.5);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + i * 0.18);
-      osc.stop(now + i * 0.18 + 0.55);
-    });
-    setTimeout(() => ctx.close && ctx.close(), 1500);
-  } catch {}
-}
+// Helper to get auth header
+const getAuthHeader = () => {
+  const token = localStorage.getItem("aif_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export default function AdminPanel() {
   const { user, logout } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const nav = useNavigate();
-  const [tab, setTab] = useState("users");
-  const [unread, setUnread] = useState(0);  // count of unread requests
-  const [requestsBump, setRequestsBump] = useState(0); // forces refetch on requests tab when new arrives
-  const seenIdsRef = useRef(new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")));
-
-  // Mark a request id as seen + persist
-  const markSeen = (ids) => {
-    ids.forEach((id) => seenIdsRef.current.add(id));
-    localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current]));
-  };
+  const isIt = lang === "it";
+  const [tab, setTab] = useState("traces");
 
   const isAdmin = user && user.role === "admin";
-
-  // Poll for new pending recovery requests (only when admin is logged in)
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    let initial = true;
-    const tick = async () => {
-      try {
-        const list = await api.adminListRequests();
-        if (cancelled) return;
-        const newOnes = list.filter(
-          (r) => r.status === "pending" && !seenIdsRef.current.has(r.id)
-        );
-        const totalUnread = newOnes.length;
-
-        if (!initial && newOnes.length > 0) {
-          playDing();
-          newOnes.slice(0, 3).forEach((r) => {
-            toast.success(
-              `New recovery request: ${r.first_name} ${r.last_name}`,
-              { description: r.email, duration: 8000 }
-            );
-          });
-          setRequestsBump((n) => n + 1);
-        }
-        setUnread(totalUnread);
-        initial = false;
-      } catch {
-        // ignore — keep polling
-      }
-    };
-    tick();
-    const id = setInterval(tick, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [isAdmin]);
-
-  // When admin opens the Requests tab, mark all currently pending as seen
-  useEffect(() => {
-    if (!isAdmin || tab !== "requests") return;
-    (async () => {
-      try {
-        const list = await api.adminListRequests();
-        markSeen(list.filter((r) => r.status === "pending").map((r) => r.id));
-        setUnread(0);
-      } catch {}
-    })();
-  }, [tab, isAdmin]);
 
   if (!user) return <Navigate to="/admin" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
@@ -122,466 +49,389 @@ export default function AdminPanel() {
           <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <Logo/>
-              <span className="aif-chip text-[10px] hidden md:inline-flex">{t("adm.title")}</span>
+              <span className="aif-chip text-[10px] hidden md:inline-flex">{isIt ? "Pannello Admin" : "Admin Panel"}</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Bell with badge */}
-              <button
-                onClick={() => setTab("requests")}
-                className="relative p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
-                title="Recovery requests"
-                data-testid="adm-bell"
-              >
-                <Bell size={18}/>
-                {unread > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6B7A] text-[#06122A] text-[10px] font-bold flex items-center justify-center aif-pulse">
-                    {unread > 9 ? "9+" : unread}
-                  </span>
-                )}
-              </button>
               <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
-                <LogOut size={14}/> <span className="hidden sm:inline">{t("adm.logout")}</span>
+                <LogOut size={14}/> <span className="hidden sm:inline">{isIt ? "Esci" : "Sign out"}</span>
               </button>
             </div>
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto px-5 lg:px-8 py-8 space-y-5">
+          {/* Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
-            <TabBtn active={tab === "users"}    onClick={() => setTab("users")}    icon={Users}    label={t("adm.tab.users")}    testid="tab-users"/>
-            <TabBtn active={tab === "requests"} onClick={() => setTab("requests")} icon={Inbox}    label={t("adm.tab.requests")} testid="tab-requests" badge={unread}/>
+            <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
+            <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} icon={Settings}  label={isIt ? "Impostazioni" : "Settings"} testid="tab-settings"/>
           </div>
 
-          {tab === "users" ? <UsersTab/> : <RequestsTab refreshKey={requestsBump}/>}
+          {tab === "traces" && <TracesTab isIt={isIt}/>}
+          {tab === "settings" && <SettingsTab isIt={isIt}/>}
         </main>
       </div>
     </div>
   );
 }
 
-function TabBtn({ active, onClick, icon: Icon, label, testid, badge }) {
+function TabBtn({ active, onClick, icon: Icon, label, testid }) {
   return (
     <button onClick={onClick} data-testid={testid}
-      className={`aif-card !rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition relative ${active ? "!border-[#5FE3C9] aif-glow" : ""}`}>
+      className={`aif-card !rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition ${active ? "!border-[#5FE3C9] aif-glow" : ""}`}>
       <Icon size={14} className={active ? "text-[#5FE3C9]" : "text-[var(--aif-text-dim)]"}/>
       <span className={active ? "text-white font-semibold" : "text-[var(--aif-text-dim)]"}>{label}</span>
-      {badge > 0 && (
-        <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6B7A] text-[#06122A] text-[10px] font-bold flex items-center justify-center">
-          {badge > 9 ? "9+" : badge}
-        </span>
-      )}
     </button>
   );
 }
 
 // ============================================================
-//   USERS TAB
+//   SETTINGS TAB
 // ============================================================
-function UsersTab() {
-  const { t } = useI18n();
-  const [list, setList] = useState([]);
-  const [editing, setEditing] = useState(null); // null | {} new | existing
-  const [showPwById, setShowPwById] = useState({});
-  const [docsOpenId, setDocsOpenId] = useState(null);
-  const [docsByUser, setDocsByUser] = useState({});
+function SettingsTab({ isIt }) {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Form state
+  const [accessCode, setAccessCode] = useState("");
+  const [destName, setDestName] = useState("");
+  const [destUrl, setDestUrl] = useState("");
 
   const load = async () => {
-    try { setList(await api.adminListUsers()); } catch { toast.error("Load failed"); }
-  };
-  useEffect(() => { load(); }, []);
-
-  const togglePw = (id) => setShowPwById(s => ({ ...s, [id]: !s[id] }));
-
-  const toggleDocs = async (u) => {
-    if (docsOpenId === u.id) { setDocsOpenId(null); return; }
-    setDocsOpenId(u.id);
-    if (!docsByUser[u.id]) {
-      try {
-        const docs = await api.adminListUserDocuments(u.id);
-        setDocsByUser((d) => ({ ...d, [u.id]: docs }));
-      } catch { toast.error("Failed to load documents"); }
+    try {
+      const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
+      setSettings(data);
+      setAccessCode(data.access_code || "");
+      setDestName(data.destination_name || "");
+      setDestUrl(data.destination_url || "");
+    } catch (e) {
+      toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const remove = async (u) => {
-    if (!window.confirm(t("adm.users.delete_confirm"))) return;
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    setSaving(true);
     try {
-      await api.adminDeleteUser(u.id);
-      toast.success(t("adm.users.deleted_toast"));
-      load();
-    } catch { toast.error("Delete failed"); }
+      const { data } = await axios.put(`${API}/admin/settings`, {
+        access_code: accessCode.trim(),
+        destination_name: destName.trim(),
+        destination_url: destUrl.trim(),
+      }, { headers: getAuthHeader() });
+      setSettings(data);
+      toast.success(isIt ? "Impostazioni salvate" : "Settings saved");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore salvataggio" : "Save failed"));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="aif-card p-5 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="text-white font-semibold">{t("adm.tab.users")}</div>
-          <div className="text-[12px] text-[var(--aif-text-dim)]">{list.length} total</div>
-        </div>
-        <button onClick={() => setEditing({})} className="aif-btn-primary inline-flex items-center gap-2 !py-2 !text-sm" data-testid="adm-new-user">
-          <Plus size={14}/> {t("adm.users.new")}
-        </button>
-      </div>
-
-      <div className="aif-card p-0 overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[10px] uppercase tracking-[0.18em] text-[var(--aif-text-dim)] border-b border-[var(--aif-line)]">
-              <th className="text-left p-3">{t("adm.users.first_name")}</th>
-              <th className="text-left p-3">{t("adm.users.last_name")}</th>
-              <th className="text-left p-3">{t("adm.users.email")}</th>
-              <th className="text-left p-3">DOB</th>
-              <th className="text-left p-3">{t("adm.users.password")}</th>
-              <th className="text-left p-3">{t("adm.users.destination")}</th>
-              <th className="text-left p-3">{t("adm.users.tier")}</th>
-              <th className="text-left p-3">{t("adm.users.located")}</th>
-              <th className="text-right p-3">{t("adm.users.actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.length === 0 && (
-              <tr><td colSpan={9} className="p-6 text-center text-[var(--aif-text-dim)]">{t("adm.users.empty")}</td></tr>
-            )}
-            {list.map(u => {
-              const show = !!showPwById[u.id];
-              return (
-                <React.Fragment key={u.id}>
-                <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
-                  <td className="p-3 text-white">{u.first_name}</td>
-                  <td className="p-3 text-white">{u.last_name}</td>
-                  <td className="p-3 text-white">{u.email}</td>
-                  <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.procedure_date_of_birth || "—"}</td>
-                  <td className="p-3 font-mono">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#5FE3C9]">{show ? u.password : "••••••••"}</span>
-                      <button onClick={() => togglePw(u.id)} className="text-[var(--aif-text-dim)] hover:text-white" title="Toggle">
-                        {show ? <EyeOff size={13}/> : <Eye size={13}/>}
-                      </button>
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <span className="risk-badge risk-low">
-                      {u.recovery_destination === "zenthos_wallet" ? "Zenthos Wallet" : "Chiantin Bank"}
-                    </span>
-                  </td>
-                  <td className="p-3 text-[var(--aif-text-dim)]">{u.amount_tier ? TIER_LABEL[u.amount_tier] : "—"}</td>
-                  <td className="p-3 text-white">{u.located_amount ? `€ ${u.located_amount.toLocaleString("it-IT")}` : "—"}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => toggleDocs(u)} className={`p-1.5 transition ${docsOpenId === u.id ? "text-[#5FE3C9]" : "text-[var(--aif-text-dim)] hover:text-[#5FE3C9]"}`} title="Documents" data-testid={`adm-docs-${u.id}`}>
-                        <FileText size={14}/>
-                      </button>
-                      <button onClick={() => setEditing(u)} className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] p-1.5" title="Edit"><Edit2 size={14}/></button>
-                      <button onClick={() => remove(u)} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-1.5" title="Delete"><Trash2 size={14}/></button>
-                    </div>
-                  </td>
-                </tr>
-                {docsOpenId === u.id && (
-                  <tr className="bg-white/[0.015]">
-                    <td colSpan={9} className="p-4">
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-2">Uploaded documents</div>
-                      {(docsByUser[u.id] === undefined) && <div className="text-[12px] text-[var(--aif-text-dim)]">Loading…</div>}
-                      {(docsByUser[u.id] !== undefined) && docsByUser[u.id].length === 0 && (
-                        <div className="text-[12px] text-[var(--aif-text-dim)]">No documents uploaded by this user.</div>
-                      )}
-                      {docsByUser[u.id] && docsByUser[u.id].length > 0 && (
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {docsByUser[u.id].map((d) => {
-                            const isImg = d.mime_type?.startsWith("image/");
-                            return (
-                              <a key={d.id} href={d.url} target="_blank" rel="noopener noreferrer"
-                                className="aif-card !rounded-xl p-3 flex items-center gap-3 hover:!border-[#5FE3C9]/50 transition">
-                                {isImg && d.thumbnail_url ? (
-                                  <img src={d.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover bg-[#0E1A36]"/>
-                                ) : (
-                                  <div className="w-10 h-10 rounded bg-[#5FE3C9]/15 border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9]">
-                                    <FileText size={16}/>
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-[12px] text-white truncate">{d.original_name}</div>
-                                  <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
-                                    {d.mime_type} · {((d.size_bytes || 0) / 1024).toFixed(0)} KB
-                                  </div>
-                                </div>
-                                <span className="text-[11px] text-[#5FE3C9]">Open ↗</span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {editing && <UserForm initial={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }}/>}
-    </div>
-  );
-}
-
-function UserForm({ initial, onClose, onSaved }) {
-  const { t } = useI18n();
-  const isNew = !initial?.id;
-  const [first, setFirst] = useState(initial.first_name || "");
-  const [last, setLast]   = useState(initial.last_name || "");
-  const [em, setEm]       = useState(initial.email || "");
-  const [pw, setPw]       = useState(initial.password || "");
-  const [dest, setDest]   = useState(initial.recovery_destination || "chiantin_bank");
-  const [notes, setNotes] = useState(initial.notes || "");
-  const [busy, setBusy]   = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      if (isNew) {
-        await api.adminCreateUser({ first_name: first, last_name: last, email: em, password: pw, recovery_destination: dest, notes });
-        toast.success(t("adm.users.created_toast"));
-      } else {
-        const patch = { first_name: first, last_name: last, email: em, recovery_destination: dest, notes };
-        if (pw) patch.password = pw;
-        await api.adminUpdateUser(initial.id, patch);
-        toast.success(t("adm.users.updated_toast"));
-      }
-      onSaved();
-    } catch (e2) {
-      toast.error(e2?.response?.data?.detail || "Save error");
-    } finally { setBusy(false); }
-  };
+  if (loading) {
+    return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
-      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="aif-card aif-glow w-full max-w-xl p-6" data-testid="user-form">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-white">{isNew ? t("adm.users.new") : t("adm.users.edit")}</h3>
-          <button type="button" onClick={onClose} className="text-[var(--aif-text-dim)] hover:text-white"><X size={18}/></button>
-        </div>
+    <div className="space-y-5">
+      <div className="aif-card p-6 md:p-8">
+        <h2 className="text-xl font-bold text-white mb-6">{isIt ? "Impostazioni Globali" : "Global Settings"}</h2>
+        
+        <div className="space-y-5">
+          {/* Access Code */}
+          <div>
+            <label className="aif-label flex items-center gap-2">
+              <Key size={14} className="text-[#5FE3C9]"/>
+              {isIt ? "Codice di Accesso" : "Access Code"}
+            </label>
+            <input 
+              type="text" 
+              className="aif-input font-mono tracking-wider text-lg"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+              placeholder="TRACE2026"
+              data-testid="settings-code"
+            />
+            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
+              {isIt 
+                ? "Questo codice è richiesto agli utenti per avviare un tracciamento. Può essere riutilizzato."
+                : "This code is required for users to start a trace. It can be reused."}
+            </p>
+          </div>
 
-        <div className="grid sm:grid-cols-2 gap-3">
-          <Field label={t("adm.users.first_name")}><input className="aif-input" data-testid="uf-first" value={first} onChange={(e) => setFirst(e.target.value)} required/></Field>
-          <Field label={t("adm.users.last_name")}><input className="aif-input" data-testid="uf-last" value={last} onChange={(e) => setLast(e.target.value)} required/></Field>
-        </div>
-        <div className="mt-3"><Field label={t("adm.users.email")}><input type="email" className="aif-input" data-testid="uf-email" value={em} onChange={(e) => setEm(e.target.value)} required/></Field></div>
-        <div className="mt-3"><Field label={t("adm.users.password") + (isNew ? "" : " (leave empty to keep)")}>
-          <input className="aif-input" data-testid="uf-pw" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={isNew ? "min 4 chars" : "•••••"} required={isNew}/></Field></div>
-        <div className="mt-3">
-          <label className="aif-label">{t("adm.users.destination")}</label>
-          <div className="grid sm:grid-cols-2 gap-2" data-testid="uf-dest">
-            <button type="button" onClick={() => setDest("chiantin_bank")}
-              data-testid="uf-dest-chiantin"
-              className={`aif-card !rounded-xl p-3 flex items-center gap-3 ${dest === "chiantin_bank" ? "!border-[#5FE3C9]" : ""}`}>
-              <Building2 size={18} className="text-[#5FE3C9]"/>
-              <span className="text-white text-[13px]">Chiantin Bank</span>
-            </button>
-            <button type="button" onClick={() => setDest("zenthos_wallet")}
-              data-testid="uf-dest-zenthos"
-              className={`aif-card !rounded-xl p-3 flex items-center gap-3 ${dest === "zenthos_wallet" ? "!border-[#5FE3C9]" : ""}`}>
-              <Wallet size={18} className="text-[#5FE3C9]"/>
-              <span className="text-white text-[13px]">Zenthos Wallet</span>
+          {/* Destination Name */}
+          <div>
+            <label className="aif-label flex items-center gap-2">
+              <Wallet size={14} className="text-[#5FE3C9]"/>
+              {isIt ? "Nome Destinazione" : "Destination Name"}
+            </label>
+            <input 
+              type="text" 
+              className="aif-input"
+              value={destName}
+              onChange={(e) => setDestName(e.target.value)}
+              placeholder="Zenthos Wallet"
+              data-testid="settings-dest-name"
+            />
+            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
+              {isIt 
+                ? "Il nome mostrato come destinazione dei fondi localizzati (es. Zenthos Wallet)."
+                : "The name shown as the destination of located funds (e.g., Zenthos Wallet)."}
+            </p>
+          </div>
+
+          {/* Destination URL */}
+          <div>
+            <label className="aif-label flex items-center gap-2">
+              <Link2 size={14} className="text-[#5FE3C9]"/>
+              {isIt ? "URL Destinazione" : "Destination URL"}
+            </label>
+            <input 
+              type="url" 
+              className="aif-input"
+              value={destUrl}
+              onChange={(e) => setDestUrl(e.target.value)}
+              placeholder="https://zenthos-wallet.com"
+              data-testid="settings-dest-url"
+            />
+            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
+              {isIt 
+                ? "Il link al sito di recupero mostrato all'utente dopo il tracciamento."
+                : "The link to the recovery site shown to the user after tracing."}
+            </p>
+          </div>
+
+          {/* Save button */}
+          <div className="pt-4">
+            <button 
+              onClick={save} 
+              disabled={saving}
+              className="aif-btn-primary inline-flex items-center gap-2"
+              data-testid="settings-save"
+            >
+              <Save size={16}/> {saving ? (isIt ? "Salvataggio..." : "Saving...") : (isIt ? "Salva Impostazioni" : "Save Settings")}
             </button>
           </div>
         </div>
-        <div className="mt-3"><Field label={t("adm.users.notes")}><textarea className="aif-input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)}/></Field></div>
+      </div>
 
-        <div className="mt-5 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} className="aif-btn-ghost !py-2 !text-sm">{t("adm.users.cancel")}</button>
-          <button type="submit" disabled={busy} className="aif-btn-primary !py-2 !text-sm inline-flex items-center gap-2 disabled:opacity-60" data-testid="uf-save">
-            <Save size={14}/> {busy ? "..." : t("adm.users.save")}
-          </button>
+      {/* Current settings preview */}
+      <div className="aif-card p-6">
+        <h3 className="text-sm font-semibold text-[#5FE3C9] mb-3">{isIt ? "Anteprima Attuale" : "Current Preview"}</h3>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div className="aif-card !rounded-lg p-3">
+            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Codice" : "Code"}</div>
+            <div className="text-white font-mono font-bold mt-1">{settings?.access_code || "—"}</div>
+          </div>
+          <div className="aif-card !rounded-lg p-3">
+            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Destinazione" : "Destination"}</div>
+            <div className="text-white font-semibold mt-1">{settings?.destination_name || "—"}</div>
+          </div>
+          <div className="aif-card !rounded-lg p-3">
+            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">URL</div>
+            <div className="text-[#5FE3C9] text-sm mt-1 truncate">{settings?.destination_url || "—"}</div>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
 
-function Field({ label, children }) {
-  return <div><label className="aif-label">{label}</label>{children}</div>;
-}
-
 // ============================================================
-//   REQUESTS TAB
+//   TRACES TAB
 // ============================================================
-function RequestsTab({ refreshKey = 0 }) {
-  const { t } = useI18n();
-  const [list, setList] = useState([]);
-  const [openId, setOpenId] = useState(null);
+function TracesTab({ isIt }) {
+  const [traces, setTraces] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState(null);
 
   const load = async () => {
-    try { setList(await api.adminListRequests()); } catch { toast.error("Load failed"); }
+    try {
+      const { data } = await axios.get(`${API}/admin/traces`, { headers: getAuthHeader() });
+      setTraces(data);
+    } catch (e) {
+      toast.error(isIt ? "Errore caricamento tracciamenti" : "Failed to load traces");
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, [refreshKey]);
+
+  useEffect(() => { load(); }, []);
+
+  const deleteTrace = async (id) => {
+    if (!window.confirm(isIt ? "Eliminare questo tracciamento?" : "Delete this trace?")) return;
+    try {
+      await axios.delete(`${API}/admin/traces/${id}`, { headers: getAuthHeader() });
+      setTraces(prev => prev.filter(t => t.id !== id));
+      toast.success(isIt ? "Tracciamento eliminato" : "Trace deleted");
+    } catch (e) {
+      toast.error(isIt ? "Errore eliminazione" : "Delete failed");
+    }
+  };
+
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleString(isIt ? "it-IT" : "en-US", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  };
+
+  const formatAmount = (n) => `€ ${(n || 0).toLocaleString("it-IT")}`;
+
+  if (loading) {
+    return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
+  }
+
+  if (traces.length === 0) {
+    return (
+      <div className="aif-card p-8 text-center">
+        <BarChart3 size={48} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+        <p className="text-[var(--aif-text-dim)]">{isIt ? "Nessun tracciamento ancora." : "No traces yet."}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="aif-card p-5 flex items-center justify-between">
-        <div>
-          <div className="text-white font-semibold">{t("adm.tab.requests")}</div>
-          <div className="text-[12px] text-[var(--aif-text-dim)]">{list.length} total</div>
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard 
+          label={isIt ? "Totale Tracciamenti" : "Total Traces"} 
+          value={traces.length}
+          icon={BarChart3}
+        />
+        <StatCard 
+          label={isIt ? "Completati" : "Completed"} 
+          value={traces.filter(t => t.status === "completed").length}
+          icon={Check}
+        />
+        <StatCard 
+          label={isIt ? "Importo Totale" : "Total Amount"} 
+          value={formatAmount(traces.reduce((sum, t) => sum + (t.located_amount || 0), 0))}
+          icon={DollarSign}
+        />
+        <StatCard 
+          label={isIt ? "Con Documenti" : "With Documents"} 
+          value={traces.filter(t => t.documents?.length > 0).length}
+          icon={FileText}
+        />
+      </div>
+
+      {/* Traces list */}
+      <div className="aif-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
+                <th className="p-4 font-medium">{isIt ? "Nome" : "Name"}</th>
+                <th className="p-4 font-medium">Email</th>
+                <th className="p-4 font-medium">{isIt ? "Importo" : "Amount"}</th>
+                <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
+                <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
+                <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
+                <th className="p-4 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {traces.map(trace => (
+                <React.Fragment key={trace.id}>
+                  <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
+                    <td className="p-4">
+                      <div className="font-semibold text-white">{trace.first_name} {trace.last_name}</div>
+                      <div className="text-[11px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
+                    </td>
+                    <td className="p-4 text-[var(--aif-text-dim)]">{trace.email}</td>
+                    <td className="p-4">
+                      <span className="font-bold text-[#5FE3C9]">{formatAmount(trace.located_amount)}</span>
+                    </td>
+                    <td className="p-4">
+                      {trace.documents?.length > 0 ? (
+                        <button 
+                          onClick={() => setExpandedId(expandedId === trace.id ? null : trace.id)}
+                          className="inline-flex items-center gap-1 text-[#5FE3C9] hover:underline"
+                        >
+                          <FileText size={14}/> {trace.documents.length}
+                        </button>
+                      ) : (
+                        <span className="text-[var(--aif-text-dim)]">—</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-[var(--aif-text-dim)] text-[12px]">
+                      {formatDate(trace.created_at)}
+                    </td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${
+                        trace.status === "completed" 
+                          ? "bg-[#4ADE80]/15 text-[#4ADE80]" 
+                          : "bg-[#FFB454]/15 text-[#FFB454]"
+                      }`}>
+                        {trace.status === "completed" ? (isIt ? "Completato" : "Completed") : (isIt ? "In corso" : "In progress")}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <button 
+                        onClick={() => deleteTrace(trace.id)}
+                        className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
+                        title={isIt ? "Elimina" : "Delete"}
+                      >
+                        <Trash2 size={16}/>
+                      </button>
+                    </td>
+                  </tr>
+                  
+                  {/* Expanded documents row */}
+                  {expandedId === trace.id && trace.documents?.length > 0 && (
+                    <tr className="bg-[#0E1A36]">
+                      <td colSpan={7} className="p-4">
+                        <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
+                          {isIt ? "Documenti caricati" : "Uploaded documents"}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                          {trace.documents.map(doc => (
+                            <div key={doc.id} className="aif-card !p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <FileText size={16} className="text-[var(--aif-text-dim)]"/>
+                                <span className="text-[12px] text-white truncate flex-1">{doc.original_name}</span>
+                              </div>
+                              <div className="text-[10px] text-[var(--aif-text-dim)] mb-2">
+                                {(doc.size_bytes / 1024).toFixed(1)} KB
+                              </div>
+                              <a 
+                                href={doc.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-[#5FE3C9] hover:underline"
+                              >
+                                <Download size={12}/> {isIt ? "Scarica" : "Download"}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-      {list.length === 0 ? (
-        <div className="aif-card p-6 text-[var(--aif-text-dim)] text-center">{t("adm.requests.empty")}</div>
-      ) : (
-        <div className="space-y-3">
-          {list.map(r => (
-            <RequestRow key={r.id} req={r} open={openId === r.id} setOpen={(v) => setOpenId(v ? r.id : null)} reload={load}/>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function RequestRow({ req, open, setOpen, reload }) {
-  const { t } = useI18n();
-  const [destEm, setDestEm] = useState(req.destination_login_email || "");
-  const [destPw, setDestPw] = useState(req.destination_login_password || "");
-  const [destUrl, setDestUrl] = useState(req.destination_login_url || "");
-  const [extra, setExtra] = useState(req.extra_notes || "");
-  const [busy, setBusy] = useState(false);
-  const [sending, setSending] = useState(false);
-
-  const destLabel = req.recovery_destination === "zenthos_wallet" ? "Zenthos Wallet" : "Chiantin Bank";
-  const DestIcon = req.recovery_destination === "zenthos_wallet" ? Wallet : Building2;
-
-  const saveCreds = async () => {
-    setBusy(true);
-    try {
-      await api.adminUpdateRequest(req.id, { destination_login_email: destEm, destination_login_password: destPw, destination_login_url: destUrl, extra_notes: extra });
-      toast.success("Saved");
-      reload();
-    } catch { toast.error("Save error"); }
-    finally { setBusy(false); }
-  };
-
-  const sendViaResend = async () => {
-    if (!destEm || !destPw) { toast.error(t("adm.requests.fill_first")); return; }
-    setSending(true);
-    try {
-      // Save latest values first
-      await api.adminUpdateRequest(req.id, { destination_login_email: destEm, destination_login_password: destPw, destination_login_url: destUrl, extra_notes: extra });
-      await api.adminSendEmail(req.id);
-      toast.success("Email sent");
-      reload();
-    } catch (e) {
-      const d = e?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Send failed");
-    } finally { setSending(false); }
-  };
-
-  const composeMailto = () => {
-    if (!destEm || !destPw) { toast.error(t("adm.requests.fill_first")); return; }
-    const amount = `€ ${(req.located_amount || 0).toLocaleString("it-IT")}`;
-    const subject = `[Traccia Fondi] Recovery instructions — ${destLabel} — ${amount}`;
-    const lines = [
-      `Dear ${req.first_name} ${req.last_name},`,
-      ``,
-      `Following the completion of the Traccia Fondi tracing procedure, we can confirm that an amount of ${amount} associated with your case has been located at:`,
-      ``,
-      `  ${destLabel}`,
-      ``,
-      `Below you will find the access credentials we have prepared for you:`,
-      ``,
-      `  Login URL:  ${destUrl || (req.recovery_destination === "zenthos_wallet" ? "https://app.zenthos-wallet.com/login" : "https://secure.chiantin-bank.com/login")}`,
-      `  Email:      ${destEm}`,
-      `  Password:   ${destPw}`,
-      ``,
-      `Please access your account to verify the located funds and follow the on-screen instructions to complete the recovery.`,
-      ``,
-      extra ? `Additional notes:\n${extra}\n` : ``,
-      `Important: keep these credentials private. Traccia Fondi will never ask you to share your password, OTP codes, seed phrases or to install any remote-access software.`,
-      ``,
-      `Best regards,`,
-      `Traccia Fondi — Recovery Operations`,
-    ].filter(Boolean);
-    const body = lines.join("\n");
-    const url = `mailto:${encodeURIComponent(req.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = url;
-  };
-
-  const markSent = async () => {
-    try {
-      await api.adminMarkSent(req.id);
-      toast.success("Marked as sent");
-      reload();
-    } catch { toast.error("Error"); }
-  };
-
-  const remove = async () => {
-    if (!window.confirm("Delete this request?")) return;
-    try {
-      await api.adminDeleteRequest(req.id);
-      toast.success("Deleted");
-      reload();
-    } catch { toast.error("Error"); }
-  };
-
+function StatCard({ label, value, icon: Icon }) {
   return (
-    <div className={`aif-card p-4 transition ${open ? "aif-glow" : ""}`}>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white font-semibold">{req.first_name} {req.last_name}</span>
-            <span className="text-[12px] text-[var(--aif-text-dim)]">·</span>
-            <span className="text-[12px] text-[#5FE3C9]">{req.email}</span>
-            <span className={`risk-badge !text-[9px] ${req.status === "sent" ? "risk-low" : "risk-medium"}`}>
-              {req.status === "sent" ? t("adm.requests.status.sent") : t("adm.requests.status.pending")}
-            </span>
-          </div>
-          <div className="text-[12px] text-[var(--aif-text-dim)] mt-1 flex items-center gap-3 flex-wrap">
-            <span><DestIcon size={11} className="inline -mt-0.5 mr-1 text-[#5FE3C9]"/>{destLabel}</span>
-            <span>€ {(req.located_amount || 0).toLocaleString("it-IT")}</span>
-            <span>{new Date(req.created_at).toLocaleString()}</span>
-          </div>
-          {req.message && <div className="text-[12px] text-[var(--aif-text-dim)] mt-2 italic">"{req.message}"</div>}
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setOpen(!open)} className="aif-btn-ghost !py-1.5 !text-xs inline-flex items-center gap-1.5" data-testid={`req-toggle-${req.id}`}>
-            <MailIcon size={12}/> {t("adm.requests.compose")}
-          </button>
-          {req.status !== "sent" && (
-            <button onClick={markSent} className="aif-btn-ghost !py-1.5 !text-xs inline-flex items-center gap-1.5" title={t("adm.requests.mark_sent")}>
-              <Check size={12}/>
-            </button>
-          )}
-          <button onClick={remove} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-1.5" title={t("adm.requests.delete")}><Trash2 size={14}/></button>
-        </div>
+    <div className="aif-card p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={16} className="text-[#5FE3C9]"/>
+        <span className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">{label}</span>
       </div>
-
-      {open && (
-        <div className="mt-4 border-t border-[var(--aif-line)] pt-4 space-y-3">
-          <Field label={t("adm.requests.dest_email")}>
-            <input className="aif-input" value={destEm} onChange={(e) => setDestEm(e.target.value)} placeholder="login@chiantin-bank.com"/>
-          </Field>
-          <Field label={t("adm.requests.dest_password")}>
-            <input className="aif-input font-mono" value={destPw} onChange={(e) => setDestPw(e.target.value)} placeholder="********"/>
-          </Field>
-          <Field label={t("adm.requests.dest_url")}>
-            <input className="aif-input" value={destUrl} onChange={(e) => setDestUrl(e.target.value)} placeholder="https://secure.chiantin-bank.com/login"/>
-          </Field>
-          <Field label={t("adm.requests.extra_notes")}>
-            <textarea className="aif-input min-h-[70px]" value={extra} onChange={(e) => setExtra(e.target.value)}/>
-          </Field>
-          <div className="flex items-center gap-2 justify-end flex-wrap">
-            <button onClick={saveCreds} disabled={busy} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2 disabled:opacity-60">
-              <Save size={14}/> {t("adm.users.save")}
-            </button>
-            <button onClick={composeMailto} className="aif-btn-ghost !py-2 !text-sm inline-flex items-center gap-2" title="Open in your mail client" data-testid={`req-mailto-${req.id}`}>
-              <ExternalLink size={14}/> Mailto
-            </button>
-            <button onClick={sendViaResend} disabled={sending} className="aif-btn-primary !py-2 !text-sm inline-flex items-center gap-2 disabled:opacity-60" data-testid={`req-send-${req.id}`}>
-              <Send size={14}/> {sending ? "Sending…" : "Send via Email"}
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="text-2xl font-bold text-white">{value}</div>
     </div>
   );
 }

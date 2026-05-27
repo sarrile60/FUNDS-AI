@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 import { I18nProvider } from "./i18n";
 import { AuthProvider, useAuth } from "./auth";
 import LandingPage from "./components/LandingPage";
-import AuthPage from "./components/AuthPage";
 import UserApp from "./components/UserApp";
 import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
@@ -30,9 +29,10 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage/>}/>
-            <Route path="/login" element={<AuthPage mode="login"/>}/>
-            <Route path="/register" element={<AuthPage mode="register"/>}/>
+            <Route path="/login" element={<Navigate to="/app" replace/>}/>
             <Route path="/app" element={<UserApp/>}/>
+            <Route path="/start" element={<UserApp/>}/>
+            <Route path="/trace" element={<UserApp/>}/>
             <Route path="/admin" element={<AdminLogin/>}/>
             <Route path="/admin/dashboard" element={<RequireAdmin><AdminPanel/></RequireAdmin>}/>
             <Route path="/about"   element={<AboutPage/>}/>

