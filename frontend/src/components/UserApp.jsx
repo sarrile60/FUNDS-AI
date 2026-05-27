@@ -479,16 +479,6 @@ function FundsLocated({ result, isIt, onHome }) {
     ["Security standards", "AES-256 · TLS 1.3 · GDPR"],
   ];
 
-  const nextSteps = isIt ? [
-    "Riceverai via email le istruzioni per accedere al portale di recupero",
-    "Accedi al portale per verificare i fondi localizzati",
-    "Segui le istruzioni a schermo per completare il recupero",
-  ] : [
-    "You will receive instructions by email to access the recovery portal",
-    "Log in to the portal to verify the located funds",
-    "Follow the on-screen instructions to complete the recovery",
-  ];
-
   return (
     <div className="space-y-5" data-testid="funds-located">
       {/* Hero card */}
@@ -575,22 +565,6 @@ function FundsLocated({ result, isIt, onHome }) {
             </div>
           ))}
         </div>
-      </motion.div>
-
-      {/* Next steps */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.15 }}
-        className="aif-card p-6 md:p-7">
-        <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
-          {isIt ? "Prossimi passi" : "Next steps"}
-        </div>
-        <ol className="space-y-3">
-          {nextSteps.map((s, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] font-bold text-[12px] flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-              <span className="text-[14px] text-white leading-relaxed">{s}</span>
-            </li>
-          ))}
-        </ol>
       </motion.div>
 
       {/* Safety notice */}
