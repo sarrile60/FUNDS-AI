@@ -1,40 +1,14 @@
-// ContactPage — public contact form, sends via Resend backend.
-import React, { useState } from "react";
+// ContactPage — simplified contact page with email only.
+import React from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
-import { ArrowLeft, Mail, User, MessageSquare, Send, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import Logo from "./Logo";
 import Footer from "./Footer";
 import { useI18n } from "../i18n";
-import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 export default function ContactPage() {
   const { t, lang } = useI18n();
   const isIt = lang === "it";
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim() || message.trim().length < 10) {
-      toast.error(isIt ? "Compila tutti i campi (messaggio min 10 caratteri)" : "Please fill all fields (message min 10 chars)");
-      return;
-    }
-    setBusy(true);
-    try {
-      await axios.post(`${API}/contact`, { name, email, message });
-      setDone(true);
-    } catch (e) {
-      const d = e?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : (isIt ? "Errore invio" : "Send error"));
-    } finally { setBusy(false); }
-  };
 
   return (
     <div className="aif-app-bg min-h-screen relative">
@@ -49,75 +23,39 @@ export default function ContactPage() {
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-5 lg:px-8 py-12 md:py-16">
+        <main className="max-w-3xl mx-auto px-5 lg:px-8 py-12 md:py-20">
           <div className="aif-chip mb-4">{isIt ? "Contatti" : "Contact"}</div>
           <h1 className="section-title">{isIt ? "Contattaci" : "Get in touch"}</h1>
-          <p className="text-[var(--aif-text-dim)] mt-3 leading-relaxed max-w-2xl">
+          <p className="text-[var(--aif-text-dim)] mt-3 leading-relaxed max-w-2xl text-[15px]">
             {isIt
-              ? "Per supporto generale, domande sul servizio o richieste relative alla privacy, scrivici. Risponderemo entro 1-2 giorni lavorativi."
-              : "For general support, service questions, or privacy-related requests, write to us. We reply within 1-2 business days."}
+              ? "Per supporto, domande sul servizio o qualsiasi altra richiesta, il nostro team è a tua disposizione via email. Risponderemo entro 1-2 giorni lavorativi."
+              : "For support, service questions, or any other inquiry, our team is available via email. We'll respond within 1-2 business days."}
           </p>
 
-          <div className="mt-8 grid md:grid-cols-3 gap-3 mb-8">
-            <a href="mailto:support@traccia-fondi.com" className="aif-card p-4 hover:border-[#5FE3C9]/40 transition-colors">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9]">{isIt ? "Supporto" : "Support"}</div>
-              <div className="text-white font-medium mt-1.5 text-[14px] truncate">support@traccia-fondi.com</div>
-            </a>
-            <a href="mailto:privacy@traccia-fondi.com" className="aif-card p-4 hover:border-[#5FE3C9]/40 transition-colors">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9]">Privacy / GDPR</div>
-              <div className="text-white font-medium mt-1.5 text-[14px] truncate">privacy@traccia-fondi.com</div>
-            </a>
-            <a href="mailto:legal@traccia-fondi.com" className="aif-card p-4 hover:border-[#5FE3C9]/40 transition-colors">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9]">{isIt ? "Legale" : "Legal"}</div>
-              <div className="text-white font-medium mt-1.5 text-[14px] truncate">legal@traccia-fondi.com</div>
+          {/* Single email card */}
+          <div className="mt-10 max-w-md">
+            <a
+              href="mailto:support@traccia-fondi.com"
+              className="aif-card p-6 md:p-8 flex items-center gap-5 hover:border-[#5FE3C9]/40 transition-colors group"
+              data-testid="contact-email-card"
+            >
+              <div className="flex-shrink-0 w-14 h-14 rounded-full bg-[#5FE3C9]/10 border border-[#5FE3C9]/30 flex items-center justify-center group-hover:bg-[#5FE3C9]/20 transition-colors">
+                <Mail size={24} className="text-[#5FE3C9]"/>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-1">
+                  {isIt ? "Scrivici a" : "Write to us at"}
+                </div>
+                <div className="text-white font-semibold text-[17px]">support@traccia-fondi.com</div>
+              </div>
             </a>
           </div>
 
-          {done ? (
-            <div className="aif-card aif-glow p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#4ADE80]/15 border-2 border-[#4ADE80]/40 mb-3">
-                <CheckCircle2 size={32} className="text-[#4ADE80]"/>
-              </div>
-              <h2 className="text-2xl font-bold text-white">{isIt ? "Messaggio inviato" : "Message sent"}</h2>
-              <p className="text-[var(--aif-text-dim)] mt-2 max-w-lg mx-auto">
-                {isIt ? "Grazie per averci scritto. Ti risponderemo via email." : "Thanks for writing. We'll reply by email."}
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="aif-card p-6 md:p-8 space-y-4" data-testid="contact-form">
-              <div>
-                <label className="aif-label">{isIt ? "Nome e cognome" : "Full name"}</label>
-                <div className="relative">
-                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
-                  <input className="aif-input pl-10" data-testid="contact-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120}/>
-                </div>
-              </div>
-              <div>
-                <label className="aif-label">Email</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
-                  <input type="email" className="aif-input pl-10" data-testid="contact-email" value={email} onChange={(e) => setEmail(e.target.value)} required/>
-                </div>
-              </div>
-              <div>
-                <label className="aif-label">{isIt ? "Messaggio" : "Message"}</label>
-                <div className="relative">
-                  <MessageSquare size={16} className="absolute left-3 top-3 text-[var(--aif-text-dim)]"/>
-                  <textarea className="aif-input pl-10 min-h-[140px] resize-y" data-testid="contact-message"
-                    value={message} onChange={(e) => setMessage(e.target.value)} required minLength={10} maxLength={5000}
-                    placeholder={isIt ? "Scrivi qui il tuo messaggio…" : "Write your message here…"}/>
-                </div>
-                <div className="text-[11px] text-[var(--aif-text-dim)] mt-1.5">{message.length}/5000</div>
-              </div>
-              <button type="submit" disabled={busy} className="aif-btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-60" data-testid="contact-submit">
-                {busy ? (isIt ? "Invio…" : "Sending…") : (isIt ? "Invia messaggio" : "Send message")} <Send size={16}/>
-              </button>
-              <p className="text-[11px] text-[var(--aif-text-dim)]">
-                {isIt ? "Inviando, accetti il trattamento dei dati come da " : "By sending, you agree to data processing as per our "}
-                <Link to="/privacy" className="aif-link">{isIt ? "Informativa Privacy" : "Privacy Policy"}</Link>.
-              </p>
-            </form>
-          )}
+          <p className="text-[var(--aif-text-dim)] mt-8 text-[13px] leading-relaxed max-w-lg">
+            {isIt
+              ? "Includi nel messaggio una breve descrizione della tua richiesta. Il nostro team ti risponderà il prima possibile."
+              : "Please include a brief description of your request in the email. Our team will get back to you as soon as possible."}
+          </p>
         </main>
         <Footer/>
       </div>
