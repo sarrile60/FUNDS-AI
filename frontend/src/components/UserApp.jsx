@@ -464,6 +464,9 @@ function FundsLocated({ result, isIt, onHome }) {
   const amount = result?.located_amount || 0;
   const destName = result?.destination_name || "Zenthos Wallet";
   const destUrl = result?.destination_url || "";
+  // Ensure URL works as an external link - add http:// if no protocol specified
+  // (don't force https:// since some sites only work on http)
+  const safeUrl = destUrl && !destUrl.match(/^https?:\/\//) ? `http://${destUrl}` : destUrl;
 
   const summaryRows = isIt ? [
     ["Stato procedura", "Completata con successo"],
@@ -534,7 +537,7 @@ function FundsLocated({ result, isIt, onHome }) {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.85 }}
               className="mt-6">
               <a 
-                href={destUrl} 
+                href={safeUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="aif-btn-primary inline-flex items-center gap-2 text-[15px] !px-6 !py-3.5"

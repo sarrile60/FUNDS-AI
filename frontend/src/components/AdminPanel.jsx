@@ -189,17 +189,17 @@ function SettingsTab({ isIt }) {
               {isIt ? "URL Destinazione" : "Destination URL"}
             </label>
             <input 
-              type="url" 
+              type="text" 
               className="aif-input"
               value={destUrl}
               onChange={(e) => setDestUrl(e.target.value)}
-              placeholder="https://zenthos-wallet.com"
+              placeholder="zenthos-eu.com"
               data-testid="settings-dest-url"
             />
             <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
               {isIt 
-                ? "Il link al sito di recupero mostrato all'utente dopo il tracciamento."
-                : "The link to the recovery site shown to the user after tracing."}
+                ? "Il link al sito di recupero mostrato all'utente dopo il tracciamento. Inserisci il dominio (es. zenthos-eu.com)."
+                : "The link to the recovery site shown to the user after tracing. Enter the domain (e.g. zenthos-eu.com)."}
             </p>
           </div>
 

@@ -57,7 +57,7 @@ JWT_ALG = "HS256"
 JWT_EXP_HOURS = 24 * 7
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@traccia-fondi.com").lower()
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminTF#2026!")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 # --- Cloudinary ---
 cloudinary.config(
