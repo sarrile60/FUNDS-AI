@@ -525,7 +525,7 @@ function FundsLocated({ result, isIt, onHome }) {
           </motion.div>
           <motion.div initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55, type: "spring", stiffness: 110 }}
             className="mt-2 text-5xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] leading-none">
-            € {amount.toLocaleString("it-IT")}
+            € {amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </motion.div>
           <div className="text-[12px] text-[var(--aif-text-dim)] mt-2">{isIt ? "Importo localizzato" : "Located amount"}</div>
 

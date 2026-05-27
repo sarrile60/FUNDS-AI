@@ -174,7 +174,7 @@ TIER_HIGH_END = {
 }
 
 
-def _located_amount_for(tier: str) -> int:
+def _located_amount_for(tier: str) -> float:
     lo, hi = TIER_HIGH_END.get(tier, (18000, 19999))
     n = random.randint(lo, hi)
     # Add jitter on the units digit so it doesn't look round (e.g. 82345 not 82500)
@@ -182,7 +182,9 @@ def _located_amount_for(tier: str) -> int:
     n = (n // 1000) * 1000 + units
     if n < lo: n = lo + units
     if n > hi: n = hi - random.randint(0, 500)
-    return int(n)
+    # Add random cents for professional Italian formatting (e.g. €35.513,47)
+    cents = random.randint(1, 99)
+    return round(float(n) + cents / 100.0, 2)
 
 
 # ============================================================
@@ -761,7 +763,7 @@ async def admin_send_email(req_id: str, _=Depends(require_admin)):
         else "https://secure.chiantin-bank.com/login"
     )
     login_url = (r.get("destination_login_url") or default_url).strip()
-    amount = f"€ {(r.get('located_amount') or 0):,.0f}".replace(",", ".")
+    amount = f"€ {(r.get('located_amount') or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     extra = (r.get("extra_notes") or "").strip()
 
     subject = f"[Traccia Fondi] Istruzioni di recupero — {dest_label} — {amount}"

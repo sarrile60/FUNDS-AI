@@ -280,7 +280,7 @@ function TracesTab({ isIt }) {
     });
   };
 
-  const formatAmount = (n) => `€ ${(n || 0).toLocaleString("it-IT")}`;
+  const formatAmount = (n) => `€ ${(n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
