@@ -541,15 +541,17 @@ function TracesTab({ isIt }) {
 function DocumentPreviewModal({ doc, isIt, onClose }) {
   const [downloading, setDownloading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [fetching, setFetching] = useState(true);
+  const blobRef = React.useRef(null);
 
   const isImage = (doc.mime_type || "").startsWith("image/");
   const isPdf = (doc.mime_type || "") === "application/pdf";
 
-  // Escape key to close
+  // Escape key to close + body scroll lock
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    // Lock body scroll while modal open
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -558,27 +560,72 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
     };
   }, [onClose]);
 
-  // Force download with original filename by fetching as blob
+  // Pre-fetch the file as a blob so we can:
+  //  1) Force PDFs to render inline in the iframe regardless of Cloudinary's
+  //     Content-Disposition: attachment header (which is what makes the
+  //     iframe show a blank page when set as raw URL).
+  //  2) Reuse the same blob for the download button, avoiding a second
+  //     network round-trip.
+  useEffect(() => {
+    let cancelled = false;
+    let localObjectUrl = null;
+
+    (async () => {
+      setFetching(true);
+      setLoadError(false);
+      try {
+        const res = await fetch(doc.url, { mode: "cors", credentials: "omit" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.blob();
+        const typed = new Blob([raw], {
+          type: doc.mime_type || raw.type || "application/octet-stream",
+        });
+        blobRef.current = typed;
+        localObjectUrl = URL.createObjectURL(typed);
+        if (!cancelled) setBlobUrl(localObjectUrl);
+      } catch (e) {
+        console.warn("Preview fetch failed, falling back to direct URL", e);
+        // Fallback to the direct Cloudinary URL — images will still work,
+        // PDFs may or may not depending on browser + headers.
+        if (!cancelled) {
+          setBlobUrl(null);
+          setLoadError(true);
+        }
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (localObjectUrl) URL.revokeObjectURL(localObjectUrl);
+      blobRef.current = null;
+    };
+  }, [doc.url, doc.mime_type]);
+
+  // Download using the already-fetched blob when possible.
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const res = await fetch(doc.url, { mode: "cors", credentials: "omit" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      // Ensure the blob has the right MIME type
-      const typedBlob = new Blob([blob], { type: doc.mime_type || blob.type || "application/octet-stream" });
-      const objectUrl = URL.createObjectURL(typedBlob);
+      let blob = blobRef.current;
+      if (!blob) {
+        const res = await fetch(doc.url, { mode: "cors", credentials: "omit" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.blob();
+        blob = new Blob([raw], {
+          type: doc.mime_type || raw.type || "application/octet-stream",
+        });
+      }
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
       a.download = ensureFilenameHasExtension(doc.original_name, doc.mime_type);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // Give the browser a beat before revoking so the download actually starts
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
       toast.success(isIt ? "Download avviato" : "Download started");
     } catch (e) {
-      // Fallback: open in new tab if fetch/CORS fails
       console.error("Download failed", e);
       toast.error(isIt ? "Download diretto non disponibile, apertura in nuova scheda" : "Direct download unavailable, opening in new tab");
       window.open(doc.url, "_blank", "noopener,noreferrer");
@@ -586,6 +633,10 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
       setDownloading(false);
     }
   };
+
+  // Prefer the blob URL for preview; fall back to the direct URL if the
+  // blob fetch failed (e.g., CORS on a legacy record).
+  const previewSrc = blobUrl || doc.url;
 
   return (
     <div
@@ -631,7 +682,14 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
 
         {/* Body */}
         <div className="flex-1 overflow-auto bg-[#06122A] flex items-center justify-center p-2 sm:p-4">
-          {loadError ? (
+          {fetching ? (
+            <div className="text-center">
+              <Loader2 size={32} className="mx-auto text-[#5FE3C9] animate-spin mb-3"/>
+              <p className="text-[13px] text-[var(--aif-text-dim)]">
+                {isIt ? "Caricamento anteprima…" : "Loading preview…"}
+              </p>
+            </div>
+          ) : loadError && !blobUrl ? (
             <div className="text-center max-w-md">
               <AlertCircle size={40} className="mx-auto text-[#FFB454] mb-3"/>
               <p className="text-[14px] text-white mb-1">
@@ -648,7 +706,7 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
             </div>
           ) : isImage ? (
             <img
-              src={doc.url}
+              src={previewSrc}
               alt={doc.original_name}
               className="max-w-full max-h-[75vh] object-contain rounded"
               onError={() => setLoadError(true)}
@@ -656,7 +714,7 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
             />
           ) : isPdf ? (
             <iframe
-              src={doc.url}
+              src={previewSrc}
               title={doc.original_name}
               className="w-full h-[75vh] bg-white rounded"
               onError={() => setLoadError(true)}
