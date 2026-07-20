@@ -566,9 +566,15 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
   //     iframe show a blank page when set as raw URL).
   //  2) Reuse the same blob for the download button, avoiding a second
   //     network round-trip.
+  //
+  // NOTE: we deliberately DO NOT revoke the blob URL inside this effect's
+  // cleanup — React 18 StrictMode double-invokes effects in development,
+  // and revoking the URL between the two runs kills the iframe load
+  // (ERR_ABORTED). The URL is revoked exactly once, when the modal
+  // unmounts, via the dedicated cleanup effect below.
+  const blobUrlRef = React.useRef(null);
   useEffect(() => {
     let cancelled = false;
-    let localObjectUrl = null;
 
     (async () => {
       setFetching(true);
@@ -580,13 +586,16 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
         const typed = new Blob([raw], {
           type: doc.mime_type || raw.type || "application/octet-stream",
         });
+        if (cancelled) return;
         blobRef.current = typed;
-        localObjectUrl = URL.createObjectURL(typed);
-        if (!cancelled) setBlobUrl(localObjectUrl);
+        // Revoke any previously-created preview URL for this modal instance
+        // (only fires on doc.url change, not on StrictMode double-invoke).
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(typed);
+        blobUrlRef.current = newUrl;
+        setBlobUrl(newUrl);
       } catch (e) {
         console.warn("Preview fetch failed, falling back to direct URL", e);
-        // Fallback to the direct Cloudinary URL — images will still work,
-        // PDFs may or may not depending on browser + headers.
         if (!cancelled) {
           setBlobUrl(null);
           setLoadError(true);
@@ -598,10 +607,19 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
 
     return () => {
       cancelled = true;
-      if (localObjectUrl) URL.revokeObjectURL(localObjectUrl);
-      blobRef.current = null;
     };
   }, [doc.url, doc.mime_type]);
+
+  // Revoke the blob URL only on real unmount (empty deps → runs once).
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      blobRef.current = null;
+    };
+  }, []);
 
   // Download using the already-fetched blob when possible.
   const handleDownload = async () => {
