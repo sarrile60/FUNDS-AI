@@ -259,6 +259,19 @@ class GlobalSettingsUpdate(BaseModel):
     destination_url: Optional[str] = None
 
 
+# --- NEW: Access Code management ---
+class AccessCodeIn(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
+    destination_name: str = Field(min_length=1, max_length=200)
+    destination_url: str = Field(max_length=500, default="")
+
+
+class AccessCodeUpdate(BaseModel):
+    code: Optional[str] = None
+    destination_name: Optional[str] = None
+    destination_url: Optional[str] = None
+
+
 # --- NEW: Public Trace (code-based access) ---
 class StartTraceIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
@@ -331,50 +344,101 @@ async def me(authorization: Optional[str] = Header(None)):
 
 
 # ============================================================
-#   NEW: Global Settings (admin-controlled)
+#   Access Codes (admin-controlled, multi-code system)
 # ============================================================
 
-DEFAULT_SETTINGS = {
-    "id": "global",
-    "access_code": "TRACE2026",
-    "destination_name": "Zenthos Wallet",
-    "destination_url": "https://zenthos-wallet.com",
-}
-
-
+# Keep legacy settings helper for backward compat
 async def get_settings() -> dict:
-    """Get global settings, creating defaults if not exist."""
+    """Get global settings (legacy). Now primarily uses access_codes collection."""
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
     if not settings:
-        await db.settings.insert_one(DEFAULT_SETTINGS.copy())
-        return DEFAULT_SETTINGS.copy()
+        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": ""}
     return settings
 
 
 @api.get("/settings")
 async def public_get_settings():
-    """Public endpoint - only returns destination_name (not code or URL)."""
-    settings = await get_settings()
-    return {"destination_name": settings.get("destination_name", "Zenthos Wallet")}
+    """Public endpoint - returns minimal info."""
+    return {"ok": True}
 
 
+# --- Access Codes CRUD ---
+@api.get("/admin/access-codes")
+async def admin_list_access_codes(_=Depends(require_admin)):
+    """Admin: list all access codes with their destinations."""
+    codes = await db.access_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return codes
+
+
+@api.post("/admin/access-codes")
+async def admin_create_access_code(body: AccessCodeIn, _=Depends(require_admin)):
+    """Admin: create a new access code with destination."""
+    code_upper = body.code.strip().upper()
+    # Check if code already exists
+    existing = await db.access_codes.find_one({"code": code_upper})
+    if existing:
+        raise HTTPException(400, f"Access code '{code_upper}' already exists")
+    
+    doc = {
+        "id": _new_id(),
+        "code": code_upper,
+        "destination_name": body.destination_name.strip(),
+        "destination_url": body.destination_url.strip(),
+        "created_at": _now_iso(),
+    }
+    await db.access_codes.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/access-codes/{code_id}")
+async def admin_update_access_code(code_id: str, body: AccessCodeUpdate, _=Depends(require_admin)):
+    """Admin: update an access code."""
+    update = {}
+    if body.code is not None:
+        new_code = body.code.strip().upper()
+        # Check uniqueness if code is being changed
+        existing = await db.access_codes.find_one({"code": new_code, "id": {"$ne": code_id}})
+        if existing:
+            raise HTTPException(400, f"Access code '{new_code}' already exists")
+        update["code"] = new_code
+    if body.destination_name is not None:
+        update["destination_name"] = body.destination_name.strip()
+    if body.destination_url is not None:
+        update["destination_url"] = body.destination_url.strip()
+    
+    if not update:
+        raise HTTPException(400, "No fields to update")
+    
+    res = await db.access_codes.update_one({"id": code_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Access code not found")
+    return await db.access_codes.find_one({"id": code_id}, {"_id": 0})
+
+
+@api.delete("/admin/access-codes/{code_id}")
+async def admin_delete_access_code(code_id: str, _=Depends(require_admin)):
+    """Admin: delete an access code."""
+    res = await db.access_codes.delete_one({"id": code_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Access code not found")
+    return {"ok": True}
+
+
+# Legacy settings endpoints (kept for backward compat)
 @api.get("/admin/settings")
 async def admin_get_settings(_=Depends(require_admin)):
-    """Admin: get all settings including access code."""
+    """Admin: get legacy settings."""
     return await get_settings()
 
 
 @api.put("/admin/settings")
 async def admin_update_settings(body: GlobalSettingsUpdate, _=Depends(require_admin)):
-    """Admin: update global settings."""
+    """Admin: update legacy settings."""
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     if not update:
         raise HTTPException(400, "No fields to update")
-    await db.settings.update_one(
-        {"id": "global"},
-        {"$set": update},
-        upsert=True
-    )
+    await db.settings.update_one({"id": "global"}, {"$set": update}, upsert=True)
     return await get_settings()
 
 
@@ -396,8 +460,9 @@ async def check_email_used(body: CheckEmailIn, request: Request):
 @api.post("/trace/start")
 async def start_trace(body: StartTraceIn, request: Request):
     """
-    Start a new trace. Validates access code, checks email uniqueness,
-    generates located amount, and creates trace record.
+    Start a new trace. Validates access code against access_codes collection,
+    checks email uniqueness, generates located amount, and creates trace record.
+    The destination is determined by which access code is used.
     """
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace:{ip}", max_requests=5, window_seconds=300)
@@ -406,9 +471,9 @@ async def start_trace(body: StartTraceIn, request: Request):
     if body.amount_tier not in TIER_HIGH_END:
         raise HTTPException(400, "Invalid amount_tier")
     
-    # Get settings and validate code
-    settings = await get_settings()
-    if body.access_code.strip() != settings.get("access_code", ""):
+    # Look up access code in the access_codes collection
+    code_entry = await db.access_codes.find_one({"code": body.access_code.strip().upper()}, {"_id": 0})
+    if not code_entry:
         raise HTTPException(401, "Invalid access code")
     
     # Check email uniqueness
@@ -420,7 +485,7 @@ async def start_trace(body: StartTraceIn, request: Request):
     # Generate located amount
     located = _located_amount_for(body.amount_tier)
     
-    # Create trace record
+    # Create trace record — destination comes from the matched access code
     trace = {
         "id": _new_id(),
         "first_name": body.first_name.strip(),
@@ -428,10 +493,11 @@ async def start_trace(body: StartTraceIn, request: Request):
         "email": em,
         "amount_tier": body.amount_tier,
         "located_amount": located,
-        "destination_name": settings.get("destination_name", "Zenthos Wallet"),
-        "destination_url": settings.get("destination_url", ""),
-        "documents": [],  # Will be populated via upload endpoint
-        "status": "started",  # started | completed
+        "code_used": code_entry["code"],
+        "destination_name": code_entry.get("destination_name", ""),
+        "destination_url": code_entry.get("destination_url", ""),
+        "documents": [],
+        "status": "started",
         "created_at": _now_iso(),
         "completed_at": None,
     }

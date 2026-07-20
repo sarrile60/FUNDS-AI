@@ -1,11 +1,11 @@
-// AdminPanel — admin dashboard with Settings, Traces, and legacy Users/Requests
+// AdminPanel — admin dashboard with Access Codes management and Traces auditing
 import React, { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Users, Settings, BarChart3, Plus, Edit2, Trash2, Eye, EyeOff, Save, X,
+  Settings, BarChart3, Plus, Edit2, Trash2, Save, X,
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
-  Calendar, DollarSign, Link2, Key
+  Calendar, DollarSign, Link2, Key, Copy
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -35,8 +35,6 @@ export default function AdminPanel() {
   const isIt = lang === "it";
   const [tab, setTab] = useState("traces");
 
-  const isAdmin = user && user.role === "admin";
-
   if (!user) return <Navigate to="/admin" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
 
@@ -63,11 +61,11 @@ export default function AdminPanel() {
           {/* Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
             <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
-            <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} icon={Settings}  label={isIt ? "Impostazioni" : "Settings"} testid="tab-settings"/>
+            <TabBtn active={tab === "codes"}    onClick={() => setTab("codes")}    icon={Key}       label={isIt ? "Codici Accesso" : "Access Codes"} testid="tab-codes"/>
           </div>
 
           {tab === "traces" && <TracesTab isIt={isIt}/>}
-          {tab === "settings" && <SettingsTab isIt={isIt}/>}
+          {tab === "codes" && <AccessCodesTab isIt={isIt}/>}
         </main>
       </div>
     </div>
@@ -85,27 +83,24 @@ function TabBtn({ active, onClick, icon: Icon, label, testid }) {
 }
 
 // ============================================================
-//   SETTINGS TAB
+//   ACCESS CODES TAB
 // ============================================================
-function SettingsTab({ isIt }) {
-  const [settings, setSettings] = useState(null);
+function AccessCodesTab({ isIt }) {
+  const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formCode, setFormCode] = useState("");
+  const [formName, setFormName] = useState("");
+  const [formUrl, setFormUrl] = useState("");
   const [saving, setSaving] = useState(false);
-  
-  // Form state
-  const [accessCode, setAccessCode] = useState("");
-  const [destName, setDestName] = useState("");
-  const [destUrl, setDestUrl] = useState("");
 
   const load = async () => {
     try {
-      const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
-      setSettings(data);
-      setAccessCode(data.access_code || "");
-      setDestName(data.destination_name || "");
-      setDestUrl(data.destination_url || "");
+      const { data } = await axios.get(`${API}/admin/access-codes`, { headers: getAuthHeader() });
+      setCodes(data);
     } catch (e) {
-      toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings");
+      toast.error(isIt ? "Errore caricamento codici" : "Failed to load access codes");
     } finally {
       setLoading(false);
     }
@@ -113,21 +108,67 @@ function SettingsTab({ isIt }) {
 
   useEffect(() => { load(); }, []);
 
-  const save = async () => {
+  const resetForm = () => {
+    setFormCode("");
+    setFormName("");
+    setFormUrl("");
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const startEdit = (c) => {
+    setFormCode(c.code);
+    setFormName(c.destination_name);
+    setFormUrl(c.destination_url);
+    setEditingId(c.id);
+    setShowForm(true);
+  };
+
+  const saveCode = async () => {
+    if (!formCode.trim() || !formName.trim()) {
+      toast.error(isIt ? "Codice e nome destinazione obbligatori" : "Code and destination name required");
+      return;
+    }
     setSaving(true);
     try {
-      const { data } = await axios.put(`${API}/admin/settings`, {
-        access_code: accessCode.trim(),
-        destination_name: destName.trim(),
-        destination_url: destUrl.trim(),
-      }, { headers: getAuthHeader() });
-      setSettings(data);
-      toast.success(isIt ? "Impostazioni salvate" : "Settings saved");
+      if (editingId) {
+        await axios.put(`${API}/admin/access-codes/${editingId}`, {
+          code: formCode.trim(),
+          destination_name: formName.trim(),
+          destination_url: formUrl.trim(),
+        }, { headers: getAuthHeader() });
+        toast.success(isIt ? "Codice aggiornato" : "Code updated");
+      } else {
+        await axios.post(`${API}/admin/access-codes`, {
+          code: formCode.trim(),
+          destination_name: formName.trim(),
+          destination_url: formUrl.trim(),
+        }, { headers: getAuthHeader() });
+        toast.success(isIt ? "Codice creato" : "Code created");
+      }
+      resetForm();
+      load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || (isIt ? "Errore salvataggio" : "Save failed"));
     } finally {
       setSaving(false);
     }
+  };
+
+  const deleteCode = async (id) => {
+    if (!window.confirm(isIt ? "Eliminare questo codice di accesso?" : "Delete this access code?")) return;
+    try {
+      await axios.delete(`${API}/admin/access-codes/${id}`, { headers: getAuthHeader() });
+      setCodes(prev => prev.filter(c => c.id !== id));
+      toast.success(isIt ? "Codice eliminato" : "Code deleted");
+    } catch (e) {
+      toast.error(isIt ? "Errore eliminazione" : "Delete failed");
+    }
+  };
+
+  const copyCode = (code) => {
+    navigator.clipboard.writeText(code);
+    toast.success(isIt ? "Codice copiato" : "Code copied");
   };
 
   if (loading) {
@@ -136,105 +177,150 @@ function SettingsTab({ isIt }) {
 
   return (
     <div className="space-y-5">
-      <div className="aif-card p-6 md:p-8">
-        <h2 className="text-xl font-bold text-white mb-6">{isIt ? "Impostazioni Globali" : "Global Settings"}</h2>
-        
-        <div className="space-y-5">
-          {/* Access Code */}
-          <div>
-            <label className="aif-label flex items-center gap-2">
-              <Key size={14} className="text-[#5FE3C9]"/>
-              {isIt ? "Codice di Accesso" : "Access Code"}
-            </label>
-            <input 
-              type="text" 
-              className="aif-input font-mono tracking-wider text-lg"
-              value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-              placeholder="TRACE2026"
-              data-testid="settings-code"
-            />
-            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
-              {isIt 
-                ? "Questo codice è richiesto agli utenti per avviare un tracciamento. Può essere riutilizzato."
-                : "This code is required for users to start a trace. It can be reused."}
-            </p>
-          </div>
+      {/* Header with add button */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">{isIt ? "Codici di Accesso" : "Access Codes"}</h2>
+          <p className="text-[13px] text-[var(--aif-text-dim)] mt-1">
+            {isIt 
+              ? "Ogni codice è collegato a una destinazione diversa. L'utente vedrà la destinazione associata al codice inserito."
+              : "Each code is linked to a different destination. The user will see the destination associated with the code they enter."}
+          </p>
+        </div>
+        <button 
+          onClick={() => { resetForm(); setShowForm(true); }}
+          className="aif-btn-primary inline-flex items-center gap-2 shrink-0"
+          data-testid="add-code-btn"
+        >
+          <Plus size={16}/> {isIt ? "Aggiungi Codice" : "Add Code"}
+        </button>
+      </div>
 
-          {/* Destination Name */}
-          <div>
-            <label className="aif-label flex items-center gap-2">
-              <Wallet size={14} className="text-[#5FE3C9]"/>
-              {isIt ? "Nome Destinazione" : "Destination Name"}
-            </label>
-            <input 
-              type="text" 
-              className="aif-input"
-              value={destName}
-              onChange={(e) => setDestName(e.target.value)}
-              placeholder="Zenthos Wallet"
-              data-testid="settings-dest-name"
-            />
-            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
-              {isIt 
-                ? "Il nome mostrato come destinazione dei fondi localizzati (es. Zenthos Wallet)."
-                : "The name shown as the destination of located funds (e.g., Zenthos Wallet)."}
-            </p>
+      {/* Add/Edit form */}
+      {showForm && (
+        <div className="aif-card aif-glow p-6 md:p-8">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-lg font-semibold text-white">
+              {editingId ? (isIt ? "Modifica Codice" : "Edit Code") : (isIt ? "Nuovo Codice" : "New Code")}
+            </h3>
+            <button onClick={resetForm} className="p-2 text-[var(--aif-text-dim)] hover:text-white"><X size={18}/></button>
           </div>
-
-          {/* Destination URL */}
-          <div>
-            <label className="aif-label flex items-center gap-2">
-              <Link2 size={14} className="text-[#5FE3C9]"/>
-              {isIt ? "URL Destinazione" : "Destination URL"}
-            </label>
-            <input 
-              type="text" 
-              className="aif-input"
-              value={destUrl}
-              onChange={(e) => setDestUrl(e.target.value)}
-              placeholder="zenthos-eu.com"
-              data-testid="settings-dest-url"
-            />
-            <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
-              {isIt 
-                ? "Il link al sito di recupero mostrato all'utente dopo il tracciamento. Inserisci il dominio (es. zenthos-eu.com)."
-                : "The link to the recovery site shown to the user after tracing. Enter the domain (e.g. zenthos-eu.com)."}
-            </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="aif-label flex items-center gap-2">
+                <Key size={14} className="text-[#5FE3C9]"/>
+                {isIt ? "Codice" : "Code"}
+              </label>
+              <input 
+                type="text" 
+                className="aif-input font-mono tracking-wider uppercase"
+                value={formCode}
+                onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                placeholder="WYZ22"
+                data-testid="form-code"
+              />
+            </div>
+            <div>
+              <label className="aif-label flex items-center gap-2">
+                <Wallet size={14} className="text-[#5FE3C9]"/>
+                {isIt ? "Nome Destinazione" : "Destination Name"}
+              </label>
+              <input 
+                type="text" 
+                className="aif-input"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Chiantin Bank"
+                data-testid="form-dest-name"
+              />
+            </div>
+            <div>
+              <label className="aif-label flex items-center gap-2">
+                <Link2 size={14} className="text-[#5FE3C9]"/>
+                {isIt ? "URL Destinazione" : "Destination URL"}
+              </label>
+              <input 
+                type="text" 
+                className="aif-input"
+                value={formUrl}
+                onChange={(e) => setFormUrl(e.target.value)}
+                placeholder="zenthos-eu.com"
+                data-testid="form-dest-url"
+              />
+            </div>
           </div>
-
-          {/* Save button */}
-          <div className="pt-4">
+          <div className="mt-5 flex items-center gap-3">
             <button 
-              onClick={save} 
+              onClick={saveCode} 
               disabled={saving}
               className="aif-btn-primary inline-flex items-center gap-2"
-              data-testid="settings-save"
+              data-testid="form-save"
             >
-              <Save size={16}/> {saving ? (isIt ? "Salvataggio..." : "Saving...") : (isIt ? "Salva Impostazioni" : "Save Settings")}
+              <Save size={16}/> {saving ? "..." : (editingId ? (isIt ? "Aggiorna" : "Update") : (isIt ? "Crea Codice" : "Create Code"))}
             </button>
+            <button onClick={resetForm} className="aif-btn-ghost">{isIt ? "Annulla" : "Cancel"}</button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Current settings preview */}
-      <div className="aif-card p-6">
-        <h3 className="text-sm font-semibold text-[#5FE3C9] mb-3">{isIt ? "Anteprima Attuale" : "Current Preview"}</h3>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <div className="aif-card !rounded-lg p-3">
-            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Codice" : "Code"}</div>
-            <div className="text-white font-mono font-bold mt-1">{settings?.access_code || "—"}</div>
-          </div>
-          <div className="aif-card !rounded-lg p-3">
-            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Destinazione" : "Destination"}</div>
-            <div className="text-white font-semibold mt-1">{settings?.destination_name || "—"}</div>
-          </div>
-          <div className="aif-card !rounded-lg p-3">
-            <div className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wider">URL</div>
-            <div className="text-[#5FE3C9] text-sm mt-1 truncate">{settings?.destination_url || "—"}</div>
+      {/* Codes list */}
+      {codes.length === 0 && !showForm ? (
+        <div className="aif-card p-8 text-center">
+          <Key size={48} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+          <p className="text-[var(--aif-text-dim)]">{isIt ? "Nessun codice creato ancora." : "No access codes yet."}</p>
+          <p className="text-[12px] text-[var(--aif-text-dim)] mt-1">{isIt ? "Clicca 'Aggiungi Codice' per iniziare." : "Click 'Add Code' to get started."}</p>
+        </div>
+      ) : (
+        <div className="aif-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
+                  <th className="p-4 font-medium">{isIt ? "Codice" : "Code"}</th>
+                  <th className="p-4 font-medium">{isIt ? "Destinazione" : "Destination"}</th>
+                  <th className="p-4 font-medium">URL</th>
+                  <th className="p-4 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map(c => (
+                  <tr key={c.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[#5FE3C9] tracking-wider text-[15px]">{c.code}</span>
+                        <button onClick={() => copyCode(c.code)} className="p-1 text-[var(--aif-text-dim)] hover:text-white" title="Copy">
+                          <Copy size={13}/>
+                        </button>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-semibold text-white">{c.destination_name}</div>
+                    </td>
+                    <td className="p-4 text-[var(--aif-text-dim)] text-[13px]">
+                      {c.destination_url ? (
+                        <a href={c.destination_url.match(/^https?:\/\//) ? c.destination_url : `http://${c.destination_url}`} 
+                           target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#5FE3C9] hover:underline">
+                          {c.destination_url} <ExternalLink size={11}/>
+                        </a>
+                      ) : "—"}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEdit(c)} className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition" title={isIt ? "Modifica" : "Edit"}>
+                          <Edit2 size={15}/>
+                        </button>
+                        <button onClick={() => deleteCode(c.id)} className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition" title={isIt ? "Elimina" : "Delete"}>
+                          <Trash2 size={15}/>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -329,6 +415,8 @@ function TracesTab({ isIt }) {
               <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
                 <th className="p-4 font-medium">{isIt ? "Nome" : "Name"}</th>
                 <th className="p-4 font-medium">Email</th>
+                <th className="p-4 font-medium">{isIt ? "Codice" : "Code"}</th>
+                <th className="p-4 font-medium">{isIt ? "Destinazione" : "Destination"}</th>
                 <th className="p-4 font-medium">{isIt ? "Importo" : "Amount"}</th>
                 <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
@@ -345,6 +433,12 @@ function TracesTab({ isIt }) {
                       <div className="text-[11px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
                     </td>
                     <td className="p-4 text-[var(--aif-text-dim)]">{trace.email}</td>
+                    <td className="p-4">
+                      <span className="font-mono text-[#5FE3C9] text-[12px] font-bold">{trace.code_used || "—"}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-white text-[13px]">{trace.destination_name || "—"}</span>
+                    </td>
                     <td className="p-4">
                       <span className="font-bold text-[#5FE3C9]">{formatAmount(trace.located_amount)}</span>
                     </td>
@@ -386,7 +480,7 @@ function TracesTab({ isIt }) {
                   {/* Expanded documents row */}
                   {expandedId === trace.id && trace.documents?.length > 0 && (
                     <tr className="bg-[#0E1A36]">
-                      <td colSpan={7} className="p-4">
+                      <td colSpan={9} className="p-4">
                         <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
