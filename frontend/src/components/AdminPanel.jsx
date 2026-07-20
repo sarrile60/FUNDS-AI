@@ -563,19 +563,33 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
   // Pre-fetch the file as a blob so we can:
   //  1) Force PDFs to render inline in the iframe regardless of Cloudinary's
   //     Content-Disposition: attachment header (which is what makes the
-  //     iframe show a blank page when set as raw URL).
+  //     iframe show a blank page when set as the raw URL).
   //  2) Reuse the same blob for the download button, avoiding a second
   //     network round-trip.
   //
-  // NOTE on blob URL lifetime: we intentionally do NOT revoke blob URLs
-  // anywhere in this component. React 18's StrictMode double-invokes
-  // effects in development (mount → unmount → remount), and revoking the
-  // URL during that phase kills the iframe load with ERR_ABORTED — which
-  // was the original "blank PDF" bug. Browsers automatically clean up
-  // blob URLs when the document unloads and when the underlying Blob is
-  // garbage-collected, so the memory cost of a single ~KB..MB blob per
-  // modal open is negligible for this admin-only feature.
+  // IMPORTANT — React 18 StrictMode workaround:
+  // In development, StrictMode intentionally double-invokes effects
+  // (mount → cleanup → remount) to surface unsafe side effects. If we
+  // naively create a new blob URL on every effect run, the iframe's src
+  // rapidly flips between two blob URLs and the browser aborts the first
+  // load with ERR_ABORTED, leaving the iframe blank. To prevent this we
+  // gate the fetch by a ref that remembers which `doc.url` we've already
+  // handled — the second invocation short-circuits and reuses the blob
+  // URL from state. This is safe because each document opens a *new*
+  // DocumentPreviewModal instance (parent unmounts it when previewDoc
+  // becomes null), so `doc.url` never legitimately changes for one
+  // instance. Browsers auto-clean blob URLs when the underlying Blob is
+  // GC'd and when the document unloads, so no explicit revoke is needed
+  // for our short-lived, admin-only modal.
+  const fetchedForUrlRef = React.useRef(null);
   useEffect(() => {
+    // Skip re-fetching if we already handled this URL (StrictMode remount
+    // or accidental re-render). The state (blobUrl / fetching / loadError)
+    // is preserved across the second invocation because React keeps state
+    // for the SAME component instance during StrictMode double-invoke.
+    if (fetchedForUrlRef.current === doc.url) return;
+    fetchedForUrlRef.current = doc.url;
+
     let cancelled = false;
 
     (async () => {
@@ -604,8 +618,8 @@ function DocumentPreviewModal({ doc, isIt, onClose }) {
     })();
 
     return () => {
-      // Only cancel in-flight state updates. DO NOT revoke the object URL
-      // here — see the comment above.
+      // Only cancel any in-flight state updates. DO NOT revoke the object
+      // URL — see the header comment.
       cancelled = true;
     };
   }, [doc.url, doc.mime_type]);
