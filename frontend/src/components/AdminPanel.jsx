@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import {
   Settings, BarChart3, Plus, Edit2, Trash2, Save, X,
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
-  Calendar, DollarSign, Link2, Key, Copy
+  Calendar, DollarSign, Link2, Key, Copy, Eye, Image as ImageIcon, FileType,
+  Loader2, ZoomIn, ZoomOut, AlertCircle
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -332,6 +333,7 @@ function TracesTab({ isIt }) {
   const [traces, setTraces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const load = async () => {
     try {
@@ -485,25 +487,31 @@ function TracesTab({ isIt }) {
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                          {trace.documents.map(doc => (
-                            <div key={doc.id} className="aif-card !p-3">
-                              <div className="flex items-center gap-2 mb-2">
-                                <FileText size={16} className="text-[var(--aif-text-dim)]"/>
-                                <span className="text-[12px] text-white truncate flex-1">{doc.original_name}</span>
-                              </div>
-                              <div className="text-[10px] text-[var(--aif-text-dim)] mb-2">
-                                {(doc.size_bytes / 1024).toFixed(1)} KB
-                              </div>
-                              <a 
-                                href={doc.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-[#5FE3C9] hover:underline"
+                          {trace.documents.map(doc => {
+                            const isImage = (doc.mime_type || "").startsWith("image/");
+                            const isPdf = (doc.mime_type || "") === "application/pdf";
+                            const Icon = isImage ? ImageIcon : (isPdf ? FileType : FileText);
+                            return (
+                              <button
+                                key={doc.id}
+                                onClick={() => setPreviewDoc(doc)}
+                                className="aif-card !p-3 text-left hover:!border-[#5FE3C9] transition group cursor-pointer"
+                                data-testid={`doc-card-${doc.id}`}
+                                title={isIt ? "Clicca per visualizzare" : "Click to preview"}
                               >
-                                <Download size={12}/> {isIt ? "Scarica" : "Download"}
-                              </a>
-                            </div>
-                          ))}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Icon size={16} className="text-[#5FE3C9] shrink-0"/>
+                                  <span className="text-[12px] text-white truncate flex-1">{doc.original_name}</span>
+                                </div>
+                                <div className="text-[10px] text-[var(--aif-text-dim)] mb-2">
+                                  {(doc.size_bytes / 1024).toFixed(1)} KB
+                                </div>
+                                <div className="inline-flex items-center gap-1 text-[11px] text-[#5FE3C9] group-hover:underline">
+                                  <Eye size={12}/> {isIt ? "Anteprima" : "Preview"}
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </td>
                     </tr>
@@ -514,8 +522,188 @@ function TracesTab({ isIt }) {
           </table>
         </div>
       </div>
+
+      {/* Document preview modal */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          doc={previewDoc}
+          isIt={isIt}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
     </div>
   );
+}
+
+// ============================================================
+//   DOCUMENT PREVIEW MODAL
+// ============================================================
+function DocumentPreviewModal({ doc, isIt, onClose }) {
+  const [downloading, setDownloading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const isImage = (doc.mime_type || "").startsWith("image/");
+  const isPdf = (doc.mime_type || "") === "application/pdf";
+
+  // Escape key to close
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    // Lock body scroll while modal open
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  // Force download with original filename by fetching as blob
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(doc.url, { mode: "cors", credentials: "omit" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      // Ensure the blob has the right MIME type
+      const typedBlob = new Blob([blob], { type: doc.mime_type || blob.type || "application/octet-stream" });
+      const objectUrl = URL.createObjectURL(typedBlob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = ensureFilenameHasExtension(doc.original_name, doc.mime_type);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Give the browser a beat before revoking so the download actually starts
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+      toast.success(isIt ? "Download avviato" : "Download started");
+    } catch (e) {
+      // Fallback: open in new tab if fetch/CORS fails
+      console.error("Download failed", e);
+      toast.error(isIt ? "Download diretto non disponibile, apertura in nuova scheda" : "Direct download unavailable, opening in new tab");
+      window.open(doc.url, "_blank", "noopener,noreferrer");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-sm"
+      onClick={onClose}
+      data-testid="doc-preview-modal"
+    >
+      <div
+        className="aif-card !bg-[#0E1A36] w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--aif-line)] shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            {isImage ? <ImageIcon size={16} className="text-[#5FE3C9] shrink-0"/> :
+              isPdf ? <FileType size={16} className="text-[#5FE3C9] shrink-0"/> :
+              <FileText size={16} className="text-[#5FE3C9] shrink-0"/>}
+            <span className="text-[13px] sm:text-[14px] font-semibold text-white truncate">{doc.original_name}</span>
+            <span className="hidden sm:inline text-[11px] text-[var(--aif-text-dim)] shrink-0">
+              · {(doc.size_bytes / 1024).toFixed(1)} KB
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="aif-btn-primary !py-2 !px-3 !text-[12px] inline-flex items-center gap-1.5"
+              data-testid="doc-preview-download"
+            >
+              {downloading ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>}
+              {isIt ? "Scarica" : "Download"}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-[var(--aif-text-dim)] hover:text-white transition"
+              data-testid="doc-preview-close"
+              title={isIt ? "Chiudi" : "Close"}
+            >
+              <X size={18}/>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-auto bg-[#06122A] flex items-center justify-center p-2 sm:p-4">
+          {loadError ? (
+            <div className="text-center max-w-md">
+              <AlertCircle size={40} className="mx-auto text-[#FFB454] mb-3"/>
+              <p className="text-[14px] text-white mb-1">
+                {isIt ? "Impossibile visualizzare l'anteprima" : "Preview unavailable"}
+              </p>
+              <p className="text-[12px] text-[var(--aif-text-dim)] mb-4">
+                {isIt
+                  ? "Puoi comunque scaricare il documento originale."
+                  : "You can still download the original document."}
+              </p>
+              <button onClick={handleDownload} className="aif-btn-primary inline-flex items-center gap-2 !text-[13px]">
+                <Download size={14}/> {isIt ? "Scarica documento" : "Download document"}
+              </button>
+            </div>
+          ) : isImage ? (
+            <img
+              src={doc.url}
+              alt={doc.original_name}
+              className="max-w-full max-h-[75vh] object-contain rounded"
+              onError={() => setLoadError(true)}
+              data-testid="doc-preview-image"
+            />
+          ) : isPdf ? (
+            <iframe
+              src={doc.url}
+              title={doc.original_name}
+              className="w-full h-[75vh] bg-white rounded"
+              onError={() => setLoadError(true)}
+              data-testid="doc-preview-pdf"
+            />
+          ) : (
+            <div className="text-center">
+              <FileText size={40} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+              <p className="text-[13px] text-[var(--aif-text-dim)] mb-4">
+                {isIt ? "Anteprima non disponibile per questo tipo di file." : "Preview not available for this file type."}
+              </p>
+              <button onClick={handleDownload} className="aif-btn-primary inline-flex items-center gap-2 !text-[13px]">
+                <Download size={14}/> {isIt ? "Scarica documento" : "Download document"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer hint */}
+        <div className="px-5 py-2 border-t border-[var(--aif-line)] text-[11px] text-[var(--aif-text-dim)] shrink-0 flex items-center justify-between">
+          <span>{doc.mime_type || "—"}</span>
+          <span>{isIt ? "ESC per chiudere" : "Press ESC to close"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Ensure the download filename has an extension matching the MIME type.
+// Cloudinary sometimes strips extensions from the original name, and PDFs
+// stored as raw resources lose the .pdf suffix in the URL. This guarantees
+// the downloaded file opens correctly on the client machine.
+function ensureFilenameHasExtension(name, mime) {
+  const safe = (name || "document").trim();
+  const hasExt = /\.[a-z0-9]{2,5}$/i.test(safe);
+  if (hasExt) return safe;
+  const map = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+    "application/pdf": ".pdf",
+  };
+  const ext = map[mime] || "";
+  return safe + ext;
 }
 
 function StatCard({ label, value, icon: Icon }) {
