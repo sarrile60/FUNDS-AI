@@ -367,26 +367,30 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
       <div className="aif-grid-overlay absolute inset-0 opacity-40 pointer-events-none"/>
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap relative z-10">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap relative z-10">
+        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
           <div className="relative shrink-0">
             <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-20"/>
-            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#0E1A36] border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9]">
-              <StageIcon size={22}/>
+            <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-[#0E1A36] border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9]">
+              <StageIcon size={18} className="sm:hidden"/>
+              <StageIcon size={22} className="hidden sm:block"/>
             </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] sm:text-[12px] uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#9FB0CC]">{t("trc.title")}</div>
-            <div className="text-white font-bold text-base sm:text-xl md:text-2xl mt-0.5 truncate">{t(stage.labelKey)}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] sm:text-[12px] uppercase tracking-[0.08em] sm:tracking-[0.22em] text-[#9FB0CC] leading-tight break-words">{t("trc.title")}</div>
+            <div className="text-white font-bold text-[15px] sm:text-xl md:text-2xl mt-0.5 truncate">{t(stage.labelKey)}</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="aif-chip text-[10px] sm:text-[11px] hidden sm:inline-flex"><Lock size={12}/> AES-256</div>
-          <div className="aif-chip text-[10px] sm:text-[11px] hidden sm:inline-flex"><Activity size={12}/> {t("trc.do_not_close")}</div>
-          <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2" title={t("trc.cancel")} data-testid="proc-cancel">
-            <X size={18}/>
-          </button>
+        {/* Chip cluster — hard-hidden on mobile via wrapper so the custom
+            `.aif-chip { display: inline-flex }` rule can't override the
+            `hidden` utility (which was the mobile-overlap bug). */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <div className="aif-chip text-[10px] sm:text-[11px]"><Lock size={12}/> AES-256</div>
+          <div className="aif-chip text-[10px] sm:text-[11px]"><Activity size={12}/> {t("trc.do_not_close")}</div>
         </div>
+        <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2 shrink-0" title={t("trc.cancel")} data-testid="proc-cancel">
+          <X size={18}/>
+        </button>
       </div>
 
       {/* Time & progress */}

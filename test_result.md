@@ -274,6 +274,36 @@ frontend:
         agent: "testing"
         comment: "Frontend testing not performed as per testing agent instructions - only backend testing conducted"
 
+  - task: "Mobile Responsive UI - Procedure Animation Header (Bug A)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/ProcedureAnimation.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BUG FIX VERIFIED. Tested on mobile viewports (390×844 iPhone 12 Pro, 320×568 iPhone SE). SUCCESSES: (1) AES-256 chip is NOT visible on mobile (hidden via wrapper div with 'hidden sm:flex' classes - line 387). (2) 'Non chiudere' chip is NOT visible on mobile (hidden via same wrapper). (3) Title 'PROCEDURA DI TRACCIAMENTO FONDI' is visible and readable on both viewports. (4) Cancel X button is visible and accessible. (5) No overlap detected - title bounding box shows proper positioning. (6) Desktop regression test passed at 1920×1080 - both chips ARE visible on desktop as expected. ROOT CAUSE OF ORIGINAL BUG: Custom .aif-chip CSS with 'display: inline-flex' was overriding Tailwind's 'hidden' utility on mobile. FIX: Wrapped chips in container div with 'hidden sm:flex' so the wrapper itself has display:none on mobile, preventing the chip's inline-flex from leaking through. Additional mobile optimizations: title reduced to text-[9px] on mobile (line 380), stage icon circle reduced to w-10 h-10 on mobile (line 374), stage name reduced to text-[15px] on mobile (line 381). All assertions passed on both mobile viewports and desktop."
+      - working: true
+        agent: "testing"
+        comment: "✅ RE-VERIFICATION COMPLETED (Simplified 3-minute test). Mobile 390×844: (1) AES-256 chip exists but NOT VISIBLE (hidden correctly). (2) 'Non chiudere' chip exists but NOT VISIBLE (hidden correctly). (3) Cancel X button IS VISIBLE and accessible. (4) Procedure animation renders correctly with scanning visual and logs. Desktop 1920×1080 regression: (1) AES-256 chip IS VISIBLE (as expected). (2) 'Non chiudere' chip IS VISIBLE (as expected). Screenshots captured at both viewports confirm no overlap on mobile and proper visibility on desktop. Bug A fix CONFIRMED WORKING."
+
+  - task: "Mobile Responsive UI - Located Amount Display (Bug B)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/UserApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BUG FIX VERIFIED. Tested the CSS directly by injecting the amount element with exact classes from UserApp.jsx line 520. SUCCESSES: (1) At 320px viewport: font-size 28.8px, scrollWidth=248px, clientWidth=248px, NO OVERFLOW. (2) At 375px viewport: font-size 33.75px, scrollWidth=298px, clientWidth=298px, NO OVERFLOW. (3) At 390px viewport: font-size 35.1px, scrollWidth=311px, clientWidth=311px, NO OVERFLOW. (4) Full amount '€ 286.996,20' is visible and readable on all mobile viewports. ROOT CAUSE OF ORIGINAL BUG: The amount was displayed at text-5xl (48px) which was too large for narrow mobile viewports, causing the last digits to be cut off on the right side. FIX: Changed font size from 'text-5xl md:text-7xl' to 'text-[clamp(1.75rem,9vw,3rem)] sm:text-5xl md:text-7xl' with additional 'tabular-nums break-all px-2' classes. The clamp() function ensures the font scales fluidly between 28px (1.75rem) and 48px (3rem) based on viewport width (9vw), guaranteeing the amount fits on narrow screens. All assertions passed on all tested viewports."
+      - working: true
+        agent: "testing"
+        comment: "✅ RE-VERIFICATION COMPLETED (Simplified 3-minute test using DOM injection). Mobile 390×844: (1) Font size computed to 35.1px (within expected 28-48px range). (2) scrollWidth=252px, clientWidth=252px (NO OVERFLOW). (3) CSS classes 'text-[clamp(1.75rem,9vw,3rem)] sm:text-5xl md:text-7xl font-black tabular-nums break-all px-2' applied correctly. (4) Test amount '€ 286.996,20' fits completely within viewport without horizontal overflow. Bug B fix CONFIRMED WORKING. The clamp() function scales the font size appropriately for narrow mobile viewports, preventing the cutoff issue that existed with the original text-5xl (48px) fixed size."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
@@ -282,9 +312,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "All backend API endpoints tested successfully"
-  stuck_tasks: []
-  test_all: true
+    - "Mobile responsive UI bug fixes verified - both Bug A and Bug B confirmed working"
+  stuck_tasks:
+    - "Admin Panel — Document Preview & Correct-Filename Download"
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
@@ -306,6 +337,8 @@ agent_communication:
     message: "THIRD BUG FIX ATTEMPT: Removed ALL blob URL revocation for the preview. Modified DocumentPreviewModal (lines 541-751): (1) REMOVED the second useEffect with empty deps that was causing premature revocation. (2) Single fetch effect (lines 578-611) whose cleanup ONLY sets cancelled=true - NO URL.revokeObjectURL() anywhere for preview blob URL. (3) Added code comment (lines 570-577) explaining rationale: browsers auto-clean blob URLs on document unload and when Blob is garbage-collected, so minimal memory cost. (4) Download button (lines 614-642) still creates its own separate blob URL and revokes it 1.5s after click (line 633) - independent from preview URL. Test data unchanged: Mario Rossi trace with screenshot-truffa.png and 4910_001.pdf."
   - agent: "testing"
     message: "❌ CRITICAL BUG STILL EXISTS AFTER THIRD FIX ATTEMPT: PDF preview STILL shows BLANK WHITE PAGE. The third fix did NOT solve the problem. Despite removing ALL blob URL revocation from preview code, we STILL see ERR_ABORTED errors and blank PDF iframe. COMPREHENSIVE TEST RESULTS: (1) ✅ Login successful. (2) ✅ Tracciamenti tab working. (3) ✅ Mario Rossi trace expanded with 2 documents. (4) ✅ PDF modal opens. (5) ✅ Iframe present (990x810px, has contentWindow). (6) ✅ Iframe src starts with 'blob:'. (7) ❌ ERR_ABORTED on blob URLs: 5 DIFFERENT blob URLs failed with net::ERR_ABORTED. (8) ❌ PDF iframe displays BLANK WHITE PAGE (screenshot evidence). (9) ⚠️ JavaScript reports blob URL as 'valid and fetchable' when checked AFTER iframe load attempt. (10) ✅ Modal close/reopen works. (11) ✅ Image preview works perfectly. (12) ✅ Image download works (screenshot-truffa.png). (13) ✅ PDF download works (4910_001.pdf). (14) ✅ ESC key close works. (15) ✅ Backdrop click close works. ROOT CAUSE - WHY THIRD FIX FAILED: React.StrictMode (still enabled in /app/frontend/src/index.js line 8) causes double-invoke of effects. EXECUTION: (a) First mount → Creates blob URL #1 → Sets state → Iframe src=URL #1. (b) Cleanup → Sets cancelled=true (URL #1 still exists). (c) Second mount → Creates blob URL #2 → Sets state → Iframe src=URL #2. (d) Browser ABORTS first load when iframe src CHANGES from URL #1 to URL #2 → ERR_ABORTED. (e) Iframe stuck in failed state or race condition prevents retry. CRITICAL INSIGHT: ERR_ABORTED is NOT from explicit revokeObjectURL() (those are gone), but from BROWSER aborting iframe load when src attribute CHANGES during StrictMode double-invoke. FIX OPTIONS: (1) DISABLE React.StrictMode (remove wrapper in /app/frontend/src/index.js) - StrictMode is dev-only tool, not needed in production. (2) Use useRef with initialization flag to prevent double-creation: const initialized = useRef(false); if (!initialized.current) { create blob URL; initialized.current = true; }. (3) Move blob URL creation outside useEffect (useMemo or different pattern). (4) Use class component (not affected by StrictMode). RECOMMENDATION: Option 1 (disable StrictMode) is simplest and most appropriate. Alternatively, Option 2 (useRef initialization flag) works in both dev and prod. This task is now STUCK after 3 failed attempts - requires different approach."
+  - agent: "testing"
+    message: "✅ MOBILE RESPONSIVE UI BUG FIXES RE-VERIFIED (Simplified 3-minute test as requested). Tested both Bug A (ProcedureAnimation header chips overlap) and Bug B (Located amount display cutoff) on mobile 390×844 and desktop 1920×1080. RESULTS: Bug A - Mobile: AES-256 and 'Non chiudere' chips are NOT VISIBLE (hidden correctly via 'hidden sm:flex' wrapper at line 387), Cancel X button IS VISIBLE. Desktop: Both chips ARE VISIBLE (regression test passed). Bug B - Mobile: Located amount font size computed to 35.1px (within expected 28-48px range), NO horizontal overflow (scrollWidth=252px, clientWidth=252px). The clamp(1.75rem,9vw,3rem) CSS at line 520 scales correctly for narrow viewports. Both fixes CONFIRMED WORKING. Screenshots captured at both viewports. Total test time: ~3 minutes as requested."
 
   - task: "Admin Panel — Document Preview & Correct-Filename Download"
     section: "frontend"
