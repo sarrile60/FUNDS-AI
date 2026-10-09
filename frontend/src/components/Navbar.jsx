@@ -79,7 +79,8 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="aif-btn-primary !py-2.5 !px-4 !text-sm" data-testid="nav-start">{t("nav.start")}</Link>
+              <Link to="/login" className="aif-btn-ghost hidden md:inline-flex !py-2 !px-4 !text-sm" data-testid="nav-login">{t("nav.login")}</Link>
+              <Link to="/register" className="aif-btn-primary !py-2.5 !px-4 !text-sm" data-testid="nav-start">{t("nav.start")}</Link>
             </>
           )}
 

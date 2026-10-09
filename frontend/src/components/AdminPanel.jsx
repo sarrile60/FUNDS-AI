@@ -6,7 +6,8 @@ import {
   Settings, BarChart3, Plus, Edit2, Trash2, Save, X,
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
   Calendar, DollarSign, Link2, Key, Copy, Eye, Image as ImageIcon, FileType,
-  Loader2, ZoomIn, ZoomOut, AlertCircle
+  Loader2, ZoomIn, ZoomOut, AlertCircle, Users, Search, ChevronLeft, ChevronRight,
+  Phone, CheckCircle2, Clock, Mail
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -63,10 +64,12 @@ export default function AdminPanel() {
           <div className="flex items-center gap-2 flex-wrap">
             <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
             <TabBtn active={tab === "codes"}    onClick={() => setTab("codes")}    icon={Key}       label={isIt ? "Codici Accesso" : "Access Codes"} testid="tab-codes"/>
+            <TabBtn active={tab === "users"}    onClick={() => setTab("users")}    icon={Users}     label={isIt ? "Utenti" : "Users"} testid="tab-users"/>
           </div>
 
           {tab === "traces" && <TracesTab isIt={isIt}/>}
           {tab === "codes" && <AccessCodesTab isIt={isIt}/>}
+          {tab === "users" && <RegisteredUsersTab isIt={isIt}/>}
         </main>
       </div>
     </div>
@@ -794,5 +797,228 @@ function StatCard({ label, value, icon: Icon }) {
       </div>
       <div className="text-2xl font-bold text-white">{value}</div>
     </div>
+  );
+}
+
+
+// ============================================================
+//   REGISTERED USERS TAB
+// ============================================================
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+function RegisteredUsersTab({ isIt }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API}/admin/registered-users`, { headers: getAuthHeader() });
+      setUsers(data);
+    } catch (e) {
+      toast.error(isIt ? "Errore caricamento utenti" : "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // Client-side filter
+  const filtered = users.filter(u => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (u.first_name || "").toLowerCase().includes(q) ||
+      (u.last_name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.phone || "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Reset page when search changes
+  useEffect(() => { setPage(0); }, [search]);
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString(isIt ? "it-IT" : "en-US", {
+      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+  };
+
+  const fmtAmount = (n) => n ? `€ ${(n).toLocaleString("it-IT", { minimumFractionDigits: 2 })}` : "—";
+
+  if (loading) {
+    return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-white">{isIt ? "Utenti Registrati" : "Registered Users"}</h2>
+          <p className="text-[13px] text-[var(--aif-text-dim)] mt-1">
+            {isIt ? `${users.length} utenti totali` : `${users.length} total users`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+            <input
+              type="text"
+              className="aif-input pl-9 !py-2 text-[13px] w-56"
+              placeholder={isIt ? "Cerca nome, email, tel…" : "Search name, email, phone…"}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              data-testid="users-search"
+            />
+          </div>
+          {/* Page size */}
+          <select
+            className="aif-input !py-2 text-[13px] w-24"
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}
+            data-testid="users-page-size"
+          >
+            {PAGE_SIZE_OPTIONS.map(s => <option key={s} value={s}>{s} / {isIt ? "pag." : "page"}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label={isIt ? "Totale utenti" : "Total users"} value={users.length} icon={Users}/>
+        <StatCard label={isIt ? "Con tracciamento" : "With trace"} value={users.filter(u => u.trace).length} icon={BarChart3}/>
+        <StatCard label={isIt ? "Email 24h inviate" : "24h emails sent"} value={users.filter(u => u.trace?.email_24h_sent).length} icon={Mail}/>
+        <StatCard label={isIt ? "Email 50h inviate" : "50h emails sent"} value={users.filter(u => u.trace?.email_50h_sent).length} icon={CheckCircle2}/>
+      </div>
+
+      {/* Table */}
+      {filtered.length === 0 ? (
+        <div className="aif-card p-8 text-center">
+          <Users size={40} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+          <p className="text-[var(--aif-text-dim)]">{search ? (isIt ? "Nessun risultato." : "No results found.") : (isIt ? "Nessun utente registrato." : "No registered users yet.")}</p>
+        </div>
+      ) : (
+        <div className="aif-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
+                  <th className="p-3 font-medium">{isIt ? "Nome" : "Name"}</th>
+                  <th className="p-3 font-medium">Email</th>
+                  <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Telefono" : "Phone"}</th>
+                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Nascita" : "DOB"}</th>
+                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Registrato" : "Registered"}</th>
+                  <th className="p-3 font-medium">{isIt ? "Tracciamento" : "Trace"}</th>
+                  <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
+                  <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map(u => (
+                  <tr key={u.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
+                    <td className="p-3">
+                      <div className="font-semibold text-white">{u.first_name} {u.last_name}</div>
+                      <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
+                        {u.lang === "en" ? "🇬🇧 EN" : "🇮🇹 IT"}
+                      </div>
+                    </td>
+                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.email}</td>
+                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden md:table-cell">{u.phone || "—"}</td>
+                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden lg:table-cell">{u.date_of_birth || "—"}</td>
+                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden lg:table-cell">{fmtDate(u.created_at)}</td>
+                    <td className="p-3">
+                      {u.trace ? (
+                        <div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                            u.trace.status === "completed" ? "bg-[#4ADE80]/15 text-[#4ADE80]" : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
+                          }`}>
+                            {u.trace.status === "completed" ? (isIt ? "Completato" : "Completed") : (isIt ? "Attivo" : "Active")}
+                          </span>
+                          {u.trace.located_amount && (
+                            <div className="text-[10px] text-[#5FE3C9] mt-0.5">{fmtAmount(u.trace.located_amount)}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[var(--aif-text-dim)] text-[11px]">{isIt ? "Nessuno" : "None"}</span>
+                      )}
+                    </td>
+                    <td className="p-3 hidden md:table-cell">
+                      <EmailBadge sent={u.trace?.email_24h_sent} isIt={isIt}/>
+                    </td>
+                    <td className="p-3 hidden md:table-cell">
+                      <EmailBadge sent={u.trace?.email_50h_sent} isIt={isIt}/>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--aif-line)]">
+              <div className="text-[12px] text-[var(--aif-text-dim)]">
+                {isIt
+                  ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} di ${filtered.length}`
+                  : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} of ${filtered.length}`}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="p-2 text-[var(--aif-text-dim)] hover:text-white disabled:opacity-30 transition"
+                >
+                  <ChevronLeft size={16}/>
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-7 h-7 rounded text-[12px] transition ${pageNum === page ? "bg-[#5FE3C9] text-[#06122A] font-bold" : "text-[var(--aif-text-dim)] hover:text-white"}`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className="p-2 text-[var(--aif-text-dim)] hover:text-white disabled:opacity-30 transition"
+                >
+                  <ChevronRight size={16}/>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmailBadge({ sent, isIt }) {
+  if (sent) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-[#4ADE80]/15 text-[#4ADE80]">
+        <CheckCircle2 size={10}/> {isIt ? "Inviata" : "Sent"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--aif-line)]/30 text-[var(--aif-text-dim)]">
+      <Clock size={10}/> {isIt ? "In attesa" : "Pending"}
+    </span>
   );
 }

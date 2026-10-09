@@ -43,7 +43,7 @@ function Hero() {
             {t("hero.subtitle")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2" data-testid="hero-cta-start">
+            <Link to="/register" className="aif-btn-primary inline-flex items-center gap-2" data-testid="hero-cta-start">
               {t("hero.cta1")} <ArrowRight size={16}/>
             </Link>
             <a href="#how" className="aif-btn-ghost inline-flex items-center gap-2" data-testid="hero-cta-how">
@@ -246,7 +246,7 @@ function AuthorityPath() {
               </div>
               <h3 className="text-white font-semibold text-lg mt-4">{t(`auth.${c.k}.t`)}</h3>
               <p className="text-[var(--aif-text-dim)] text-[13px] mt-2 leading-relaxed">{t(`auth.${c.k}.d`)}</p>
-              <Link to="/login" className="mt-4 inline-flex items-center gap-2 text-[13px] font-medium" style={{ color: c.color }}>
+              <Link to="/register" className="mt-4 inline-flex items-center gap-2 text-[13px] font-medium" style={{ color: c.color }}>
                 {t(`auth.${c.k}.b`)} <ArrowRight size={14}/>
               </Link>
             </div>
@@ -297,7 +297,7 @@ function TracingTeaser() {
                 <li key={i} className="flex items-start gap-2 text-[var(--aif-text-dim)]"><CheckCircle2 size={16} className="text-[#5FE3C9] mt-0.5"/> {b}</li>
               ))}
             </ul>
-            <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2 mt-6">{t("tracing.cta")} <ArrowRight size={16}/></Link>
+            <Link to="/register" className="aif-btn-primary inline-flex items-center gap-2 mt-6">{t("tracing.cta")} <ArrowRight size={16}/></Link>
           </div>
           <div className="lg:col-span-7"><HeroNetwork animate={false}/></div>
         </div>
@@ -408,7 +408,7 @@ function CtaBanner() {
           <SmallTag icon={Lock}>{t("cta.tag")}</SmallTag>
           <h3 className="section-title mt-3">{t("cta.title")}</h3>
           <p className="text-[var(--aif-text-dim)] mt-3 max-w-2xl mx-auto">{t("cta.body")}</p>
-          <Link to="/login" className="aif-btn-primary inline-flex items-center gap-2 mt-6">{t("cta.btn")} <ArrowRight size={16}/></Link>
+          <Link to="/register" className="aif-btn-primary inline-flex items-center gap-2 mt-6">{t("cta.btn")} <ArrowRight size={16}/></Link>
         </div>
       </div>
     </Section>

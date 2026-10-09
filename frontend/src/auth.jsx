@@ -1,4 +1,4 @@
-// Auth context — single login endpoint for both admin and users.
+// Auth context — login + self-registration
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
@@ -45,12 +45,21 @@ export function AuthProvider({ children }) {
     } finally { setLoading(false); }
   };
 
-  const tryRegister = async () => ({ ok: false, error: "Registration is currently unavailable. Please contact your administrator." });
+  const register = async (formData) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.post(`${API}/auth/register`, formData);
+      persist(data.token, data.user);
+      return { ok: true, user: data.user };
+    } catch (e) {
+      return { ok: false, error: _err(e, "Registration error") };
+    } finally { setLoading(false); }
+  };
 
   const logout = () => persist(null, null);
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register: tryRegister, logout, API }}>
+    <Ctx.Provider value={{ user, token, loading, login, register, logout, API }}>
       {children}
     </Ctx.Provider>
   );

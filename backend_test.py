@@ -1,293 +1,532 @@
 #!/usr/bin/env python3
 """
-Regression test for tier ranges in _located_amount_for function.
-Tests that POST /api/trace/start returns located_amount values within expected ranges.
+Comprehensive backend API test for Traccia Fondi
+Tests all new features: registration, login, user profile, trace management, admin endpoints
 """
 
 import requests
 import sys
-from typing import List, Dict, Tuple
+import json
+from typing import Dict, Any, Optional
 
-# Backend URL from frontend/.env
-BASE_URL = "https://nifty-hermann-10.preview.emergentagent.com/api"
+# Backend URL from review request
+BASE_URL = "https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@traccia-fondi.com"
 ADMIN_PASSWORD = "admin123"
 
-# Test access code
-TEST_CODE = "RANGETEST"
-TEST_DESTINATION = "Test"
-
-# Expected ranges for each tier (from TIER_HIGH_END in server.py)
-TIER_RANGES = {
-    "5000_20000": (130000, 150000),
-    "20000_50000": (275000, 305000),
-    "50000_100000": (355000, 385000),
-    "100000_plus": (430000, 470000),
+# Test user data
+TEST_USER = {
+    "first_name": "Mario",
+    "last_name": "Rossi",
+    "email": "mario.rossi.test@example.com",
+    "password": "test123",
+    "phone": "+39 333 1234567",
+    "date_of_birth": "1980-05-15",
+    "lang": "it"
 }
 
-# Test results storage
+# Test results
 test_results = {
-    "passed": [],
-    "failed": [],
-    "warnings": [],
+    "passed": 0,
+    "failed": 0,
+    "tests": []
+}
+
+# Store tokens and IDs for later tests
+test_data = {
+    "user_token": None,
+    "admin_token": None,
+    "access_code": "TEST01",
+    "trace_id": None
 }
 
 
-def log_pass(msg: str):
-    """Log a passing test."""
-    print(f"✅ {msg}")
-    test_results["passed"].append(msg)
-
-
-def log_fail(msg: str):
-    """Log a failing test."""
-    print(f"❌ {msg}")
-    test_results["failed"].append(msg)
-
-
-def log_warn(msg: str):
-    """Log a warning."""
-    print(f"⚠️  {msg}")
-    test_results["warnings"].append(msg)
-
-
-def admin_login() -> str:
-    """Login as admin and return token."""
-    print("\n=== SETUP: Admin Login ===")
-    resp = requests.post(
-        f"{BASE_URL}/auth/login",
-        json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
-        timeout=10
-    )
-    if resp.status_code != 200:
-        log_fail(f"Admin login failed: {resp.status_code} - {resp.text}")
-        sys.exit(1)
+def log_test(name: str, passed: bool, details: str = ""):
+    """Log test result."""
+    status = "✅ PASS" if passed else "❌ FAIL"
+    print(f"{status}: {name}")
+    if details:
+        print(f"  {details}")
     
-    data = resp.json()
-    token = data.get("token")
-    if not token:
-        log_fail("Admin login response missing token")
-        sys.exit(1)
+    test_results["tests"].append({
+        "name": name,
+        "passed": passed,
+        "details": details
+    })
     
-    log_pass(f"Admin login successful")
-    return token
+    if passed:
+        test_results["passed"] += 1
+    else:
+        test_results["failed"] += 1
 
 
-def create_access_code(token: str) -> str:
-    """Create test access code. Returns code ID."""
-    print("\n=== SETUP: Create Access Code ===")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    # Check if code already exists
-    resp = requests.get(f"{BASE_URL}/admin/access-codes", headers=headers, timeout=10)
-    if resp.status_code == 200:
-        codes = resp.json()
-        for code in codes:
-            if code.get("code") == TEST_CODE:
-                log_pass(f"Access code '{TEST_CODE}' already exists (id: {code['id']})")
-                return code["id"]
-    
-    # Create new code
-    resp = requests.post(
-        f"{BASE_URL}/admin/access-codes",
-        headers=headers,
-        json={
-            "code": TEST_CODE,
-            "destination_name": TEST_DESTINATION,
-            "destination_url": ""
-        },
-        timeout=10
-    )
-    
-    if resp.status_code != 200:
-        log_fail(f"Failed to create access code: {resp.status_code} - {resp.text}")
-        sys.exit(1)
-    
-    data = resp.json()
-    code_id = data.get("id")
-    log_pass(f"Created access code '{TEST_CODE}' (id: {code_id})")
-    return code_id
-
-
-def test_tier_ranges(token: str) -> Dict[str, List[float]]:
-    """
-    Test all 4 tiers with 5 calls each.
-    Returns dict mapping tier -> list of located_amount values.
-    """
-    print("\n=== TIER RANGE REGRESSION TEST ===")
-    results = {}
-    trace_ids = []
-    
-    for tier in TIER_RANGES.keys():
-        print(f"\n--- Testing tier: {tier} ---")
-        tier_values = []
-        lo, hi = TIER_RANGES[tier]
+def test_health():
+    """Test 1: Health check endpoint."""
+    print("\n=== Test 1: Health Check ===")
+    try:
+        resp = requests.get(f"{BASE_URL}/health", timeout=10)
         
-        for i in range(5):
-            email = f"range-test-{tier}-{i}@example.com"
-            
-            # Call /api/trace/start
-            resp = requests.post(
-                f"{BASE_URL}/trace/start",
-                json={
-                    "first_name": "Range",
-                    "last_name": f"Test{i}",
-                    "email": email,
-                    "access_code": TEST_CODE,
-                    "amount_tier": tier
-                },
-                timeout=10
-            )
-            
-            if resp.status_code != 200:
-                log_fail(f"  Call {i+1}/5 failed: {resp.status_code} - {resp.text}")
-                continue
-            
-            data = resp.json()
-            located = data.get("located_amount")
-            trace_id = data.get("trace_id")
-            
-            if trace_id:
-                trace_ids.append(trace_id)
-            
-            if located is None:
-                log_fail(f"  Call {i+1}/5: Response missing 'located_amount'")
-                continue
-            
-            tier_values.append(located)
-            
-            # Check if value is in range
-            if lo <= located <= hi:
-                print(f"  ✓ Call {i+1}/5: {located:,.2f} (in range [{lo:,} - {hi:,}])")
-            else:
-                log_fail(f"  Call {i+1}/5: {located:,.2f} OUT OF RANGE [{lo:,} - {hi:,}]")
+        if resp.status_code != 200:
+            log_test("Health check", False, f"Expected 200, got {resp.status_code}")
+            return
         
-        results[tier] = tier_values
-    
-    return results, trace_ids
-
-
-def validate_tier_results(results: Dict[str, List[float]]):
-    """Validate that tier results meet all success criteria."""
-    print("\n=== VALIDATION ===")
-    
-    for tier, values in results.items():
-        lo, hi = TIER_RANGES[tier]
-        print(f"\n--- Tier: {tier} ---")
-        print(f"  Expected range: [{lo:,} - {hi:,}]")
-        print(f"  Sample values: {[f'{v:,.2f}' for v in values[:3]]}")
-        
-        if len(values) != 5:
-            log_fail(f"  Expected 5 values, got {len(values)}")
-            continue
-        
-        # Check 1: All values in range
-        out_of_range = [v for v in values if not (lo <= v <= hi)]
-        if out_of_range:
-            log_fail(f"  {len(out_of_range)} values out of range: {out_of_range}")
+        data = resp.json()
+        if data.get("status") == "ok":
+            log_test("Health check", True, f"Response: {json.dumps(data)}")
         else:
-            log_pass(f"  All 5 values within range [{lo:,} - {hi:,}]")
-        
-        # Check 2: Randomization (at least 3 distinct values)
-        distinct = len(set(values))
-        if distinct < 3:
-            log_fail(f"  Only {distinct} distinct values (expected ≥3): {values}")
-        else:
-            log_pass(f"  Randomization OK: {distinct} distinct values out of 5")
-        
-        # Check 3: Values have cents (not round integers)
-        round_values = [v for v in values if v == int(v)]
-        if round_values:
-            log_fail(f"  {len(round_values)} values are round integers (no cents): {round_values}")
-        else:
-            log_pass(f"  All values have cents (float precision)")
-
-
-def cleanup_test_data(token: str, trace_ids: List[str]):
-    """Delete all test traces and access code."""
-    print("\n=== CLEANUP ===")
-    headers = {"Authorization": f"Bearer {token}"}
+            log_test("Health check", False, f"Expected status='ok', got {data}")
     
-    # Delete traces
-    deleted_count = 0
-    for trace_id in trace_ids:
-        resp = requests.delete(
-            f"{BASE_URL}/admin/traces/{trace_id}",
-            headers=headers,
+    except Exception as e:
+        log_test("Health check", False, f"Exception: {e}")
+
+
+def test_registration():
+    """Test 2: User registration."""
+    print("\n=== Test 2: User Registration ===")
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/auth/register",
+            json=TEST_USER,
             timeout=10
         )
+        
+        if resp.status_code != 200:
+            log_test("User registration", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        data = resp.json()
+        
+        # Check token
+        if not data.get("token"):
+            log_test("User registration", False, "Missing token in response")
+            return
+        
+        # Check user object
+        user = data.get("user")
+        if not user:
+            log_test("User registration", False, "Missing user object in response")
+            return
+        
+        # Verify no password in response
+        if "password" in user or "password_hash" in user:
+            log_test("User registration", False, "Password exposed in response")
+            return
+        
+        # Verify user fields
+        if (user.get("first_name") == TEST_USER["first_name"] and
+            user.get("last_name") == TEST_USER["last_name"] and
+            user.get("email") == TEST_USER["email"] and
+            user.get("phone") == TEST_USER["phone"] and
+            user.get("date_of_birth") == TEST_USER["date_of_birth"]):
+            
+            test_data["user_token"] = data["token"]
+            log_test("User registration", True, f"User created with ID: {user.get('id')}")
+        else:
+            log_test("User registration", False, f"User data mismatch: {user}")
+    
+    except Exception as e:
+        log_test("User registration", False, f"Exception: {e}")
+
+
+def test_login():
+    """Test 3: User login."""
+    print("\n=== Test 3: User Login ===")
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/auth/login",
+            json={
+                "email": TEST_USER["email"],
+                "password": TEST_USER["password"]
+            },
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("User login", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        data = resp.json()
+        
+        if data.get("token"):
+            test_data["user_token"] = data["token"]
+            log_test("User login", True, f"Login successful, token received")
+        else:
+            log_test("User login", False, "Missing token in response")
+    
+    except Exception as e:
+        log_test("User login", False, f"Exception: {e}")
+
+
+def test_user_profile():
+    """Test 4: Get user profile."""
+    print("\n=== Test 4: Get User Profile ===")
+    
+    if not test_data["user_token"]:
+        log_test("Get user profile", False, "No user token available (previous test failed)")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/users/me",
+            headers={"Authorization": f"Bearer {test_data['user_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Get user profile", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        user = resp.json()
+        
+        # Verify user fields
+        if (user.get("first_name") == TEST_USER["first_name"] and
+            user.get("last_name") == TEST_USER["last_name"] and
+            user.get("email") == TEST_USER["email"] and
+            user.get("phone") == TEST_USER["phone"] and
+            user.get("date_of_birth") == TEST_USER["date_of_birth"]):
+            
+            log_test("Get user profile", True, f"Profile retrieved successfully")
+        else:
+            log_test("Get user profile", False, f"Profile data mismatch: {user}")
+    
+    except Exception as e:
+        log_test("Get user profile", False, f"Exception: {e}")
+
+
+def test_user_trace_empty():
+    """Test 5: Get user trace (no trace yet)."""
+    print("\n=== Test 5: Get User Trace (No Trace Yet) ===")
+    
+    if not test_data["user_token"]:
+        log_test("Get user trace (empty)", False, "No user token available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/users/trace",
+            headers={"Authorization": f"Bearer {test_data['user_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Get user trace (empty)", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        trace = resp.json()
+        
+        if trace is None:
+            log_test("Get user trace (empty)", True, "No trace found (expected)")
+        else:
+            log_test("Get user trace (empty)", False, f"Expected null, got: {trace}")
+    
+    except Exception as e:
+        log_test("Get user trace (empty)", False, f"Exception: {e}")
+
+
+def test_admin_login():
+    """Test 6a: Admin login."""
+    print("\n=== Test 6a: Admin Login ===")
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/auth/login",
+            json={
+                "email": ADMIN_EMAIL,
+                "password": ADMIN_PASSWORD
+            },
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Admin login", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        data = resp.json()
+        
+        if data.get("token"):
+            test_data["admin_token"] = data["token"]
+            log_test("Admin login", True, "Admin login successful")
+        else:
+            log_test("Admin login", False, "Missing token in response")
+    
+    except Exception as e:
+        log_test("Admin login", False, f"Exception: {e}")
+
+
+def test_create_access_code():
+    """Test 6b: Create access code."""
+    print("\n=== Test 6b: Create Access Code ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Create access code", False, "No admin token available")
+        return
+    
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/admin/access-codes",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            json={
+                "code": test_data["access_code"],
+                "destination_name": "Test Wallet",
+                "destination_url": "test-wallet.com"
+            },
+            timeout=10
+        )
+        
+        # Accept both 200 (created) and 400 (already exists)
         if resp.status_code == 200:
-            deleted_count += 1
+            data = resp.json()
+            log_test("Create access code", True, f"Access code created: {data.get('code')}")
+        elif resp.status_code == 400 and "already exists" in resp.text:
+            log_test("Create access code", True, f"Access code already exists (OK)")
+        else:
+            log_test("Create access code", False, f"Expected 200, got {resp.status_code}: {resp.text}")
     
-    if deleted_count == len(trace_ids):
-        log_pass(f"Deleted {deleted_count} test traces")
-    else:
-        log_warn(f"Deleted {deleted_count}/{len(trace_ids)} test traces")
+    except Exception as e:
+        log_test("Create access code", False, f"Exception: {e}")
+
+
+def test_start_trace():
+    """Test 7: Start trace with auth."""
+    print("\n=== Test 7: Start Trace with Auth ===")
     
-    # Delete access code
-    # First, get all codes to find RANGETEST
-    resp = requests.get(f"{BASE_URL}/admin/access-codes", headers=headers, timeout=10)
-    if resp.status_code == 200:
-        codes = resp.json()
-        for code in codes:
-            if code.get("code") == TEST_CODE:
-                code_id = code["id"]
-                resp = requests.delete(
-                    f"{BASE_URL}/admin/access-codes/{code_id}",
-                    headers=headers,
-                    timeout=10
-                )
-                if resp.status_code == 200:
-                    log_pass(f"Deleted access code '{TEST_CODE}'")
+    if not test_data["user_token"]:
+        log_test("Start trace", False, "No user token available")
+        return
+    
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/trace/start",
+            headers={"Authorization": f"Bearer {test_data['user_token']}"},
+            json={
+                "first_name": TEST_USER["first_name"],
+                "last_name": TEST_USER["last_name"],
+                "email": TEST_USER["email"],
+                "access_code": test_data["access_code"],
+                "amount_tier": "20000_50000"
+            },
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Start trace", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        data = resp.json()
+        
+        # Check required fields
+        if (data.get("trace_id") and
+            data.get("located_amount") and
+            data.get("created_at")):
+            
+            test_data["trace_id"] = data["trace_id"]
+            log_test("Start trace", True, 
+                    f"Trace created: ID={data['trace_id']}, Amount={data['located_amount']}")
+        else:
+            log_test("Start trace", False, f"Missing required fields in response: {data}")
+    
+    except Exception as e:
+        log_test("Start trace", False, f"Exception: {e}")
+
+
+def test_user_trace_exists():
+    """Test 8: Get user trace (trace exists)."""
+    print("\n=== Test 8: Get User Trace (Trace Exists) ===")
+    
+    if not test_data["user_token"]:
+        log_test("Get user trace (exists)", False, "No user token available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/users/trace",
+            headers={"Authorization": f"Bearer {test_data['user_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Get user trace (exists)", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        trace = resp.json()
+        
+        if trace is None:
+            log_test("Get user trace (exists)", False, "Expected trace object, got null")
+            return
+        
+        # Verify trace fields
+        if (trace.get("email") == TEST_USER["email"] and
+            "email_24h_sent" in trace and
+            "email_50h_sent" in trace and
+            "user_id" in trace):
+            
+            log_test("Get user trace (exists)", True, 
+                    f"Trace retrieved: email_24h_sent={trace['email_24h_sent']}, email_50h_sent={trace['email_50h_sent']}")
+        else:
+            log_test("Get user trace (exists)", False, f"Trace data incomplete: {trace}")
+    
+    except Exception as e:
+        log_test("Get user trace (exists)", False, f"Exception: {e}")
+
+
+def test_admin_registered_users():
+    """Test 9: Admin registered users list."""
+    print("\n=== Test 9: Admin Registered Users List ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Admin registered users", False, "No admin token available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/admin/registered-users",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Admin registered users", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        users = resp.json()
+        
+        if not isinstance(users, list):
+            log_test("Admin registered users", False, f"Expected array, got: {type(users)}")
+            return
+        
+        # Find our test user
+        test_user_found = False
+        for user in users:
+            if user.get("email") == TEST_USER["email"]:
+                test_user_found = True
+                
+                # Check trace info
+                trace = user.get("trace")
+                if trace and trace.get("id") == test_data["trace_id"]:
+                    log_test("Admin registered users", True, 
+                            f"User found with trace info: {len(users)} total users")
                 else:
-                    log_warn(f"Failed to delete access code: {resp.status_code}")
+                    log_test("Admin registered users", False, 
+                            f"User found but trace info missing or incorrect")
                 break
-    else:
-        log_warn(f"Failed to list access codes for cleanup: {resp.status_code}")
+        
+        if not test_user_found:
+            log_test("Admin registered users", False, 
+                    f"Test user not found in list of {len(users)} users")
+    
+    except Exception as e:
+        log_test("Admin registered users", False, f"Exception: {e}")
+
+
+def test_duplicate_registration():
+    """Test 10: Duplicate registration check."""
+    print("\n=== Test 10: Duplicate Registration Check ===")
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/auth/register",
+            json=TEST_USER,
+            timeout=10
+        )
+        
+        if resp.status_code == 400:
+            log_test("Duplicate registration check", True, 
+                    f"Correctly rejected duplicate: {resp.text}")
+        else:
+            log_test("Duplicate registration check", False, 
+                    f"Expected 400, got {resp.status_code}")
+    
+    except Exception as e:
+        log_test("Duplicate registration check", False, f"Exception: {e}")
+
+
+def test_duplicate_trace():
+    """Test 11: Duplicate trace check."""
+    print("\n=== Test 11: Duplicate Trace Check ===")
+    
+    if not test_data["user_token"]:
+        log_test("Duplicate trace check", False, "No user token available")
+        return
+    
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/trace/start",
+            headers={"Authorization": f"Bearer {test_data['user_token']}"},
+            json={
+                "first_name": TEST_USER["first_name"],
+                "last_name": TEST_USER["last_name"],
+                "email": TEST_USER["email"],
+                "access_code": test_data["access_code"],
+                "amount_tier": "20000_50000"
+            },
+            timeout=10
+        )
+        
+        if resp.status_code == 400 and "already have an active trace" in resp.text:
+            log_test("Duplicate trace check", True, 
+                    f"Correctly rejected duplicate trace: {resp.text}")
+        else:
+            log_test("Duplicate trace check", False, 
+                    f"Expected 400 with 'already have an active trace', got {resp.status_code}: {resp.text}")
+    
+    except Exception as e:
+        log_test("Duplicate trace check", False, f"Exception: {e}")
+
+
+def print_summary():
+    """Print test summary."""
+    print("\n" + "=" * 70)
+    print("TEST SUMMARY")
+    print("=" * 70)
+    print(f"Total tests: {test_results['passed'] + test_results['failed']}")
+    print(f"✅ Passed: {test_results['passed']}")
+    print(f"❌ Failed: {test_results['failed']}")
+    
+    if test_results["failed"] > 0:
+        print("\nFailed tests:")
+        for test in test_results["tests"]:
+            if not test["passed"]:
+                print(f"  - {test['name']}")
+                if test["details"]:
+                    print(f"    {test['details']}")
+    
+    print("=" * 70)
 
 
 def main():
-    """Run the complete regression test."""
+    """Run all tests."""
     print("=" * 70)
-    print("TIER RANGE REGRESSION TEST")
-    print("Testing _located_amount_for() via POST /api/trace/start")
+    print("TRACCIA FONDI BACKEND API TEST")
+    print(f"Base URL: {BASE_URL}")
     print("=" * 70)
     
     try:
-        # Setup
-        token = admin_login()
-        create_access_code(token)
+        # Run tests in order
+        test_health()
+        test_registration()
+        test_login()
+        test_user_profile()
+        test_user_trace_empty()
+        test_admin_login()
+        test_create_access_code()
+        test_start_trace()
+        test_user_trace_exists()
+        test_admin_registered_users()
+        test_duplicate_registration()
+        test_duplicate_trace()
         
-        # Test
-        results, trace_ids = test_tier_ranges(token)
+        # Print summary
+        print_summary()
         
-        # Validate
-        validate_tier_results(results)
-        
-        # Cleanup
-        cleanup_test_data(token, trace_ids)
-        
-        # Summary
-        print("\n" + "=" * 70)
-        print("TEST SUMMARY")
-        print("=" * 70)
-        print(f"✅ Passed: {len(test_results['passed'])}")
-        print(f"❌ Failed: {len(test_results['failed'])}")
-        print(f"⚠️  Warnings: {len(test_results['warnings'])}")
-        
-        if test_results['failed']:
-            print("\nFAILURES:")
-            for fail in test_results['failed']:
-                print(f"  - {fail}")
+        # Exit with appropriate code
+        if test_results["failed"] > 0:
             sys.exit(1)
         else:
             print("\n🎉 ALL TESTS PASSED!")
             sys.exit(0)
     
     except Exception as e:
-        log_fail(f"Unexpected error: {e}")
+        print(f"\n❌ FATAL ERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

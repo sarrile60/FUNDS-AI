@@ -6,6 +6,8 @@ import { I18nProvider } from "./i18n";
 import { AuthProvider, useAuth } from "./auth";
 import LandingPage from "./components/LandingPage";
 import UserApp from "./components/UserApp";
+import LoginPage from "./components/LoginPage";
+import RegisterPage from "./components/RegisterPage";
 import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
 import LegalPage from "./components/LegalPage";
@@ -29,7 +31,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage/>}/>
-            <Route path="/login" element={<Navigate to="/app" replace/>}/>
+            <Route path="/login" element={<LoginPage/>}/>
+            <Route path="/register" element={<RegisterPage/>}/>
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/start" element={<UserApp/>}/>
             <Route path="/trace" element={<UserApp/>}/>

@@ -1,16 +1,17 @@
 // ProcedureAnimation.jsx
 // =======================
-// 2-minute (120 seconds) high-fidelity scanning animation.
-// Shows live MM:SS countdown, progress bar, rolling stage labels,
-// scrolling fake "scanned record" logs, an animated graph visual,
-// and at the end reveals the destination assigned to the user.
+// High-fidelity scanning animation.
 //
 // Props:
-//  - duration:  total seconds (default 120)
-//  - destination: "chiantin_bank" | "zenthos_wallet"
+//  - startedAt:  ISO timestamp from DB (persistent mode). If provided, elapsed
+//                is calculated from the real start time (server clock).
+//  - duration:   total seconds for non-persistent mode (default 120)
+//  - destination: destination name string
 //  - locatedAmount: integer EUR
-//  - onComplete(): called when the timer reaches 0
-//  - onCancel():   called when user clicks Cancel
+//  - onComplete(): called when the timer reaches 0 (non-persistent only)
+//  - onCancel():   called when user clicks Cancel (non-persistent only)
+//  - persistent:  if true, runs indefinitely using server-clock elapsed; no
+//                 countdown, no completion trigger from the timer.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield, Activity, Lock, Database, Network, Server, Building2,
@@ -293,64 +294,66 @@ function fmtTime(seconds) {
 }
 
 // =============================================================================
-export default function ProcedureAnimation({ duration = 120, destination, locatedAmount, onComplete, onCancel }) {
+export default function ProcedureAnimation({ duration = 120, startedAt, destination, locatedAmount, onComplete, onCancel, persistent = false }) {
   const { t, lang } = useI18n();
-  const [elapsed, setElapsed] = useState(0);   // seconds
+  const [elapsed, setElapsed] = useState(0);
   const [logs, setLogs] = useState([]);
   const [matches, setMatches] = useState(0);
   const [records, setRecords] = useState(0);
   const startedRef = useRef(Date.now());
   const completedRef = useRef(false);
 
-  // Tick every 250ms — smooth enough for a per-second timer, ~4× fewer re-renders than 100ms.
   useEffect(() => {
-    const id = setInterval(() => {
-      const e = (Date.now() - startedRef.current) / 1000;
-      if (e >= duration) {
-        setElapsed(duration);
-        if (!completedRef.current) {
-          completedRef.current = true;
-          clearInterval(id);
-          onComplete && onComplete();
+    if (persistent && startedAt) {
+      const serverStart = new Date(startedAt).getTime();
+      const tick = () => setElapsed(Math.floor((Date.now() - serverStart) / 1000));
+      tick();
+      const id = setInterval(tick, 1000);
+      return () => clearInterval(id);
+    } else {
+      const id = setInterval(() => {
+        const e = (Date.now() - startedRef.current) / 1000;
+        if (e >= duration) {
+          setElapsed(duration);
+          if (!completedRef.current) {
+            completedRef.current = true;
+            clearInterval(id);
+            onComplete && onComplete();
+          }
+        } else {
+          setElapsed(e);
         }
-      } else {
-        setElapsed(e);
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, [duration, onComplete]);
+      }, 250);
+      return () => clearInterval(id);
+    }
+  }, [duration, onComplete, persistent, startedAt]);
 
-  // Stage based on elapsed
-  const t01 = Math.min(1, elapsed / duration);
+  // Stage based on elapsed: in persistent mode, cycle every 2 minutes
+  const t01 = persistent
+    ? ((elapsed % 120) / 120)
+    : Math.min(1, elapsed / duration);
+
   const stage = useMemo(() => STAGES.find(s => t01 >= s.from && t01 < s.to) || STAGES[STAGES.length - 1], [t01]);
   const stageProgress = (t01 - stage.from) / Math.max(0.0001, (stage.to - stage.from));
 
-  // Log/records generator — tied to stage. Slower pace for a calmer feel.
-  // Lines fade in on mount, then fade out ~400ms before being fully removed
-  // so old entries gracefully exit instead of just popping out.
+  // Log/records generator — tied to stage.
   useEffect(() => {
     const VISIBLE = 8;
     const FADE_OUT_MS = 450;
     const id = setInterval(() => {
       setLogs(prev => {
-        // Add new line
         const next = [...prev, { id: Math.random(), text: _line(stage.key, lang), leaving: false }];
-        // Mark anything past the visible window as "leaving" (only the ones that
-        // weren't already leaving — this triggers their CSS fade-out exactly once).
         const overflow = next.length - VISIBLE;
         if (overflow > 0) {
           for (let i = 0; i < overflow; i++) {
             if (!next[i].leaving) next[i] = { ...next[i], leaving: true };
           }
         }
-        // Hard-cap: keep VISIBLE + a small buffer of leavers so DOM stays small
         return next.slice(-(VISIBLE + 4));
       });
-      // Schedule cleanup: a tick later, remove anything still flagged leaving
       setTimeout(() => {
         setLogs(prev => prev.filter((l) => !l.leaving));
       }, FADE_OUT_MS);
-
       setRecords(r => r + Math.floor(Math.random() * 42 + 8));
       if (Math.random() < 0.13) setMatches(m => m + 1);
     }, 600);
@@ -359,8 +362,9 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
 
   const StageIcon = stage.icon;
   const remaining = Math.max(0, duration - elapsed);
-  const progressPct = Math.round(t01 * 100);
-  const destLabel = destination === "zenthos_wallet" ? t("trc.dest.zenthos_wallet") : t("trc.dest.chiantin_bank");
+  const progressPct = persistent
+    ? Math.round((elapsed % 120) / 120 * 100)
+    : Math.round(t01 * 100);
 
   return (
     <div className="aif-card aif-glow p-4 sm:p-6 md:p-9 lg:p-10 relative overflow-hidden mx-auto max-w-[1600px]" data-testid="procedure-animation">
@@ -381,24 +385,30 @@ export default function ProcedureAnimation({ duration = 120, destination, locate
             <div className="text-white font-bold text-[15px] sm:text-xl md:text-2xl mt-0.5 truncate">{t(stage.labelKey)}</div>
           </div>
         </div>
-        {/* Chip cluster — hard-hidden on mobile via wrapper so the custom
-            `.aif-chip { display: inline-flex }` rule can't override the
-            `hidden` utility (which was the mobile-overlap bug). */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <div className="aif-chip text-[10px] sm:text-[11px]"><Lock size={12}/> AES-256</div>
           <div className="aif-chip text-[10px] sm:text-[11px]"><Activity size={12}/> {t("trc.do_not_close")}</div>
         </div>
-        <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2 shrink-0" title={t("trc.cancel")} data-testid="proc-cancel">
-          <X size={18}/>
-        </button>
+        {!persistent && onCancel && (
+          <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2 shrink-0" title={t("trc.cancel")} data-testid="proc-cancel">
+            <X size={18}/>
+          </button>
+        )}
       </div>
 
       {/* Time & progress */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 relative z-10">
-        <TimeBox label={t("trc.elapsed")} value={fmtTime(elapsed)}/>
-        <TimeBox label={t("trc.remaining")} value={fmtTime(remaining)} highlight/>
-        <TimeBox label={t("trc.progress")} value={`${progressPct}%`}/>
-      </div>
+      {!persistent ? (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-7 relative z-10">
+          <TimeBox label={t("trc.elapsed")} value={fmtTime(elapsed)}/>
+          <TimeBox label={t("trc.remaining")} value={fmtTime(remaining)} highlight/>
+          <TimeBox label={t("trc.progress")} value={`${progressPct}%`}/>
+        </div>
+      ) : (
+        <div className="mt-7 relative z-10 text-center">
+          <div className="text-[11px] uppercase tracking-[0.25em] text-[var(--aif-text-dim)] mb-1">{t("trc.elapsed")}</div>
+          <div className="text-4xl sm:text-5xl font-extrabold tabular-nums text-[#5FE3C9]">{fmtTime(elapsed)}</div>
+        </div>
+      )}
 
       <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden mt-5 relative z-10">
         <div className="h-full bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] transition-all duration-200" style={{ width: `${progressPct}%` }}/>

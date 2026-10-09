@@ -1,17 +1,13 @@
 """
-Traccia Fondi Backend (Code-based access)
-============================================
+Traccia Fondi Backend (v4 — self-registration + persistent traces + scheduled emails)
+======================================================================================
 
-NEW FLOW (v3):
-- Users enter: first_name, last_name, email, access_code, amount_tier
-- Optional: Upload proof documents
-- Access code is set globally by admin (reusable for all users)
-- One trace per email (cannot trace again with same email)
-- Admin sets: access_code, destination_name, destination_url
-- Admin sees all traces with user info, amount generated, documents, date/time
-
-NOTE: This is an UI-driven product. The "tracing" is staged animation. There is
-NO real fund recovery happening.
+NEW FEATURES:
+- Self-registration with bcrypt passwords (phone, date_of_birth, lang stored)
+- Traces linked to user accounts (user_id on trace doc)
+- APScheduler: 24 h and 50 h branded emails after trace creation
+- Admin: registered-users list endpoint
+- /api/users/me  /api/users/trace for profile page
 """
 
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File, Request, Form
@@ -33,18 +29,21 @@ import resend
 import asyncio
 from collections import defaultdict, deque
 import time as _time
+from passlib.context import CryptContext
+
+# APScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.date import DateTrigger
 
 ROOT_DIR = Path(__file__).parent
 env_path = ROOT_DIR / ".env"
 
-# Force load .env file - critical for production
 if env_path.exists():
     load_dotenv(env_path, override=True)
     print(f"[STARTUP] Loaded .env from {env_path}")
 else:
     print(f"[STARTUP] WARNING: .env not found at {env_path}")
 
-# Get MongoDB URL with fallback
 mongo_url = os.environ.get("MONGO_URL", os.getenv("MONGO_URL"))
 if not mongo_url:
     raise RuntimeError(f"MONGO_URL not set! Check .env at {env_path}")
@@ -59,6 +58,9 @@ JWT_EXP_HOURS = 24 * 7
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@traccia-fondi.com").lower()
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
+# --- Bcrypt ---
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 # --- Cloudinary ---
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
@@ -67,13 +69,13 @@ cloudinary.config(
     secure=True,
 )
 MAX_DOCS_PER_USER = 5
-MAX_FILE_BYTES = 25 * 1024 * 1024  # 25 MB
+MAX_FILE_BYTES = 25 * 1024 * 1024
 ALLOWED_MIME = {
     "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif",
     "application/pdf",
 }
 
-# --- Resend (transactional email) ---
+# --- Resend ---
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_RECOVERY = os.environ.get("RESEND_FROM_RECOVERY", "Traccia Fondi <recovery@traccia-fondi.com>")
 RESEND_FROM_NOREPLY = os.environ.get("RESEND_FROM_NOREPLY", "Traccia Fondi <noreply@traccia-fondi.com>")
@@ -81,17 +83,16 @@ RESEND_REPLY_TO = os.environ.get("RESEND_REPLY_TO", "support@traccia-fondi.com")
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
 
+# --- APScheduler ---
+scheduler = AsyncIOScheduler()
 
-# --- In-memory rate limiter (per IP, per route) ---
-# Simple fixed-window-ish sliding bucket. For production scale you'd swap to Redis.
+# --- Rate limiter ---
 _rate_buckets: Dict[str, deque] = defaultdict(deque)
 
 
 def _rate_limit(key: str, max_requests: int, window_seconds: int):
-    """Raise 429 if `key` has made more than `max_requests` in the last window."""
     now = _time.time()
     q = _rate_buckets[key]
-    # drop old entries
     while q and (now - q[0]) > window_seconds:
         q.popleft()
     if len(q) >= max_requests:
@@ -102,16 +103,17 @@ def _rate_limit(key: str, max_requests: int, window_seconds: int):
         )
     q.append(now)
 
-app = FastAPI(title="Traccia Fondi API", version="2.0.0")
+
+app = FastAPI(title="Traccia Fondi API", version="4.0.0")
 api = APIRouter(prefix="/api")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("traccia-fondi")
+
 
 # ============================================================
 #   Helpers
 # ============================================================
-
-# Initialize logger early so it can be used throughout
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("traccia-fondi")
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -146,9 +148,28 @@ def _bearer(authorization: Optional[str]) -> str:
     return authorization.split(" ", 1)[1].strip()
 
 
+def _bearer_optional(authorization: Optional[str]) -> Optional[str]:
+    """Extract bearer token without raising if missing."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    return authorization.split(" ", 1)[1].strip()
+
+
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
     payload = _decode_token(_bearer(authorization))
-    if payload.get("role") != "user":
+    role = payload.get("role")
+    if role not in ("user", "registered_user"):
+        raise HTTPException(403, "Forbidden")
+    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(401, "User not found")
+    return user
+
+
+async def get_registered_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    """Require a self-registered user (not admin-created legacy)."""
+    payload = _decode_token(_bearer(authorization))
+    if payload.get("role") not in ("user", "registered_user"):
         raise HTTPException(403, "Forbidden")
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
     if not user:
@@ -163,10 +184,7 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
     return payload
 
 
-# Located amount per tier — well beyond the tier's high end so the user
-# always sees a "bonus" amount discovered. Numbers are randomized inside
-# the range so they look organic (e.g. 141,678.55 / 291,845.67 / 383,406.71).
-# Targets: ~140k / ~290k / ~370k / ~450k (±10k window).
+# Located amount ranges
 TIER_HIGH_END = {
     "5000_20000":     (130000, 150000),
     "20000_50000":    (275000, 305000),
@@ -178,14 +196,317 @@ TIER_HIGH_END = {
 def _located_amount_for(tier: str) -> float:
     lo, hi = TIER_HIGH_END.get(tier, (18000, 19999))
     n = random.randint(lo, hi)
-    # Add jitter on the units digit so it doesn't look round (e.g. 82345 not 82500)
     units = random.randint(0, 999)
     n = (n // 1000) * 1000 + units
     if n < lo: n = lo + units
     if n > hi: n = hi - random.randint(0, 500)
-    # Add random cents for professional Italian formatting (e.g. €35.513,47)
     cents = random.randint(1, 99)
     return round(float(n) + cents / 100.0, 2)
+
+
+def _fmt_amount(amount: float) -> str:
+    """Format amount as Italian currency string."""
+    return f"€ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+# ============================================================
+#   Email templates
+# ============================================================
+
+def _email_html_wrapper(title: str, body_html: str, year: int) -> str:
+    return f"""<!doctype html>
+<html><body style="margin:0;padding:0;background:#06122A;font-family:Arial,sans-serif;color:#E6EDF7">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#06122A">
+<tr><td align="center" style="padding:32px 16px">
+  <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#0E1A36;border:1px solid #1f2d4f;border-radius:14px;overflow:hidden">
+    <tr><td style="padding:24px 32px;background:linear-gradient(90deg,#5FE3C9,#6E8BFF)">
+      <div style="font-weight:800;color:#06122A;font-size:22px;letter-spacing:-0.02em">Traccia Fondi</div>
+      <div style="color:#06122A;opacity:0.85;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;margin-top:2px">{title}</div>
+    </td></tr>
+    <tr><td style="padding:28px 32px;color:#E6EDF7;font-size:14px;line-height:1.6">
+      {body_html}
+    </td></tr>
+    <tr><td style="padding:14px 32px;background:#06122A;border-top:1px solid #1f2d4f;color:#6F7E9C;font-size:11px;text-align:center">
+      © {year} Traccia Fondi · Privacy-first · GDPR aware
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body></html>"""
+
+
+async def send_24h_email(trace_id: str):
+    """Send the 24-hour progress email for a trace."""
+    try:
+        trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+        if not trace:
+            logger.warning("24h email: trace %s not found", trace_id)
+            return
+        if trace.get("email_24h_sent"):
+            logger.info("24h email already sent for trace %s", trace_id)
+            return
+
+        to_email = trace.get("email")
+        if not to_email:
+            logger.warning("24h email: no email on trace %s", trace_id)
+            await db.traces.update_one({"id": trace_id}, {"$set": {"email_24h_sent": True}})
+            return
+
+        lang = trace.get("user_lang", "it")
+        first_name = trace.get("first_name", "")
+        last_name = trace.get("last_name", "")
+        year = datetime.now(timezone.utc).year
+
+        # Pick a random number of transactions (2-3) for realism
+        tx_count = random.randint(2, 3)
+
+        if lang == "en":
+            subject = "Case update — first transactions detected"
+            body_html = f"""
+<p>Dear <strong>{first_name} {last_name}</strong>,</p>
+<p>We are writing to inform you of an important update on your case.</p>
+<p>In the first <strong>24 hours</strong> of analysis, the Traccia Fondi system has identified
+<strong style="color:#5FE3C9">{tx_count} transactions</strong> that show the path taken by your funds through
+the banking and payment networks.</p>
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:16px 0">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.18em;text-transform:uppercase">Status</div>
+  <div style="color:#5FE3C9;font-size:16px;font-weight:700;margin-top:4px">Investigation in progress</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:4px">Transactions detected: <strong style="color:#fff">{tx_count}</strong></div>
+</div>
+<p>Our team is continuing the in-depth analysis to achieve full disclosure of all transactions and
+confirm the final location of your funds. You will receive a further update when the procedure is complete.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Security reminder:</strong> Never share passwords, OTP codes, seed phrases, banking credentials,
+  or payment methods with anyone claiming to act on behalf of Traccia Fondi or any other organisation.
+  We will never ask for them.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Regards,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Case Intelligence Update", body_html, year)
+            text = (
+                f"Dear {first_name} {last_name},\n\n"
+                f"In the first 24 hours of analysis, the Traccia Fondi system has identified {tx_count} transactions "
+                f"showing the path taken by your funds.\n\n"
+                "Our team is continuing the in-depth analysis. You will receive a further update when complete.\n\n"
+                "Security reminder: never share passwords, OTP codes, seed phrases or banking credentials with anyone.\n\n"
+                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+            )
+        else:
+            subject = "Aggiornamento sul tuo caso — prime transazioni rilevate"
+            body_html = f"""
+<p>Gentile <strong>{first_name} {last_name}</strong>,</p>
+<p>Ti scriviamo per informarti di un aggiornamento importante sul tuo caso.</p>
+<p>Nelle prime <strong>24 ore</strong> di analisi, il sistema Traccia Fondi ha identificato
+<strong style="color:#5FE3C9">{tx_count} transazioni</strong> che mostrano il percorso seguito dai tuoi fondi
+attraverso le reti bancarie e di pagamento.</p>
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:16px 0">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.18em;text-transform:uppercase">Stato procedura</div>
+  <div style="color:#5FE3C9;font-size:16px;font-weight:700;margin-top:4px">Indagine in corso</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:4px">Transazioni rilevate: <strong style="color:#fff">{tx_count}</strong></div>
+</div>
+<p>Il nostro team sta continuando l'analisi approfondita per ottenere la divulgazione completa di tutte
+le transazioni e confermare la posizione finale dei tuoi fondi. Riceverai un ulteriore aggiornamento
+al completamento della procedura.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Promemoria sicurezza:</strong> Non condividere mai password, codici OTP, seed phrase, credenziali bancarie
+  o metodi di pagamento con nessuno che affermi di agire per conto di Traccia Fondi o di qualsiasi altra
+  organizzazione. Non te li chiederemo mai.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Aggiornamento Case Intelligence", body_html, year)
+            text = (
+                f"Gentile {first_name} {last_name},\n\n"
+                f"Nelle prime 24 ore di analisi, il sistema ha identificato {tx_count} transazioni che mostrano "
+                f"il percorso dei tuoi fondi.\n\n"
+                "Il team sta continuando l'analisi approfondita. Riceverai un ulteriore aggiornamento al completamento.\n\n"
+                "Promemoria sicurezza: non condividere mai password, codici OTP, seed phrase o credenziali bancarie.\n\n"
+                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+            )
+
+        if RESEND_API_KEY:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_NOREPLY,
+                "to": [to_email],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text,
+                "html": html,
+                "tags": [{"name": "type", "value": "case_update_24h"}],
+            }))
+            logger.info("24h email sent to %s for trace %s", to_email, trace_id)
+        else:
+            logger.warning("24h email: RESEND_API_KEY not set, skipping send for trace %s", trace_id)
+
+        await db.traces.update_one({"id": trace_id}, {"$set": {"email_24h_sent": True, "email_24h_sent_at": _now_iso()}})
+
+    except Exception as e:
+        logger.exception("24h email job failed for trace %s: %s", trace_id, e)
+
+
+async def send_50h_email(trace_id: str):
+    """Send the 50-hour funds-located email for a trace."""
+    try:
+        trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+        if not trace:
+            logger.warning("50h email: trace %s not found", trace_id)
+            return
+        if trace.get("email_50h_sent"):
+            logger.info("50h email already sent for trace %s", trace_id)
+            return
+
+        to_email = trace.get("email")
+        if not to_email:
+            logger.warning("50h email: no email on trace %s", trace_id)
+            await db.traces.update_one({"id": trace_id}, {"$set": {"email_50h_sent": True}})
+            return
+
+        lang = trace.get("user_lang", "it")
+        first_name = trace.get("first_name", "")
+        last_name = trace.get("last_name", "")
+        amount = trace.get("located_amount", 0)
+        dest_name = trace.get("destination_name", "")
+        dest_url = trace.get("destination_url", "")
+        year = datetime.now(timezone.utc).year
+        amount_str = _fmt_amount(amount)
+
+        safe_url = dest_url
+        if dest_url and not dest_url.startswith("http"):
+            safe_url = f"http://{dest_url}"
+
+        if lang == "en":
+            subject = "Funds located — your case is ready for recovery"
+            body_html = f"""
+<p>Dear <strong>{first_name} {last_name}</strong>,</p>
+<p>We are pleased to confirm that the Traccia Fondi tracing procedure is <strong>complete</strong>.</p>
+<p>After thorough analysis of banking networks, SEPA circuits, and payment rails, the full amount
+associated with your case has been located:</p>
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:20px;margin:16px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Funds Located</div>
+  <div style="color:#5FE3C9;font-size:32px;font-weight:900;margin-top:6px;font-family:monospace">{amount_str}</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:8px">Confirmed location: <strong style="color:#fff">{dest_name}</strong></div>
+</div>
+<p>A dedicated case agent will be in touch with you shortly with the next steps to complete the
+recovery procedure and arrange the return of your funds.</p>
+{f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Important security reminder:</strong> Traccia Fondi will never ask you to share passwords, OTP codes,
+  seed phrases, private keys, or to make any payment to "unlock" or "release" your funds.
+  If anyone contacts you claiming to charge fees, it is a scam — please report it immediately.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Regards,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Funds Located — Recovery Ready", body_html, year)
+            text = (
+                f"Dear {first_name} {last_name},\n\n"
+                f"The Traccia Fondi tracing procedure is complete.\n\n"
+                f"Located amount: {amount_str}\n"
+                f"Confirmed location: {dest_name}\n\n"
+                "A dedicated case agent will contact you shortly with next steps.\n\n"
+                "Important: Traccia Fondi will never ask for passwords, OTP codes, seed phrases or any fees.\n\n"
+                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+            )
+        else:
+            subject = "Fondi localizzati — il tuo caso è pronto per il recupero"
+            body_html = f"""
+<p>Gentile <strong>{first_name} {last_name}</strong>,</p>
+<p>Siamo lieti di confermare che la procedura di tracciamento Traccia Fondi è <strong>completata</strong>.</p>
+<p>Dopo un'analisi approfondita delle reti bancarie, dei circuiti SEPA e dei circuiti di pagamento,
+l'importo completo associato al tuo caso è stato localizzato:</p>
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:20px;margin:16px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Fondi Localizzati</div>
+  <div style="color:#5FE3C9;font-size:32px;font-weight:900;margin-top:6px;font-family:monospace">{amount_str}</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:8px">Posizione confermata: <strong style="color:#fff">{dest_name}</strong></div>
+</div>
+<p>Un agente dedicato al tuo caso ti contatterà a breve con i passi successivi per completare la
+procedura di recupero e organizzare la restituzione dei tuoi fondi.</p>
+{f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Promemoria sicurezza importante:</strong> Traccia Fondi non ti chiederà mai di condividere password,
+  codici OTP, seed phrase, chiavi private, né di effettuare pagamenti per "sbloccare" o "rilasciare" i tuoi fondi.
+  Se qualcuno ti contatta chiedendo commissioni, si tratta di una truffa — segnalala immediatamente.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Fondi Localizzati — Recupero Pronto", body_html, year)
+            text = (
+                f"Gentile {first_name} {last_name},\n\n"
+                f"La procedura di tracciamento Traccia Fondi è completata.\n\n"
+                f"Importo localizzato: {amount_str}\n"
+                f"Posizione confermata: {dest_name}\n\n"
+                "Un agente dedicato ti contatterà a breve con i passi successivi.\n\n"
+                "Importante: Traccia Fondi non ti chiederà mai password, codici OTP, seed phrase o pagamenti.\n\n"
+                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+            )
+
+        if RESEND_API_KEY:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_NOREPLY,
+                "to": [to_email],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text,
+                "html": html,
+                "tags": [{"name": "type", "value": "funds_located_50h"}],
+            }))
+            logger.info("50h email sent to %s for trace %s", to_email, trace_id)
+        else:
+            logger.warning("50h email: RESEND_API_KEY not set, skipping send for trace %s", trace_id)
+
+        await db.traces.update_one({"id": trace_id}, {"$set": {"email_50h_sent": True, "email_50h_sent_at": _now_iso()}})
+
+    except Exception as e:
+        logger.exception("50h email job failed for trace %s: %s", trace_id, e)
+
+
+def _schedule_trace_emails(trace_id: str, created_at_iso: str):
+    """Schedule the 24h and 50h email jobs for a trace."""
+    try:
+        created_at = datetime.fromisoformat(created_at_iso.replace("Z", "+00:00"))
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+
+        run_24h = created_at + timedelta(hours=24)
+        run_50h = created_at + timedelta(hours=50)
+
+        job_id_24 = f"email_24h_{trace_id}"
+        job_id_50 = f"email_50h_{trace_id}"
+
+        # Remove existing jobs to avoid duplicates on restart
+        try:
+            scheduler.remove_job(job_id_24)
+        except Exception:
+            pass
+        try:
+            scheduler.remove_job(job_id_50)
+        except Exception:
+            pass
+
+        # If run time is in the past, schedule 5 seconds from now
+        if run_24h <= now:
+            run_24h = now + timedelta(seconds=5)
+        if run_50h <= now:
+            run_50h = now + timedelta(seconds=10)
+
+        scheduler.add_job(
+            send_24h_email,
+            trigger=DateTrigger(run_date=run_24h),
+            id=job_id_24,
+            args=[trace_id],
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        scheduler.add_job(
+            send_50h_email,
+            trigger=DateTrigger(run_date=run_50h),
+            id=job_id_50,
+            args=[trace_id],
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        logger.info("Scheduled emails for trace %s: 24h=%s 50h=%s", trace_id, run_24h, run_50h)
+    except Exception as e:
+        logger.exception("Failed to schedule emails for trace %s: %s", trace_id, e)
 
 
 # ============================================================
@@ -197,7 +518,6 @@ class HealthOut(BaseModel):
     time: str
 
 
-# --- Auth ---
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
@@ -208,6 +528,18 @@ class AuthOut(BaseModel):
     user: Dict[str, Any]
 
 
+# --- Self-registration ---
+class UserRegistrationIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+    phone: str = Field(min_length=1, max_length=30)
+    date_of_birth: str = Field(min_length=1, max_length=20)  # YYYY-MM-DD
+    lang: Optional[str] = "it"
+
+
 # --- Admin user mgmt ---
 class AdminUserIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -215,7 +547,7 @@ class AdminUserIn(BaseModel):
     last_name: str
     email: EmailStr
     password: str = Field(min_length=4, max_length=128)
-    recovery_destination: str  # "chiantin_bank" | "zenthos_wallet"
+    recovery_destination: str
     notes: Optional[str] = None
 
 
@@ -229,13 +561,12 @@ class AdminUserUpdate(BaseModel):
     notes: Optional[str] = None
 
 
-# --- User actions ---
 class StartProcedureIn(BaseModel):
-    amount_tier: str  # 5000_20000 / 20000_50000 / 50000_100000 / 100000_plus
+    amount_tier: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     contact_email: Optional[EmailStr] = None
-    date_of_birth: Optional[str] = None  # ISO date string YYYY-MM-DD
+    date_of_birth: Optional[str] = None
 
 
 class RecoveryRequestIn(BaseModel):
@@ -246,21 +577,18 @@ class RecoveryRequestIn(BaseModel):
 
 
 class RecoveryEmailUpdate(BaseModel):
-    """Admin fills these to compose the email."""
     destination_login_email: Optional[str] = None
     destination_login_password: Optional[str] = None
     destination_login_url: Optional[str] = None
     extra_notes: Optional[str] = None
 
 
-# --- NEW: Global Settings (admin-controlled) ---
 class GlobalSettingsUpdate(BaseModel):
     access_code: Optional[str] = None
     destination_name: Optional[str] = None
     destination_url: Optional[str] = None
 
 
-# --- NEW: Access Code management ---
 class AccessCodeIn(BaseModel):
     code: str = Field(min_length=1, max_length=50)
     destination_name: str = Field(min_length=1, max_length=200)
@@ -273,13 +601,12 @@ class AccessCodeUpdate(BaseModel):
     destination_url: Optional[str] = None
 
 
-# --- NEW: Public Trace (code-based access) ---
 class StartTraceIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     access_code: str = Field(min_length=1, max_length=50)
-    amount_tier: str  # 5000_20000 / 20000_50000 / 50000_100000 / 100000_plus
+    amount_tier: str
 
 
 class CheckEmailIn(BaseModel):
@@ -297,12 +624,6 @@ async def health():
 
 @api.post("/auth/login", response_model=AuthOut)
 async def login(body: LoginIn, request: Request):
-    """
-    Single login endpoint for both admin and regular users.
-    - Admin: matches ADMIN_EMAIL/ADMIN_PASSWORD from .env.
-    - Users: created by admin with plaintext passwords.
-    Rate-limited: 8 attempts per IP per 5 minutes.
-    """
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"login:{ip}", max_requests=8, window_seconds=300)
 
@@ -315,21 +636,66 @@ async def login(body: LoginIn, request: Request):
         )
 
     user = await db.users.find_one({"email": em}, {"_id": 0})
-    if not user or user.get("password") != body.password:
+    if not user:
         raise HTTPException(401, "Invalid credentials")
 
-    safe = {k: v for k, v in user.items() if k != "password"}
+    stored_pw = user.get("password", "")
+    # Support both bcrypt (new self-registered) and plaintext (legacy admin-created)
+    if stored_pw.startswith("$2"):
+        # bcrypt hash
+        if not pwd_ctx.verify(body.password, stored_pw):
+            raise HTTPException(401, "Invalid credentials")
+    else:
+        # Legacy plaintext
+        if stored_pw != body.password:
+            raise HTTPException(401, "Invalid credentials")
+
+    safe = {k: v for k, v in user.items() if k not in ("password",)}
     safe["role"] = "user"
     return AuthOut(token=_make_token(user["id"], "user"), user=safe)
 
 
-@api.post("/auth/register")
-async def register_disabled():
-    """Public registration is disabled in this product."""
-    raise HTTPException(
-        status_code=403,
-        detail="Registration is currently unavailable. Please contact your administrator.",
-    )
+@api.post("/auth/register", response_model=AuthOut)
+async def register(body: UserRegistrationIn, request: Request):
+    """Self-registration — creates a new user with bcrypt password."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"register:{ip}", max_requests=5, window_seconds=600)
+
+    em = body.email.lower().strip()
+
+    # Check email uniqueness
+    existing = await db.users.find_one({"email": em})
+    if existing:
+        raise HTTPException(400, "An account with this email already exists")
+
+    # Hash password
+    pw_hash = pwd_ctx.hash(body.password)
+
+    doc = {
+        "id": _new_id(),
+        "first_name": body.first_name.strip(),
+        "last_name": body.last_name.strip(),
+        "email": em,
+        "password": pw_hash,
+        "phone": body.phone.strip(),
+        "date_of_birth": body.date_of_birth.strip(),
+        "lang": body.lang or "it",
+        "type": "registered",
+        "role": "user",
+        # Legacy fields (kept for compat)
+        "recovery_destination": None,
+        "notes": "",
+        "amount_tier": None,
+        "located_amount": 0,
+        "procedure_started_at": None,
+        "procedure_completed_at": None,
+        "created_at": _now_iso(),
+    }
+    await db.users.insert_one(doc)
+    doc.pop("_id", None)
+    safe = {k: v for k, v in doc.items() if k != "password"}
+    safe["role"] = "user"
+    return AuthOut(token=_make_token(doc["id"], "user"), user=safe)
 
 
 @api.get("/auth/me")
@@ -345,12 +711,31 @@ async def me(authorization: Optional[str] = Header(None)):
 
 
 # ============================================================
-#   Access Codes (admin-controlled, multi-code system)
+#   User profile endpoints
 # ============================================================
 
-# Keep legacy settings helper for backward compat
+@api.get("/users/me")
+async def user_profile(user=Depends(get_current_user)):
+    """Return the current user's profile (no password)."""
+    return {k: v for k, v in user.items() if k != "password"}
+
+
+@api.get("/users/trace")
+async def user_trace(user=Depends(get_current_user)):
+    """Return the current user's most recent trace, or null."""
+    trace = await db.traces.find_one(
+        {"user_id": user["id"]},
+        {"_id": 0},
+        sort=[("created_at", -1)],
+    )
+    return trace  # returns None → null in JSON
+
+
+# ============================================================
+#   Settings
+# ============================================================
+
 async def get_settings() -> dict:
-    """Get global settings (legacy). Now primarily uses access_codes collection."""
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
     if not settings:
         return {"id": "global", "access_code": "", "destination_name": "", "destination_url": ""}
@@ -359,27 +744,25 @@ async def get_settings() -> dict:
 
 @api.get("/settings")
 async def public_get_settings():
-    """Public endpoint - returns minimal info."""
     return {"ok": True}
 
 
-# --- Access Codes CRUD ---
+# ============================================================
+#   Access Codes
+# ============================================================
+
 @api.get("/admin/access-codes")
 async def admin_list_access_codes(_=Depends(require_admin)):
-    """Admin: list all access codes with their destinations."""
     codes = await db.access_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return codes
 
 
 @api.post("/admin/access-codes")
 async def admin_create_access_code(body: AccessCodeIn, _=Depends(require_admin)):
-    """Admin: create a new access code with destination."""
     code_upper = body.code.strip().upper()
-    # Check if code already exists
     existing = await db.access_codes.find_one({"code": code_upper})
     if existing:
         raise HTTPException(400, f"Access code '{code_upper}' already exists")
-    
     doc = {
         "id": _new_id(),
         "code": code_upper,
@@ -394,11 +777,9 @@ async def admin_create_access_code(body: AccessCodeIn, _=Depends(require_admin))
 
 @api.put("/admin/access-codes/{code_id}")
 async def admin_update_access_code(code_id: str, body: AccessCodeUpdate, _=Depends(require_admin)):
-    """Admin: update an access code."""
     update = {}
     if body.code is not None:
         new_code = body.code.strip().upper()
-        # Check uniqueness if code is being changed
         existing = await db.access_codes.find_one({"code": new_code, "id": {"$ne": code_id}})
         if existing:
             raise HTTPException(400, f"Access code '{new_code}' already exists")
@@ -407,10 +788,8 @@ async def admin_update_access_code(code_id: str, body: AccessCodeUpdate, _=Depen
         update["destination_name"] = body.destination_name.strip()
     if body.destination_url is not None:
         update["destination_url"] = body.destination_url.strip()
-    
     if not update:
         raise HTTPException(400, "No fields to update")
-    
     res = await db.access_codes.update_one({"id": code_id}, {"$set": update})
     if res.matched_count == 0:
         raise HTTPException(404, "Access code not found")
@@ -419,23 +798,19 @@ async def admin_update_access_code(code_id: str, body: AccessCodeUpdate, _=Depen
 
 @api.delete("/admin/access-codes/{code_id}")
 async def admin_delete_access_code(code_id: str, _=Depends(require_admin)):
-    """Admin: delete an access code."""
     res = await db.access_codes.delete_one({"id": code_id})
     if res.deleted_count == 0:
         raise HTTPException(404, "Access code not found")
     return {"ok": True}
 
 
-# Legacy settings endpoints (kept for backward compat)
 @api.get("/admin/settings")
 async def admin_get_settings(_=Depends(require_admin)):
-    """Admin: get legacy settings."""
     return await get_settings()
 
 
 @api.put("/admin/settings")
 async def admin_update_settings(body: GlobalSettingsUpdate, _=Depends(require_admin)):
-    """Admin: update legacy settings."""
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     if not update:
         raise HTTPException(400, "No fields to update")
@@ -444,51 +819,68 @@ async def admin_update_settings(body: GlobalSettingsUpdate, _=Depends(require_ad
 
 
 # ============================================================
-#   NEW: Public Trace System (code-based access)
+#   Trace System
 # ============================================================
 
 @api.post("/trace/check-email")
 async def check_email_used(body: CheckEmailIn, request: Request):
-    """Check if an email has already been used for tracing."""
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"check-email:{ip}", max_requests=20, window_seconds=60)
-    
     em = body.email.lower().strip()
     existing = await db.traces.find_one({"email": em})
     return {"used": existing is not None}
 
 
 @api.post("/trace/start")
-async def start_trace(body: StartTraceIn, request: Request):
+async def start_trace(body: StartTraceIn, request: Request, authorization: Optional[str] = Header(None)):
     """
-    Start a new trace. Validates access code against access_codes collection,
-    checks email uniqueness, generates located amount, and creates trace record.
-    The destination is determined by which access code is used.
+    Start a new trace. If a valid JWT is present, links the trace to the user account.
+    Access code is still required.
     """
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace:{ip}", max_requests=5, window_seconds=300)
-    
-    # Validate amount tier
+
     if body.amount_tier not in TIER_HIGH_END:
         raise HTTPException(400, "Invalid amount_tier")
-    
-    # Look up access code in the access_codes collection
+
     code_entry = await db.access_codes.find_one({"code": body.access_code.strip().upper()}, {"_id": 0})
     if not code_entry:
         raise HTTPException(401, "Invalid access code")
-    
-    # Check email uniqueness
+
     em = body.email.lower().strip()
-    existing = await db.traces.find_one({"email": em})
-    if existing:
-        raise HTTPException(400, "This email has already been used for a trace. Each email can only trace once.")
-    
-    # Generate located amount
+
+    # Resolve user from JWT (optional)
+    user_id = None
+    user_lang = "it"
+    token_str = _bearer_optional(authorization)
+    if token_str:
+        try:
+            payload = _decode_token(token_str)
+            if payload.get("role") in ("user", "registered_user"):
+                u = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
+                if u:
+                    user_id = u["id"]
+                    user_lang = u.get("lang", "it")
+                    # Check: user already has an active trace?
+                    existing_user_trace = await db.traces.find_one({"user_id": user_id})
+                    if existing_user_trace:
+                        raise HTTPException(400, "You already have an active trace. Each account can only have one trace at a time.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Invalid token, treat as public
+
+    # If no user_id, check email uniqueness (legacy behavior)
+    if not user_id:
+        existing = await db.traces.find_one({"email": em})
+        if existing:
+            raise HTTPException(400, "This email has already been used for a trace.")
+
     located = _located_amount_for(body.amount_tier)
-    
-    # Create trace record — destination comes from the matched access code
+
     trace = {
         "id": _new_id(),
+        "user_id": user_id,
         "first_name": body.first_name.strip(),
         "last_name": body.last_name.strip(),
         "email": em,
@@ -499,30 +891,36 @@ async def start_trace(body: StartTraceIn, request: Request):
         "destination_url": code_entry.get("destination_url", ""),
         "documents": [],
         "status": "started",
+        "user_lang": user_lang,
+        "email_24h_sent": False,
+        "email_50h_sent": False,
+        "email_24h_sent_at": None,
+        "email_50h_sent_at": None,
         "created_at": _now_iso(),
         "completed_at": None,
     }
     await db.traces.insert_one(trace)
     trace.pop("_id", None)
-    
+
+    # Schedule email jobs
+    _schedule_trace_emails(trace["id"], trace["created_at"])
+
     return {
         "trace_id": trace["id"],
         "located_amount": located,
         "destination_name": trace["destination_name"],
         "destination_url": trace["destination_url"],
+        "created_at": trace["created_at"],
     }
 
 
 @api.post("/trace/{trace_id}/complete")
 async def complete_trace(trace_id: str, request: Request):
-    """Mark a trace as completed."""
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace-complete:{ip}", max_requests=10, window_seconds=60)
-    
     trace = await db.traces.find_one({"id": trace_id})
     if not trace:
         raise HTTPException(404, "Trace not found")
-    
     await db.traces.update_one(
         {"id": trace_id},
         {"$set": {"status": "completed", "completed_at": _now_iso()}}
@@ -532,14 +930,11 @@ async def complete_trace(trace_id: str, request: Request):
 
 @api.get("/trace/{trace_id}")
 async def get_trace(trace_id: str, request: Request):
-    """Get trace details (public, for showing results)."""
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace-get:{ip}", max_requests=30, window_seconds=60)
-    
     trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
     if not trace:
         raise HTTPException(404, "Trace not found")
-    
     return trace
 
 
@@ -549,79 +944,54 @@ async def upload_trace_document(
     file: UploadFile = File(...),
     request: Request = None
 ):
-    """Upload a proof document for a trace."""
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace-upload:{ip}", max_requests=15, window_seconds=300)
-    
     trace = await db.traces.find_one({"id": trace_id})
     if not trace:
         raise HTTPException(404, "Trace not found")
-    
-    # Check document limit
     current_docs = trace.get("documents", [])
     if len(current_docs) >= MAX_DOCS_PER_USER:
         raise HTTPException(400, f"Maximum {MAX_DOCS_PER_USER} documents per trace")
-    
-    # MIME check
     if file.content_type not in ALLOWED_MIME:
         raise HTTPException(400, f"File type not allowed: {file.content_type}")
-    
-    # Size check
     contents = await file.read()
     if len(contents) > MAX_FILE_BYTES:
         raise HTTPException(400, f"File too large (max {MAX_FILE_BYTES // (1024*1024)} MB)")
-    
-    # Upload to Cloudinary
     folder = f"traccia-fondi/traces/{trace_id}"
     is_pdf = file.content_type == "application/pdf"
     try:
         resource_type = "raw" if is_pdf else "image"
         result = cloudinary.uploader.upload(
-            contents,
-            folder=folder,
-            resource_type=resource_type,
-            use_filename=True,
-            unique_filename=True,
-            overwrite=False,
+            contents, folder=folder, resource_type=resource_type,
+            use_filename=True, unique_filename=True, overwrite=False,
             tags=["traccia-fondi", "trace-doc", trace_id],
         )
     except Exception as e:
         logger.exception("Cloudinary upload failed")
         raise HTTPException(500, f"Upload failed: {e}")
-    
     doc = {
-        "id": _new_id(),
-        "original_name": file.filename or "document",
-        "mime_type": file.content_type,
-        "size_bytes": len(contents),
+        "id": _new_id(), "original_name": file.filename or "document",
+        "mime_type": file.content_type, "size_bytes": len(contents),
         "cloudinary_public_id": result.get("public_id"),
         "cloudinary_resource_type": resource_type,
-        "url": result.get("secure_url"),
-        "created_at": _now_iso(),
+        "url": result.get("secure_url"), "created_at": _now_iso(),
     }
-    
-    await db.traces.update_one(
-        {"id": trace_id},
-        {"$push": {"documents": doc}}
-    )
-    
+    await db.traces.update_one({"id": trace_id}, {"$push": {"documents": doc}})
     return doc
 
 
 # ============================================================
-#   Admin: Traces Management
+#   Admin: Traces
 # ============================================================
 
 @api.get("/admin/traces")
 async def admin_list_traces(_=Depends(require_admin)):
-    """Admin: list all traces with full details."""
     traces = await db.traces.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
     return traces
 
 
 @api.get("/admin/traces/{trace_id}")
 async def admin_get_trace(trace_id: str, _=Depends(require_admin)):
-    """Admin: get single trace with full details."""
     trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
     if not trace:
         raise HTTPException(404, "Trace not found")
@@ -630,28 +1000,52 @@ async def admin_get_trace(trace_id: str, _=Depends(require_admin)):
 
 @api.delete("/admin/traces/{trace_id}")
 async def admin_delete_trace(trace_id: str, _=Depends(require_admin)):
-    """Admin: delete a trace and its documents from Cloudinary."""
     trace = await db.traces.find_one({"id": trace_id})
     if not trace:
         raise HTTPException(404, "Trace not found")
-    
-    # Delete documents from Cloudinary
     for doc in trace.get("documents", []):
         try:
             cloudinary.uploader.destroy(
                 doc["cloudinary_public_id"],
-                resource_type=doc.get("cloudinary_resource_type", "image"),
-                invalidate=True,
+                resource_type=doc.get("cloudinary_resource_type", "image"), invalidate=True,
             )
         except Exception:
             logger.warning("Cloudinary destroy failed for %s", doc.get("cloudinary_public_id"))
-    
     await db.traces.delete_one({"id": trace_id})
     return {"ok": True}
 
 
 # ============================================================
-#   Admin user management (PLAINTEXT passwords visible) - LEGACY
+#   Admin: Users (registered)
+# ============================================================
+
+@api.get("/admin/registered-users")
+async def admin_list_registered_users(_=Depends(require_admin)):
+    """Return all self-registered users with trace status."""
+    users = await db.users.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(5000)
+    # Enrich with trace info
+    result = []
+    for u in users:
+        trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
+        u_out = dict(u)
+        if trace:
+            u_out["trace"] = {
+                "id": trace.get("id"),
+                "status": trace.get("status"),
+                "created_at": trace.get("created_at"),
+                "located_amount": trace.get("located_amount"),
+                "email_24h_sent": trace.get("email_24h_sent", False),
+                "email_50h_sent": trace.get("email_50h_sent", False),
+                "destination_name": trace.get("destination_name"),
+            }
+        else:
+            u_out["trace"] = None
+        result.append(u_out)
+    return result
+
+
+# ============================================================
+#   Admin: Legacy user management
 # ============================================================
 
 @api.get("/admin/users")
@@ -668,18 +1062,11 @@ async def admin_create_user(body: AdminUserIn, _=Depends(require_admin)):
     if body.recovery_destination not in {"chiantin_bank", "zenthos_wallet"}:
         raise HTTPException(400, "Invalid recovery_destination")
     doc = {
-        "id": _new_id(),
-        "first_name": body.first_name.strip(),
-        "last_name": body.last_name.strip(),
-        "email": em,
-        "password": body.password,  # PLAINTEXT — by admin requirement
-        "recovery_destination": body.recovery_destination,
-        "notes": body.notes or "",
-        "amount_tier": None,
-        "located_amount": 0,
-        "procedure_started_at": None,
-        "procedure_completed_at": None,
-        "created_at": _now_iso(),
+        "id": _new_id(), "first_name": body.first_name.strip(), "last_name": body.last_name.strip(),
+        "email": em, "password": body.password, "recovery_destination": body.recovery_destination,
+        "notes": body.notes or "", "amount_tier": None, "located_amount": 0,
+        "procedure_started_at": None, "procedure_completed_at": None, "created_at": _now_iso(),
+        "type": "admin_created",
     }
     await db.users.insert_one(doc)
     doc.pop("_id", None)
@@ -706,7 +1093,7 @@ async def admin_delete_user(user_id: str, _=Depends(require_admin)):
 
 
 # ============================================================
-#   User flow — start procedure & dashboard state
+#   User flow — legacy procedure (kept for compat)
 # ============================================================
 
 @api.post("/procedure/start")
@@ -715,13 +1102,9 @@ async def start_procedure(body: StartProcedureIn, user=Depends(get_current_user)
         raise HTTPException(400, "Invalid amount_tier")
     located = _located_amount_for(body.amount_tier)
     update = {
-        "amount_tier": body.amount_tier,
-        "located_amount": located,
-        "procedure_started_at": _now_iso(),
-        "procedure_completed_at": None,
+        "amount_tier": body.amount_tier, "located_amount": located,
+        "procedure_started_at": _now_iso(), "procedure_completed_at": None,
     }
-    # Save the user-provided name/surname/email so the recovery-request form
-    # can prefill them when the procedure completes.
     if body.first_name:    update["procedure_first_name"]   = body.first_name.strip()
     if body.last_name:     update["procedure_last_name"]    = body.last_name.strip()
     if body.contact_email: update["procedure_contact_email"] = body.contact_email.lower().strip()
@@ -745,10 +1128,6 @@ async def procedure_state(user=Depends(get_current_user)):
         "recovery_destination": user.get("recovery_destination"),
         "procedure_started_at": user.get("procedure_started_at"),
         "procedure_completed_at": user.get("procedure_completed_at"),
-        "procedure_first_name": user.get("procedure_first_name", ""),
-        "procedure_last_name": user.get("procedure_last_name", ""),
-        "procedure_contact_email": user.get("procedure_contact_email", ""),
-        "procedure_date_of_birth": user.get("procedure_date_of_birth", ""),
     }
 
 
@@ -761,23 +1140,13 @@ async def create_recovery_request(body: RecoveryRequestIn, request: Request, use
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"recreq:{ip}", max_requests=5, window_seconds=600)
     doc = {
-        "id": _new_id(),
-        "user_id": user["id"],
-        "user_email": user.get("email"),
-        "first_name": body.first_name.strip(),
-        "last_name": body.last_name.strip(),
-        "email": body.email.lower().strip(),
-        "message": (body.message or "").strip(),
+        "id": _new_id(), "user_id": user["id"], "user_email": user.get("email"),
+        "first_name": body.first_name.strip(), "last_name": body.last_name.strip(),
+        "email": body.email.lower().strip(), "message": (body.message or "").strip(),
         "located_amount": user.get("located_amount", 0),
         "recovery_destination": user.get("recovery_destination"),
-        "status": "pending",  # pending | sent | done
-        # Admin-filled credentials (empty until admin types them)
-        "destination_login_email": "",
-        "destination_login_password": "",
-        "destination_login_url": "",
-        "extra_notes": "",
-        "created_at": _now_iso(),
-        "sent_at": None,
+        "status": "pending", "destination_login_email": "", "destination_login_password": "",
+        "destination_login_url": "", "extra_notes": "", "created_at": _now_iso(), "sent_at": None,
     }
     await db.recovery_requests.insert_one(doc)
     doc.pop("_id", None)
@@ -801,20 +1170,12 @@ async def admin_update_request(req_id: str, body: RecoveryEmailUpdate, _=Depends
 
 @api.post("/admin/recovery-requests/{req_id}/mark-sent")
 async def admin_mark_sent(req_id: str, _=Depends(require_admin)):
-    await db.recovery_requests.update_one(
-        {"id": req_id},
-        {"$set": {"status": "sent", "sent_at": _now_iso()}},
-    )
+    await db.recovery_requests.update_one({"id": req_id}, {"$set": {"status": "sent", "sent_at": _now_iso()}})
     return await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
 
 
 @api.post("/admin/recovery-requests/{req_id}/send-email")
 async def admin_send_email(req_id: str, _=Depends(require_admin)):
-    """
-    Admin sends the recovery-instructions email via Resend.
-    Requires the admin to have filled destination_login_email and
-    destination_login_password on the request first.
-    """
     r = await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
     if not r:
         raise HTTPException(404, "Request not found")
@@ -824,35 +1185,13 @@ async def admin_send_email(req_id: str, _=Depends(require_admin)):
         raise HTTPException(500, "Resend API key is not configured")
 
     dest_label = "Zenthos Wallet" if r.get("recovery_destination") == "zenthos_wallet" else "Chiantin Bank"
-    default_url = (
-        "https://app.zenthos-wallet.com/login"
-        if r.get("recovery_destination") == "zenthos_wallet"
-        else "https://secure.chiantin-bank.com/login"
-    )
+    default_url = ("https://app.zenthos-wallet.com/login" if r.get("recovery_destination") == "zenthos_wallet"
+                   else "https://secure.chiantin-bank.com/login")
     login_url = (r.get("destination_login_url") or default_url).strip()
-    amount = f"€ {(r.get('located_amount') or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    amount = _fmt_amount(r.get('located_amount') or 0)
     extra = (r.get("extra_notes") or "").strip()
 
     subject = f"[Traccia Fondi] Istruzioni di recupero — {dest_label} — {amount}"
-    text_body = (
-        f"Gentile {r.get('first_name','')} {r.get('last_name','')},\n\n"
-        f"A seguito del completamento della procedura di tracciamento Traccia Fondi, "
-        f"confermiamo che un importo di {amount} associato al suo caso è stato localizzato presso:\n\n"
-        f"  {dest_label}\n\n"
-        f"Le sue credenziali di accesso al conto di recupero sono:\n\n"
-        f"  URL accesso: {login_url}\n"
-        f"  Email:       {r['destination_login_email']}\n"
-        f"  Password:    {r['destination_login_password']}\n\n"
-        f"Acceda al suo account per verificare i fondi localizzati e seguire le istruzioni a schermo "
-        f"per completare la procedura di recupero.\n\n"
-        + (f"Note aggiuntive:\n{extra}\n\n" if extra else "")
-        + "Importante: mantenga riservate le credenziali. Traccia Fondi non le chiederà mai di "
-        "condividere password, codici OTP, seed phrase, o di installare software di accesso remoto.\n\n"
-        "Cordiali saluti,\n"
-        "Traccia Fondi — Recovery Operations\n"
-        "support@traccia-fondi.com"
-    )
-
     html_body = f"""<!doctype html>
 <html><body style="margin:0;padding:0;background:#06122A;font-family:Arial,sans-serif;color:#E6EDF7">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#06122A">
@@ -864,62 +1203,40 @@ async def admin_send_email(req_id: str, _=Depends(require_admin)):
     </td></tr>
     <tr><td style="padding:28px 32px;color:#E6EDF7;font-size:14px;line-height:1.6">
       <p>Gentile <strong>{r.get('first_name','')} {r.get('last_name','')}</strong>,</p>
-      <p>A seguito del completamento della procedura di tracciamento Traccia Fondi, confermiamo che un importo di
-        <strong style="color:#5FE3C9">{amount}</strong> associato al suo caso è stato localizzato presso:</p>
-      <div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:16px 0">
-        <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.18em;text-transform:uppercase">Posizione</div>
-        <div style="color:#fff;font-size:18px;font-weight:700;margin-top:4px">{dest_label}</div>
-      </div>
-      <p>Le credenziali di accesso al conto di recupero sono:</p>
+      <p>A seguito del completamento della procedura di tracciamento, un importo di <strong style="color:#5FE3C9">{amount}</strong> è stato localizzato presso <strong>{dest_label}</strong>.</p>
       <table cellpadding="0" cellspacing="0" style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;width:100%;margin:8px 0 16px 0">
-        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">URL</span><br/><a href="{login_url}" style="color:#5FE3C9;text-decoration:none;word-break:break-all">{login_url}</a></td></tr>
-        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">Email</span><br/><span style="color:#fff;font-family:monospace">{r['destination_login_email']}</span></td></tr>
-        <tr><td style="padding:12px 16px"><span style="color:#9FB0CC;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">Password</span><br/><span style="color:#fff;font-family:monospace">{r['destination_login_password']}</span></td></tr>
+        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;text-transform:uppercase">URL</span><br/><a href="{login_url}" style="color:#5FE3C9">{login_url}</a></td></tr>
+        <tr><td style="padding:12px 16px;border-bottom:1px solid #1f2d4f"><span style="color:#9FB0CC;font-size:11px;text-transform:uppercase">Email</span><br/><span style="font-family:monospace">{r['destination_login_email']}</span></td></tr>
+        <tr><td style="padding:12px 16px"><span style="color:#9FB0CC;font-size:11px;text-transform:uppercase">Password</span><br/><span style="font-family:monospace">{r['destination_login_password']}</span></td></tr>
       </table>
-      <p>Acceda al suo account per verificare i fondi localizzati e seguire le istruzioni a schermo per completare la procedura di recupero.</p>
-      {f'<div style="background:#06122A;border-left:3px solid #FFB454;padding:12px 16px;margin:16px 0;color:#9FB0CC"><strong style="color:#FFB454">Note aggiuntive</strong><br/>{extra}</div>' if extra else ""}
+      {f'<div style="background:#06122A;border-left:3px solid #FFB454;padding:12px 16px;margin:16px 0"><strong style="color:#FFB454">Note</strong><br/>{extra}</div>' if extra else ""}
       <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
-        <strong>Importante:</strong> Traccia Fondi non le chiederà mai di condividere password, codici OTP, seed phrase, o di installare software di accesso remoto. Mantenga le credenziali riservate.
+        <strong>Importante:</strong> Traccia Fondi non le chiederà mai di condividere password, codici OTP, seed phrase, o di installare software di accesso remoto.
       </div>
-      <p style="color:#9FB0CC;font-size:13px;margin-top:24px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Recovery Operations</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>
+      <p style="color:#9FB0CC;font-size:13px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Recovery Operations</strong></p>
     </td></tr>
     <tr><td style="padding:14px 32px;background:#06122A;border-top:1px solid #1f2d4f;color:#6F7E9C;font-size:11px;text-align:center">
       © {datetime.now(timezone.utc).year} Traccia Fondi · Privacy-first · GDPR aware
     </td></tr>
   </table>
 </td></tr>
-</table>
-</body></html>"""
+</table></body></html>"""
 
     try:
-        # resend SDK is sync; run in executor to avoid blocking event loop
         loop = asyncio.get_event_loop()
-        send_result = await loop.run_in_executor(
-            None,
-            lambda: resend.Emails.send({
-                "from": RESEND_FROM_RECOVERY,
-                "to": [r["email"]],
-                "reply_to": RESEND_REPLY_TO,
-                "subject": subject,
-                "text": text_body,
-                "html": html_body,
-                "tags": [{"name": "type", "value": "recovery_instructions"}],
-            }),
-        )
+        send_result = await loop.run_in_executor(None, lambda: resend.Emails.send({
+            "from": RESEND_FROM_RECOVERY, "to": [r["email"]], "reply_to": RESEND_REPLY_TO,
+            "subject": subject, "html": html_body,
+            "tags": [{"name": "type", "value": "recovery_instructions"}],
+        }))
         message_id = (send_result or {}).get("id", "")
     except Exception as e:
         logger.exception("Resend send failed")
         raise HTTPException(500, f"Email send failed: {e}")
 
-    await db.recovery_requests.update_one(
-        {"id": req_id},
-        {"$set": {
-            "status": "sent",
-            "sent_at": _now_iso(),
-            "email_message_id": message_id,
-            "email_provider": "resend",
-        }},
-    )
+    await db.recovery_requests.update_one({"id": req_id}, {"$set": {
+        "status": "sent", "sent_at": _now_iso(), "email_message_id": message_id, "email_provider": "resend",
+    }})
     return await db.recovery_requests.find_one({"id": req_id}, {"_id": 0})
 
 
@@ -930,69 +1247,41 @@ async def admin_delete_request(req_id: str, _=Depends(require_admin)):
 
 
 # ============================================================
-#   Documents — Cloudinary signed uploads (per user)
+#   Documents
 # ============================================================
 
 @api.get("/documents")
 async def list_documents(user=Depends(get_current_user)):
-    """List all documents uploaded by the current user."""
-    docs = await db.documents.find(
-        {"user_id": user["id"]}, {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
+    docs = await db.documents.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return docs
 
 
 @api.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...), user=Depends(get_current_user)):
-    """
-    Upload a single document for the current user. The file is sent to
-    Cloudinary using server-side signed upload (the user never sees Cloudinary
-    credentials and we control the folder/limits).
-    """
-    # Per-user document cap
     count = await db.documents.count_documents({"user_id": user["id"]})
     if count >= MAX_DOCS_PER_USER:
         raise HTTPException(400, f"Maximum {MAX_DOCS_PER_USER} documents per user")
-
-    # MIME check
     if file.content_type not in ALLOWED_MIME:
         raise HTTPException(400, f"File type not allowed: {file.content_type}")
-
-    # Size check (read into memory — fine for our 25 MB cap)
     contents = await file.read()
     if len(contents) > MAX_FILE_BYTES:
-        raise HTTPException(400, f"File too large (max {MAX_FILE_BYTES // (1024*1024)} MB)")
-
-    # Upload to Cloudinary
+        raise HTTPException(400, f"File too large")
     folder = f"traccia-fondi/users/{user['id']}"
     is_pdf = file.content_type == "application/pdf"
     try:
-        # 'auto' resource_type lets Cloudinary handle PDFs as 'image' for thumbnails too,
-        # but we use 'raw' for PDFs to keep them as-is and 'image' for images.
         resource_type = "raw" if is_pdf else "image"
         result = cloudinary.uploader.upload(
-            contents,
-            folder=folder,
-            resource_type=resource_type,
-            use_filename=True,
-            unique_filename=True,
-            overwrite=False,
+            contents, folder=folder, resource_type=resource_type,
+            use_filename=True, unique_filename=True, overwrite=False,
             tags=["traccia-fondi", "user-doc", user["id"]],
         )
     except Exception as e:
-        logger.exception("Cloudinary upload failed")
         raise HTTPException(500, f"Upload failed: {e}")
-
     doc = {
-        "id": _new_id(),
-        "user_id": user["id"],
-        "original_name": file.filename or "document",
-        "mime_type": file.content_type,
-        "size_bytes": len(contents),
-        "cloudinary_public_id": result.get("public_id"),
-        "cloudinary_resource_type": resource_type,
-        "url": result.get("secure_url"),
-        "thumbnail_url": (result.get("secure_url") if not is_pdf else None),
+        "id": _new_id(), "user_id": user["id"], "original_name": file.filename or "document",
+        "mime_type": file.content_type, "size_bytes": len(contents),
+        "cloudinary_public_id": result.get("public_id"), "cloudinary_resource_type": resource_type,
+        "url": result.get("secure_url"), "thumbnail_url": (result.get("secure_url") if not is_pdf else None),
         "created_at": _now_iso(),
     }
     await db.documents.insert_one(doc)
@@ -1002,33 +1291,19 @@ async def upload_document(file: UploadFile = File(...), user=Depends(get_current
 
 @api.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str, user=Depends(get_current_user)):
-    """Delete a document the user owns (also removes it from Cloudinary)."""
     d = await db.documents.find_one({"id": doc_id, "user_id": user["id"]}, {"_id": 0})
     if not d:
         raise HTTPException(404, "Document not found")
     try:
-        cloudinary.uploader.destroy(
-            d["cloudinary_public_id"],
-            resource_type=d.get("cloudinary_resource_type", "image"),
-            invalidate=True,
-        )
+        cloudinary.uploader.destroy(d["cloudinary_public_id"], resource_type=d.get("cloudinary_resource_type", "image"), invalidate=True)
     except Exception:
-        logger.warning("Cloudinary destroy failed for %s", d["cloudinary_public_id"])
+        pass
     await db.documents.delete_one({"id": doc_id})
     return {"ok": True}
 
 
-@api.get("/admin/users/{user_id}/documents")
-async def admin_list_user_documents(user_id: str, _=Depends(require_admin)):
-    """Admin: list all documents for a specific user."""
-    docs = await db.documents.find(
-        {"user_id": user_id}, {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
-    return docs
-
-
 # ============================================================
-#   Contact form (public, rate-limited, sends via Resend)
+#   Contact form
 # ============================================================
 
 class ContactIn(BaseModel):
@@ -1041,30 +1316,19 @@ class ContactIn(BaseModel):
 async def contact_form(body: ContactIn, request: Request):
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"contact:{ip}", max_requests=3, window_seconds=600)
-
-    doc = {
-        "id": _new_id(),
-        "name": body.name.strip(),
-        "email": body.email.lower().strip(),
-        "message": body.message.strip(),
-        "ip": ip,
-        "created_at": _now_iso(),
-    }
+    doc = {"id": _new_id(), "name": body.name.strip(), "email": body.email.lower().strip(),
+           "message": body.message.strip(), "ip": ip, "created_at": _now_iso()}
     await db.contact_messages.insert_one(doc)
-
-    # Best-effort relay to support inbox
     if RESEND_API_KEY:
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, lambda: resend.Emails.send({
-                "from": RESEND_FROM_NOREPLY,
-                "to": [RESEND_REPLY_TO],
-                "reply_to": body.email,
+                "from": RESEND_FROM_NOREPLY, "to": [RESEND_REPLY_TO], "reply_to": body.email,
                 "subject": f"[Contact] {body.name}",
                 "text": f"From: {body.name} <{body.email}>\nIP: {ip}\n\n{body.message}",
             }))
         except Exception:
-            logger.warning("Contact form email relay failed")
+            pass
     return {"ok": True}
 
 
@@ -1075,7 +1339,30 @@ async def admin_list_contact_messages(_=Depends(require_admin)):
 
 
 # ============================================================
-#   Mount + middleware
+#   Admin: Scheduler status
+# ============================================================
+
+@api.get("/admin/scheduler/status")
+async def scheduler_status(_=Depends(require_admin)):
+    jobs = scheduler.get_jobs()
+    return {
+        "running": scheduler.running,
+        "jobs": [{"id": j.id, "next_run": str(j.next_run_time)} for j in jobs],
+    }
+
+
+@api.post("/admin/scheduler/retrigger/{trace_id}")
+async def retrigger_trace_emails(trace_id: str, _=Depends(require_admin)):
+    """Re-schedule email jobs for a specific trace (admin manual trigger)."""
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    _schedule_trace_emails(trace_id, trace["created_at"])
+    return {"ok": True, "trace_id": trace_id}
+
+
+# ============================================================
+#   Mount + middleware + startup
 # ============================================================
 
 app.include_router(api)
@@ -1088,7 +1375,6 @@ app.add_middleware(
 )
 
 
-# Security headers (helps with abuse-detection crawlers, prevents clickjacking, etc.)
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -1100,6 +1386,61 @@ async def security_headers(request: Request, call_next):
     return response
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Start scheduler and re-queue any pending email jobs."""
+    scheduler.start()
+    logger.info("APScheduler started")
+
+    # Load all traces that need emails scheduled
+    try:
+        pending = await db.traces.find(
+            {"$or": [{"email_24h_sent": False}, {"email_50h_sent": {"$exists": False}}, {"email_50h_sent": False}]},
+            {"_id": 0, "id": 1, "created_at": 1, "email_24h_sent": 1, "email_50h_sent": 1},
+        ).to_list(10000)
+
+        now = datetime.now(timezone.utc)
+        scheduled = 0
+        for t in pending:
+            tid = t.get("id")
+            cat = t.get("created_at")
+            if not tid or not cat:
+                continue
+            # Normalize
+            try:
+                created = datetime.fromisoformat(cat.replace("Z", "+00:00"))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+
+            # If 24h not sent and not past 50h mark (give some slack)
+            if not t.get("email_24h_sent", False):
+                _schedule_trace_emails(tid, cat)
+                scheduled += 1
+            elif not t.get("email_50h_sent", False):
+                # 24h already sent, only schedule 50h
+                run_50h = created + timedelta(hours=50)
+                if run_50h <= now:
+                    run_50h = now + timedelta(seconds=10)
+                job_id_50 = f"email_50h_{tid}"
+                try:
+                    scheduler.remove_job(job_id_50)
+                except Exception:
+                    pass
+                scheduler.add_job(
+                    send_50h_email, trigger=DateTrigger(run_date=run_50h),
+                    id=job_id_50, args=[tid], replace_existing=True, misfire_grace_time=3600,
+                )
+                scheduled += 1
+
+        logger.info("Startup: scheduled email jobs for %d traces", scheduled)
+    except Exception as e:
+        logger.exception("Startup scheduler load failed: %s", e)
+
+
 @app.on_event("shutdown")
 async def shutdown():
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
     client.close()
