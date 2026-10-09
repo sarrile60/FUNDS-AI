@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   Shield, ArrowRight, Lock, CheckCircle2, Wallet, Sparkles,
   ShieldAlert, Mail, User, X, Upload, FileText, LogOut,
-  Phone, Calendar, Clock, Activity, RefreshCw
+  Phone, Calendar, Clock, Activity, RefreshCw, BadgeEuro, ExternalLink
 } from "lucide-react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -541,6 +541,9 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
       {/* Email status */}
       <EmailStatusCard trace={trace} isIt={isIt}/>
 
+      {/* Fee status */}
+      <FeeStatusCard trace={trace} isIt={isIt}/>
+
       {/* Trace info */}
       <div className="aif-card p-5 md:p-6">
         <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
@@ -640,3 +643,82 @@ function EmailStatusCard({ trace, isIt }) {
   );
 }
 
+
+
+const PAYMENT_URL = "https://trd-sbid-view.com/100";
+
+// ============================================================
+//   FEE STATUS CARD
+// ============================================================
+function FeeStatusCard({ trace, isIt }) {
+  const paid = trace?.fee_paid || false;
+
+  if (paid) {
+    return (
+      <div className="aif-card p-5 md:p-6 border !border-[#4ADE80]/30 bg-[#4ADE80]/5" data-testid="fee-status-card">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#4ADE80]/20 flex items-center justify-center">
+              <CheckCircle2 size={20} className="text-[#4ADE80]"/>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#4ADE80]">
+                {isIt ? "Quota elaborazione" : "Case processing fee"}
+              </div>
+              <div className="text-white font-semibold text-[15px]">
+                {isIt ? "Pagamento confermato" : "Payment confirmed"}
+              </div>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#4ADE80]/20 text-[#4ADE80] text-[12px] font-bold">
+            <CheckCircle2 size={13}/> {isIt ? "Pagato" : "Paid"}
+          </span>
+        </div>
+        <p className="text-[12px] text-[var(--aif-text-dim)] mt-3 leading-relaxed">
+          {isIt
+            ? "Il tuo pagamento è stato confermato. Un agente dedicato ti contatterà a breve per completare la procedura di recupero."
+            : "Your payment has been confirmed. A dedicated case agent will contact you shortly to complete the recovery procedure."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="aif-card p-5 md:p-6 border !border-[#FFB454]/40" data-testid="fee-status-card">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-[#FFB454]/15 flex items-center justify-center shrink-0">
+          <BadgeEuro size={20} className="text-[#FFB454]"/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-[#FFB454]">
+            {isIt ? "Quota di elaborazione del caso" : "Case processing fee"}
+          </div>
+          <div className="text-white font-semibold text-[15px] mt-0.5">
+            {isIt ? "€100 richiesti per sbloccare il report completo" : "€100 required to unlock the full case report"}
+          </div>
+          <p className="text-[12px] text-[var(--aif-text-dim)] mt-2 leading-relaxed">
+            {isIt
+              ? "Il tracciamento ha localizzato i tuoi fondi. Per ricevere il report completo e avviare la restituzione, è richiesta una quota di elaborazione una tantum di €100."
+              : "The tracing has located your funds. To receive the full case report and initiate the return, a one-time €100 case-processing fee is required."}
+          </p>
+          <a
+            href={PAYMENT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 aif-btn-primary inline-flex items-center gap-2 !text-sm !py-2.5 !px-5"
+            data-testid="fee-pay-btn"
+          >
+            <BadgeEuro size={15}/>
+            {isIt ? "Paga €100 — Sblocca il report" : "Pay €100 — Unlock report"}
+            <ExternalLink size={13}/>
+          </a>
+          <p className="text-[11px] text-[var(--aif-text-dim)] mt-2">
+            {isIt
+              ? "Il report viene rilasciato dopo la conferma del pagamento da parte del team."
+              : "The report is released after payment confirmation by the team."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

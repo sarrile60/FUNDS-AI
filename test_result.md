@@ -249,6 +249,78 @@ backend:
         agent: "testing"
         comment: "✅ POST /api/trace/start for user with existing trace correctly returns 400 error: 'You already have an active trace. Each account can only have one trace at a time.' One-trace-per-user validation working."
 
+  - task: "Admin Get All Traces"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/admin/traces returns array of all traces. Test passed with 200 status code. Found 2 traces in system. Successfully identified trace with fee_paid=false for testing mark-fee-paid endpoint."
+
+  - task: "Admin Mark Fee Paid"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ POST /api/admin/traces/{trace_id}/mark-fee-paid successfully marks trace fee as paid. Returns updated trace with fee_paid=true and fee_paid_at timestamp. Test passed with trace ID 343368a7-cd3a-4831-936e-8a7619d809f8. Email sending functionality not tested (RESEND not configured) but flag is correctly set."
+
+  - task: "Admin Get Single Trace"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/admin/traces/{trace_id} returns single trace with all fields including fee_paid. Verified fee_paid=true after marking fee as paid. Test passed with 200 status code."
+
+  - task: "Admin Registered Users with Fee Info"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/admin/registered-users returns users with enriched trace info including fee_paid field. Test user found with trace.fee_paid field present in response. Trace enrichment working correctly."
+
+  - task: "Admin Edit Registered User"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PUT /api/admin/registered-users/{user_id} successfully updates user profile and linked trace. Test passed updating first_name to 'Mario Updated' and located_amount to 250000.00. Returns updated user object without password. Test passed with 200 status code."
+
+  - task: "Admin Edit User - Located Amount Update on Trace"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Verified that updating located_amount via PUT /api/admin/registered-users/{user_id} correctly updates the linked trace document. Retrieved trace via GET /api/admin/traces and confirmed located_amount=250000.0 matches the value set in edit request. Cross-document update working correctly."
+
 frontend:
   - task: "Frontend Testing"
     implemented: "NA"
@@ -294,14 +366,13 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "2.0"
-  test_sequence: 2
+  version: "2.1"
+  test_sequence: 3
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Registration and Login Page Input Field Visual Layout - COMPLETED"
-    - "Admin Panel Document Preview (PDF blank page issue) - STUCK"
+    - "Fee Management Features - COMPLETED"
   stuck_tasks:
     - "Admin Panel — Document Preview & Correct-Filename Download"
   test_all: false
@@ -331,6 +402,7 @@ agent_communication:
   - agent: "testing"
     message: "✅ REGISTRATION AND LOGIN PAGE INPUT FIELD VISUAL LAYOUT BUG FIX VERIFIED. Comprehensive testing completed on both /register and /login pages. RESULTS: ALL 8 INPUT FIELDS PASSED with proper icon and placeholder text separation. Registration page: 6/6 fields passed (Nome, Cognome, Email, Password, Telefono, Data di nascita). Login page: 2/2 fields passed (Email, Password). MEASUREMENTS: All inputs have padding-left: 40px (pl-10 class), icons positioned at left: 14px, resulting in 10px clearance between icon and text. ORIGINAL BUG: Icons and placeholder text were overlapping. FIX APPLIED: Added pl-10 (40px) left padding to all input fields with left icons. Visual confirmation via screenshots shows clean separation with no overlap. Bug fix working correctly."
   - agent: "testing"
+    message: "✅ FEE MANAGEMENT FEATURES TESTING COMPLETED - ALL 6 NEW TESTS PASSED. Tested new fee management endpoints at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api. SUCCESS: (1) ✅ GET /api/health - Health check working (200 OK). (2) ✅ Admin login - POST /api/auth/login with admin@traccia-fondi.com / admin123 successful. (3) ✅ GET /api/admin/traces - Returns array of all traces, found 2 traces, identified unpaid trace ID 343368a7-cd3a-4831-936e-8a7619d809f8. (4) ✅ POST /api/admin/traces/{trace_id}/mark-fee-paid - Successfully marked fee as paid, returns trace with fee_paid=true and fee_paid_at timestamp. Email sending not tested (RESEND not configured) but flag correctly set. (5) ✅ GET /api/admin/traces/{trace_id} - Verified fee_paid=true after marking. (6) ✅ GET /api/admin/registered-users - Returns users with trace.fee_paid field present in enriched trace info. (7) ✅ PUT /api/admin/registered-users/{user_id} - Successfully updated user first_name to 'Mario Updated' and located_amount to 250000.00. (8) ✅ GET /api/admin/traces - Verified located_amount=250000.0 correctly updated on linked trace document. All fee management endpoints working correctly. Cross-document updates (user edit affecting trace) working as expected. FRONTEND TESTS NOT PERFORMED: Review request included frontend tests (fee disclosure section, FeeStatusCard visibility) but per testing agent instructions, frontend testing was not conducted - only backend API testing performed."
 
   - task: "Bug Fix Verification - Password Placeholder, Phone Removal, Email Verification Flow, Login Blocking, Verify-Email Page"
     implemented: true

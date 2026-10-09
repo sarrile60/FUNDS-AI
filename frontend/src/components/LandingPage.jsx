@@ -6,7 +6,7 @@ import {
   Building2, TrendingUp, Bitcoin, CreditCard, Wallet, FileCheck2,
   ShieldAlert, ShieldCheck, Banknote, Network, AlertTriangle, ChevronDown,
   ArrowRight, CheckCircle2, Sparkles, Lock, Eye, Layers, FileWarning, Coins,
-  Globe, Scale, Search, Landmark, Link2, FileText
+  Globe, Scale, Search, Landmark, Link2, FileText, BadgeEuro
 } from "lucide-react";
 import Navbar from "./Navbar";
 import HeroNetwork from "./HeroNetwork";
@@ -415,6 +415,41 @@ function CtaBanner() {
   );
 }
 
+function FeeDisclosure() {
+  const { t, lang } = useI18n();
+  const isIt = lang === "it";
+  return (
+    <Section id="fee" className="py-10 md:py-14">
+      <div className="aif-card p-6 md:p-8 border-l-4 !border-l-[#5FE3C9]">
+        <div className="flex items-start gap-5 flex-wrap md:flex-nowrap">
+          <div className="w-14 h-14 rounded-xl bg-[#5FE3C9]/15 border border-[#5FE3C9]/40 flex items-center justify-center text-[#5FE3C9] shrink-0">
+            <BadgeEuro size={26}/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-1">{t("fee.tag")}</div>
+            <h3 className="text-xl md:text-2xl font-bold text-white">{t("fee.title")}</h3>
+            <p className="mt-2 text-[var(--aif-text-dim)] text-[14px] leading-relaxed max-w-3xl">{t("fee.body")}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="aif-card !rounded-xl px-5 py-3 inline-flex items-center gap-2">
+                <span className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">{t("fee.amount")}</span>
+                <span className="text-[12px] text-[var(--aif-text-dim)] max-w-[120px] leading-snug">{t("fee.note")}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[13px] text-[var(--aif-text-dim)]">
+                <CheckCircle2 size={14} className="text-[#4ADE80]"/>
+                {isIt ? "Nessun costo anticipato fino all'esito confermato" : "No upfront cost until outcome is confirmed"}
+              </div>
+              <div className="flex items-center gap-2 text-[13px] text-[var(--aif-text-dim)]">
+                <CheckCircle2 size={14} className="text-[#4ADE80]"/>
+                {isIt ? "Pagamento sicuro online" : "Secure online payment"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="aif-app-bg">
@@ -430,6 +465,7 @@ export default function LandingPage() {
         <TracingTeaser/>
         <ReportsGallery/>
         <TrustStrip/>
+        <FeeDisclosure/>
         <FAQ/>
         <CtaBanner/>
         <Footer/>

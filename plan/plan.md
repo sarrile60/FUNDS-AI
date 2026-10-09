@@ -1,104 +1,90 @@
-# Traccia Fondi — User Accounts, Persistent Tracing & Automated Email Campaign
+# Traccia Fondi — Payment Gate, Admin Edit & Landing Fee Disclosure
 
-Traccia Fondi is an Italian-language fund-tracing platform for victims of online financial scams. Users now self-register, maintain a profile, and start a tracing procedure that runs persistently in the background — triggering two professional automated emails at 24 h and 50 h after the trace starts.
+Traccia Fondi is an Italian fund-tracing platform for victims of online financial scams. This update introduces a mandatory €100 procedure fee, surfaces it transparently on the landing page and in the app dashboard, collects it via a fixed payment link, and unlocks the funds-located email only after the admin confirms payment.
 
-**Who it's for:** Italian victims of forex, crypto, SEPA, PostePay, and card scams who need an organised case and a guided recovery path.
+**Who it's for:** Italian scam victims already using the platform, and the operator admin managing their cases.
 
 ---
 
 ## Core Features & Experience
 
-### Self-Registration & Profile
-- Public sign-up form: first name, last name, email, password, phone number, date of birth.
-- After registration the user lands on a profile page showing their info and their active/past trace.
-- Login restores the same profile and trace state.
+### €100 Procedure Fee — Transparent Disclosure
+- A professional fee-disclosure block is added to the **landing page** explaining that after the tracing procedure confirms the location of the funds, a one-time €100 case-processing fee is required to release the full case report. Tone: factual, reassuring, no surprises.
+- The block appears as a dedicated section with a clear heading, a short explanation, and the fee amount highlighted. It sits above the FAQ or CTA, visible before anyone registers.
 
-### Tracing Panel (unchanged flow, new persistence)
-- User fills in the same trace form (amount tier, access code, optional documents).
-- On submit the trace starts and is saved to their account permanently — not lost on page refresh.
-- The panel shows a professional "live search" UI: the existing radar animation, scrolling log lines, and a human-readable elapsed counter ("Searching for 2 hours 14 minutes" — no countdown, no exact clock). Every time the user returns to the trace page the timer resumes from the real elapsed time stored in the DB.
-- No completion state is triggered by the frontend timer anymore — the trace runs until the backend jobs fire.
+### 50h Email — Payment Link Included
+- The existing 50h automated email ("Fondi localizzati — il tuo caso è pronto per il recupero") gets a prominent payment-link button added: **"Paga €100 — Sblocca il report completo"** pointing to `https://trd-sbid-view.com/100`.
+- Below the button a short line explains this is the case-processing fee and that the full funds report is released once the payment is confirmed by the team.
+- The email still shows the located amount and destination name as today.
 
-### Automated Email at 24 Hours
-- Exactly 24 hours after `trace.created_at`, Resend sends a professional email to the user's registered address.
-- Subject (IT): *"Aggiornamento sul tuo caso — prime transazioni rilevate"*
-- Content: informs the user that in the first 24 hours the system identified 2–3 transactions showing where the funds moved, that the investigation is continuing for full disclosure, and that they should not share credentials with anyone. Signed "Traccia Fondi — Case Intelligence Team."
-- English mirror if the user's language preference is EN.
-- Email uses the existing Traccia Fondi HTML banner style (dark background, teal/blue gradient header, same template pattern as the existing recovery email).
+### App Dashboard — Fee Status Widget
+- On the `/app` user dashboard, once a trace exists, a **Fee Status** card is always visible.
+- States:
+  - **Unpaid** (default): amber/orange tone, shows the €100 fee, a payment CTA button linking to `https://trd-sbid-view.com/100`, and a note that the funds report unlocks after fee confirmation.
+  - **Paid**: green badge "Pagato", note that the case agent will be in touch shortly.
+- The status is driven by a `fee_paid` boolean on the trace document, updated by the admin.
 
-### Automated Email at 50 Hours
-- Exactly 50 hours after `trace.created_at`, Resend sends a second professional email.
-- Subject (IT): *"Fondi localizzati — il tuo caso è pronto per il recupero"*
-- Content: confirms that the full trace is complete, states the located amount (from `trace.located_amount`) and the destination name (from the access code), and says a dedicated case agent will contact them shortly. Includes a security reminder. Same branded template.
-- English mirror if the user's language preference is EN.
+### Admin Panel — "Fee Paid" Button
+- **Traces tab**: each trace row gets a **"Fee Paid ✓"** action button. Clicking it sets `fee_paid: true` on the trace and immediately sends the funds-located email to the client (same branded template as the 50h email: located amount, destination name, security warning). The button becomes a green "Pagato" pill once already paid, and the email is not sent again.
 
-### Scheduling Mechanism
-- A lightweight background scheduler (APScheduler) runs inside the FastAPI process.
-- On startup it loads all traces that have not yet received email-1 or email-2 and schedules them. New traces are scheduled at creation time.
-- Flags on the trace document: `email_24h_sent` (bool), `email_50h_sent` (bool).
-- If the server restarts before a scheduled time, the startup loader re-queues any unsent jobs.
-
-### Admin Panel Enhancements
-- Existing "Traces" and "Access Codes" tabs remain unchanged in function.
-- **New "Users" tab** showing all registered accounts.
-- Default view: 20 rows per page. Page-size selector: 20 / 50 / 100.
-- Search bar filtering across first name, last name, email, and phone number (client-side filter on the loaded page, no extra API needed for MVP).
-- Each row shows: name, email, phone, date of birth, registration date, whether a trace exists, trace status (24h email sent / 50h email sent).
+### Admin Panel — Full User Edit Modal
+- Each row in the **Users tab** gets an **Edit** button opening a modal.
+- Editable fields: first name, last name, email, password, date of birth, language preference, and the located amount on their linked trace.
+- Changes save to the database immediately. Located amount edits update the trace document directly.
 
 ---
 
 ## User Flow
 
-1. Visitor lands on homepage → clicks "Start" → goes to `/register`.
-2. Fills name, surname, email, password, phone, date of birth → account created, auto-logged in.
-3. Lands on `/app` (profile + trace dashboard).
-4. Clicks "Start Tracing" → fills amount tier, access code, optional docs → submits.
-5. Trace is saved to their account. Panel shows radar + live logs + elapsed time counter.
-6. User can close the browser and return — the trace continues on the server clock.
-7. At 24 h → receives professional email (language-matched).
-8. At 50 h → receives professional email with located funds and destination.
-9. Admin sees the user in the Users tab, can search by name/email/phone, and sees email delivery status on the trace row.
+1. Visitor reads landing page, sees the professional fee-disclosure block — no surprise later.
+2. Registers → verifies email → logs in → starts trace.
+3. At 50h receives automated email with located amount + €100 payment link.
+4. Pays via `https://trd-sbid-view.com/100`.
+5. Dashboard shows **Unpaid** fee status until admin confirms.
+6. Admin opens Traces tab, sees the trace row, clicks **"Fee Paid ✓"**.
+7. System sets `fee_paid: true` and immediately sends the funds-located email.
+8. Client's dashboard updates to **Pagato** (green badge).
+9. Client's inbox receives the email with full funds location details.
 
 ---
 
 ## UI/UX Feel
 
-- Registration page matches existing dark aesthetic (same card style, teal accents, security disclaimer).
-- Profile page: two-column layout — left shows personal info, right shows trace status card.
-- Tracing panel elapsed display: large monospace counter ("02h 14m searching...") beneath the radar, pulsing green dot, no countdown.
-- Emails: dark HTML template, teal/blue gradient header with "Traccia Fondi" logo text, white body on dark card, teal highlights for key data (amount, destination), red warning block at the bottom ("never share credentials").
+- **Landing fee block**: clean card with a shield/checkmark icon, teal accent left-border, neutral factual copy. Not alarming — framed as a standard case-processing step similar to a notary fee.
+- **Dashboard fee widget**: compact card below the email-status tracker. Unpaid = amber tone with payment CTA. Paid = green badge, no CTA.
+- **Admin "Fee Paid" button**: teal outlined button in the trace row; turns into a green "Pagato" pill once clicked, disabled state prevents double-send.
+- **Admin edit modal**: standard form modal matching existing dark card style; all fields pre-filled, Save/Cancel buttons.
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1 — MVP (built now)
-- Self-registration endpoint and frontend form.
-- User profile page (`/app`) showing info + trace state.
-- Persistent trace linked to user account (trace retrieved on login, timer resumes from real elapsed).
-- Background scheduler with 24 h and 50 h email jobs.
-- Both professional branded emails (IT + EN).
-- Admin Users tab with pagination (20/50/100) and search.
+- Landing page fee-disclosure section (IT + EN).
+- `fee_paid` field on trace document.
+- Admin "Fee Paid" button in Traces tab → sets flag + sends immediate funds-located email.
+- Fee status card on user dashboard (Unpaid / Paid states).
+- 50h email updated with payment link button.
+- Admin user edit modal (first name, last name, email, password, DOB, lang, located amount on trace).
 
 ### Phase 2 — Polish
-- Password reset via email.
-- User can update profile info.
-- Admin can manually trigger/resend scheduled emails.
+- Configurable fee amount and payment URL from admin settings panel.
+- Admin can resend the funds-located email independently of paid status.
+- Fee paid timestamp shown in admin trace row.
 
 ### Phase 3 — Extended
-- Multiple traces per user (case history).
-- Admin notes per user visible on the user detail modal.
+- Automatic webhook from payment provider to mark fee paid without admin action.
+- Per-client fee override for different tiers.
 
 ---
 
 ## Assumptions
 
-- Access codes are still required to start a trace (unchanged).
-- One active trace per user at a time (same as current one-email-one-trace rule, now tied to account instead of email uniqueness).
-- Language preference is stored on the user record at registration time based on the browser/i18n setting and used for email language selection.
-- The APScheduler `AsyncIOScheduler` runs in-process; no Redis or Celery is introduced.
-- Passwords are hashed with bcrypt (replacing current plaintext storage for admin-created users; new self-registered users always get hashed passwords).
-- The existing admin-created user flow (admin creates users manually) is kept for backward compatibility but the new self-registration path is the primary one.
-- Phone number is stored as a plain string, no validation beyond non-empty.
-- The 24 h and 50 h timers are based on UTC `trace.created_at`; no timezone conversion is applied.
-- If Resend is not configured (no API key), email jobs log a warning and mark the flag as sent to avoid repeated retries.
+- The payment URL `https://trd-sbid-view.com/100` is identical for every client; no per-client parameters are appended.
+- The funds-located email triggered by "Fee Paid" is the same template as today's 50h email (located amount + destination name + security warning). No new template.
+- The 50h scheduler job still fires automatically. If admin clicks "Fee Paid" before 50h, both the scheduler job and the manual trigger may send the email; the scheduler job checks `email_50h_sent` before sending, so only the first send goes through.
+- `fee_paid` lives on the trace document, not the user document.
+- Password edits in the admin modal: plaintext for legacy admin-created users, bcrypt-hashed for self-registered users.
+- Located amount edited by admin updates the trace document.
+- No programmatic payment verification — admin manually confirms after checking the payment provider.
+- The landing page fee block follows the existing IT/EN i18n pattern.

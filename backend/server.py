@@ -389,6 +389,13 @@ associated with your case has been located:</p>
 <p>A dedicated case agent will be in touch with you shortly with the next steps to complete the
 recovery procedure and arrange the return of your funds.</p>
 {f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:12px;margin-bottom:12px">To unlock the full case report and release your funds, a one-time €100 case-processing fee is required.</div>
+  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">
+    Pay €100 — Unlock Full Report
+  </a>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">Secure payment · Case report released upon confirmation</div>
+</div>
 <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
   <strong>Important security reminder:</strong> Traccia Fondi will never ask you to share passwords, OTP codes,
   seed phrases, private keys, or to make any payment to "unlock" or "release" your funds.
@@ -401,8 +408,8 @@ recovery procedure and arrange the return of your funds.</p>
                 f"The Traccia Fondi tracing procedure is complete.\n\n"
                 f"Located amount: {amount_str}\n"
                 f"Confirmed location: {dest_name}\n\n"
-                "A dedicated case agent will contact you shortly with next steps.\n\n"
-                "Important: Traccia Fondi will never ask for passwords, OTP codes, seed phrases or any fees.\n\n"
+                "To unlock the full case report, a one-time €100 case-processing fee is required.\n"
+                "Pay here: https://trd-sbid-view.com/100\n\n"
                 "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
             )
         else:
@@ -420,6 +427,13 @@ l'importo completo associato al tuo caso è stato localizzato:</p>
 <p>Un agente dedicato al tuo caso ti contatterà a breve con i passi successivi per completare la
 procedura di recupero e organizzare la restituzione dei tuoi fondi.</p>
 {f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:12px;margin-bottom:12px">Per sbloccare il report completo del caso e avviare la restituzione dei fondi, è richiesta una quota di elaborazione una tantum di €100.</div>
+  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">
+    Paga €100 — Sblocca il report completo
+  </a>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">Pagamento sicuro · Il report viene rilasciato dopo la conferma</div>
+</div>
 <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
   <strong>Promemoria sicurezza importante:</strong> Traccia Fondi non ti chiederà mai di condividere password,
   codici OTP, seed phrase, chiavi private, né di effettuare pagamenti per "sbloccare" o "rilasciare" i tuoi fondi.
@@ -432,8 +446,8 @@ procedura di recupero e organizzare la restituzione dei tuoi fondi.</p>
                 f"La procedura di tracciamento Traccia Fondi è completata.\n\n"
                 f"Importo localizzato: {amount_str}\n"
                 f"Posizione confermata: {dest_name}\n\n"
-                "Un agente dedicato ti contatterà a breve con i passi successivi.\n\n"
-                "Importante: Traccia Fondi non ti chiederà mai password, codici OTP, seed phrase o pagamenti.\n\n"
+                "Per sbloccare il report completo è richiesta una quota di €100.\n"
+                "Paga qui: https://trd-sbid-view.com/100\n\n"
                 "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
             )
 
@@ -1023,6 +1037,8 @@ async def start_trace(body: StartTraceIn, request: Request, authorization: Optio
         "email_50h_sent": False,
         "email_24h_sent_at": None,
         "email_50h_sent_at": None,
+        "fee_paid": False,
+        "fee_paid_at": None,
         "created_at": _now_iso(),
         "completed_at": None,
     }
@@ -1142,6 +1158,30 @@ async def admin_delete_trace(trace_id: str, _=Depends(require_admin)):
     return {"ok": True}
 
 
+@api.post("/admin/traces/{trace_id}/mark-fee-paid")
+async def admin_mark_fee_paid(trace_id: str, _=Depends(require_admin)):
+    """
+    Mark a trace fee as paid. If the funds-located email hasn't been sent yet,
+    send it immediately. Marks email_50h_sent=True to prevent the scheduler
+    from sending a duplicate.
+    """
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+
+    # Set fee_paid
+    await db.traces.update_one(
+        {"id": trace_id},
+        {"$set": {"fee_paid": True, "fee_paid_at": _now_iso()}}
+    )
+
+    # Send funds-located email if not already sent
+    if not trace.get("email_50h_sent"):
+        await send_50h_email(trace_id)
+
+    return await db.traces.find_one({"id": trace_id}, {"_id": 0})
+
+
 # ============================================================
 #   Admin: Users (registered)
 # ============================================================
@@ -1163,6 +1203,7 @@ async def admin_list_registered_users(_=Depends(require_admin)):
                 "located_amount": trace.get("located_amount"),
                 "email_24h_sent": trace.get("email_24h_sent", False),
                 "email_50h_sent": trace.get("email_50h_sent", False),
+                "fee_paid": trace.get("fee_paid", False),
                 "destination_name": trace.get("destination_name"),
             }
         else:
@@ -1171,9 +1212,58 @@ async def admin_list_registered_users(_=Depends(require_admin)):
     return result
 
 
-# ============================================================
-#   Admin: Legacy user management
-# ============================================================
+# New: edit a registered user and optionally their linked trace amount
+class RegisteredUserEditIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    lang: Optional[str] = None
+    located_amount: Optional[float] = None  # updates the linked trace
+
+
+@api.put("/admin/registered-users/{user_id}")
+async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _=Depends(require_admin)):
+    """Edit a self-registered user's profile. Optionally update located_amount on their trace."""
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    update = {}
+    if body.first_name is not None:
+        update["first_name"] = body.first_name.strip()
+    if body.last_name is not None:
+        update["last_name"] = body.last_name.strip()
+    if body.email is not None:
+        new_em = body.email.lower().strip()
+        if new_em != user.get("email"):
+            existing = await db.users.find_one({"email": new_em, "id": {"$ne": user_id}})
+            if existing:
+                raise HTTPException(400, "Email already in use")
+        update["email"] = new_em
+    if body.password is not None and body.password.strip():
+        pw = body.password.strip()
+        # Hash for self-registered, plaintext for legacy
+        if user.get("type") == "registered":
+            update["password"] = pwd_ctx.hash(pw)
+        else:
+            update["password"] = pw
+    if body.date_of_birth is not None:
+        update["date_of_birth"] = body.date_of_birth.strip()
+    if body.lang is not None:
+        update["lang"] = body.lang.strip()
+
+    if update:
+        await db.users.update_one({"id": user_id}, {"$set": update})
+
+    # Update located_amount on linked trace
+    if body.located_amount is not None:
+        await db.traces.update_one({"user_id": user_id}, {"$set": {"located_amount": body.located_amount}})
+
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return updated
 
 @api.get("/admin/users")
 async def admin_list_users(_=Depends(require_admin)):

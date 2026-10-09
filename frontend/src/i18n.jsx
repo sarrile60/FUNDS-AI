@@ -35,6 +35,14 @@ const dict = {
     "trust.body": "Molte vittime vengono ricontattate da falsi avvocati, falsi broker, falsi funzionari o presunti esperti blockchain che promettono il recupero del denaro in cambio di tasse, commissioni AML, gas fee, certificati o costi di sblocco.",
     "trust.never": "Traccia Fondi non ti chiederà mai seed phrase, private key, password bancarie, codici OTP o pagamenti per 'sbloccare' fondi.",
 
+    // Fee disclosure
+    "fee.tag": "Quota di elaborazione del caso",
+    "fee.title": "Quota di €100 per il report completo",
+    "fee.body": "Una volta che il sistema ha localizzato i tuoi fondi e confermato la destinazione, è richiesta una quota di elaborazione una tantum di €100 per rilasciare il report completo del caso e avviare la procedura di restituzione. La quota viene richiesta solo dopo la conferma dell'esito del tracciamento.",
+    "fee.amount": "€100",
+    "fee.note": "Quota una tantum — richiesta solo dopo la conferma dell'esito",
+    "fee.cta": "Scopri come funziona il pagamento",
+
     // Italian context
     "context.tag": "Italia • Scenari reali",
     "context.title": "Costruito per il contesto italiano",
@@ -496,6 +504,14 @@ const dict = {
     "trust.title": "Beware of recovery scams",
     "trust.body": "Many victims are contacted again by fake lawyers, brokers, officials or self-claimed blockchain experts promising recovery in exchange for taxes, AML fees, gas, certificates or unlock costs.",
     "trust.never": "Traccia Fondi will never ask you for a seed phrase, private key, banking password, OTP code or any payment to 'unlock' funds.",
+
+    // Fee disclosure
+    "fee.tag": "Case processing fee",
+    "fee.title": "€100 fee for the full report",
+    "fee.body": "Once the system has located your funds and confirmed the destination, a one-time €100 case-processing fee is required to release the full case report and initiate the return procedure. The fee is only charged after the tracing outcome is confirmed.",
+    "fee.amount": "€100",
+    "fee.note": "One-time fee — charged only after outcome is confirmed",
+    "fee.cta": "Learn how payment works",
 
     // Italian context
     "context.tag": "Italy • Real scenarios",

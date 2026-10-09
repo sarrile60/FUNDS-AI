@@ -337,6 +337,7 @@ function TracesTab({ isIt }) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [markingFee, setMarkingFee] = useState(null); // trace id being processed
 
   const load = async () => {
     try {
@@ -359,6 +360,20 @@ function TracesTab({ isIt }) {
       toast.success(isIt ? "Tracciamento eliminato" : "Trace deleted");
     } catch (e) {
       toast.error(isIt ? "Errore eliminazione" : "Delete failed");
+    }
+  };
+
+  const markFeePaid = async (traceId) => {
+    if (!window.confirm(isIt ? "Contrassegnare come pagato e inviare email fondi localizzati?" : "Mark as paid and send funds-located email?")) return;
+    setMarkingFee(traceId);
+    try {
+      const { data } = await axios.post(`${API}/admin/traces/${traceId}/mark-fee-paid`, {}, { headers: getAuthHeader() });
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, fee_paid: true, fee_paid_at: data.fee_paid_at, email_50h_sent: data.email_50h_sent } : t));
+      toast.success(isIt ? "Quota confermata — email inviata" : "Fee confirmed — email sent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore" : "Error"));
+    } finally {
+      setMarkingFee(null);
     }
   };
 
@@ -426,6 +441,7 @@ function TracesTab({ isIt }) {
                 <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
                 <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
+                <th className="p-4 font-medium">{isIt ? "Quota" : "Fee"}</th>
                 <th className="p-4 font-medium"></th>
               </tr>
             </thead>
@@ -472,6 +488,23 @@ function TracesTab({ isIt }) {
                       </span>
                     </td>
                     <td className="p-4">
+                      {trace.fee_paid ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#4ADE80]/15 text-[#4ADE80]">
+                          <Check size={11}/> {isIt ? "Pagato" : "Paid"}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => markFeePaid(trace.id)}
+                          disabled={markingFee === trace.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/50 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50"
+                          title={isIt ? "Contrassegna quota come pagata e invia email" : "Mark fee paid & send email"}
+                          data-testid={`fee-paid-btn-${trace.id}`}
+                        >
+                          {markingFee === trace.id ? (isIt ? "…" : "…") : (isIt ? "Fee Pagata ✓" : "Fee Paid ✓")}
+                        </button>
+                      )}
+                    </td>
+                    <td className="p-4">
                       <button 
                         onClick={() => deleteTrace(trace.id)}
                         className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
@@ -485,7 +518,7 @@ function TracesTab({ isIt }) {
                   {/* Expanded documents row */}
                   {expandedId === trace.id && trace.documents?.length > 0 && (
                     <tr className="bg-[#0E1A36]">
-                      <td colSpan={9} className="p-4">
+                      <td colSpan={10} className="p-4">
                         <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
@@ -812,6 +845,7 @@ function RegisteredUsersTab({ isIt }) {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(0);
+  const [editingUser, setEditingUser] = useState(null); // user to edit
 
   const load = async () => {
     setLoading(true);
@@ -842,7 +876,6 @@ function RegisteredUsersTab({ isIt }) {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  // Reset page when search changes
   useEffect(() => { setPage(0); }, [search]);
 
   const fmtDate = (iso) => {
@@ -854,12 +887,27 @@ function RegisteredUsersTab({ isIt }) {
 
   const fmtAmount = (n) => n ? `€ ${(n).toLocaleString("it-IT", { minimumFractionDigits: 2 })}` : "—";
 
+  const handleSaveUser = (updated) => {
+    setUsers(prev => prev.map(u => u.id === updated.id ? { ...u, ...updated } : u));
+    setEditingUser(null);
+  };
+
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
   }
 
   return (
     <div className="space-y-5">
+      {/* Edit modal */}
+      {editingUser && (
+        <UserEditModal
+          user={editingUser}
+          isIt={isIt}
+          onClose={() => setEditingUser(null)}
+          onSaved={handleSaveUser}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -869,19 +917,17 @@ function RegisteredUsersTab({ isIt }) {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Search */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
             <input
               type="text"
               className="aif-input pl-9 !py-2 text-[13px] w-56"
-              placeholder={isIt ? "Cerca nome, email, tel…" : "Search name, email, phone…"}
+              placeholder={isIt ? "Cerca nome, email…" : "Search name, email…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               data-testid="users-search"
             />
           </div>
-          {/* Page size */}
           <select
             className="aif-input !py-2 text-[13px] w-24"
             value={pageSize}
@@ -921,6 +967,7 @@ function RegisteredUsersTab({ isIt }) {
                   <th className="p-3 font-medium">{isIt ? "Tracciamento" : "Trace"}</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
+                  <th className="p-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -957,6 +1004,16 @@ function RegisteredUsersTab({ isIt }) {
                     </td>
                     <td className="p-3 hidden md:table-cell">
                       <EmailBadge sent={u.trace?.email_50h_sent} isIt={isIt}/>
+                    </td>
+                    <td className="p-3">
+                      <button
+                        onClick={() => setEditingUser(u)}
+                        className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                        title={isIt ? "Modifica" : "Edit"}
+                        data-testid={`edit-user-btn-${u.id}`}
+                      >
+                        <Edit2 size={15}/>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1020,5 +1077,135 @@ function EmailBadge({ sent, isIt }) {
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--aif-line)]/30 text-[var(--aif-text-dim)]">
       <Clock size={10}/> {isIt ? "In attesa" : "Pending"}
     </span>
+  );
+}
+
+
+// ============================================================
+//   USER EDIT MODAL
+// ============================================================
+function UserEditModal({ user, isIt, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    first_name: user.first_name || "",
+    last_name: user.last_name || "",
+    email: user.email || "",
+    password: "",
+    date_of_birth: user.date_of_birth || "",
+    lang: user.lang || "it",
+    located_amount: user.trace?.located_amount || "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  // Close on Escape
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        first_name: form.first_name || undefined,
+        last_name: form.last_name || undefined,
+        email: form.email || undefined,
+        date_of_birth: form.date_of_birth || undefined,
+        lang: form.lang || undefined,
+      };
+      if (form.password.trim()) payload.password = form.password.trim();
+      if (form.located_amount !== "" && form.located_amount !== null) {
+        payload.located_amount = parseFloat(form.located_amount);
+      }
+      const { data } = await axios.put(`${API}/admin/registered-users/${user.id}`, payload, { headers: getAuthHeader() });
+      toast.success(isIt ? "Utente aggiornato" : "User updated");
+      onSaved(data);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore salvataggio" : "Save failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="aif-card !bg-[#0E1A36] w-full max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--aif-line)]">
+          <div>
+            <h3 className="text-white font-bold text-[15px]">{isIt ? "Modifica Utente" : "Edit User"}</h3>
+            <p className="text-[12px] text-[var(--aif-text-dim)]">{user.email}</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-[var(--aif-text-dim)] hover:text-white"><X size={18}/></button>
+        </div>
+
+        {/* Form */}
+        <div className="p-6 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="aif-label">{isIt ? "Nome" : "First name"}</label>
+              <input className="aif-input" value={form.first_name} onChange={set("first_name")} data-testid="edit-first"/>
+            </div>
+            <div>
+              <label className="aif-label">{isIt ? "Cognome" : "Last name"}</label>
+              <input className="aif-input" value={form.last_name} onChange={set("last_name")} data-testid="edit-last"/>
+            </div>
+          </div>
+
+          <div>
+            <label className="aif-label">Email</label>
+            <input type="email" className="aif-input" value={form.email} onChange={set("email")} data-testid="edit-email"/>
+          </div>
+
+          <div>
+            <label className="aif-label">{isIt ? "Nuova password (lascia vuoto per non modificare)" : "New password (leave blank to keep)"}</label>
+            <input type="password" className="aif-input" value={form.password} onChange={set("password")} placeholder="••••••••" data-testid="edit-password"/>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"}</label>
+              <input type="date" className="aif-input" value={form.date_of_birth} onChange={set("date_of_birth")} data-testid="edit-dob"/>
+            </div>
+            <div>
+              <label className="aif-label">{isIt ? "Lingua" : "Language"}</label>
+              <select className="aif-input" value={form.lang} onChange={set("lang")} data-testid="edit-lang">
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="en">🇬🇧 English</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Located amount — only show if user has a trace */}
+          {user.trace && (
+            <div>
+              <label className="aif-label">{isIt ? "Importo localizzato (€) — tracciamento" : "Located amount (€) — trace"}</label>
+              <input
+                type="number"
+                step="0.01"
+                className="aif-input"
+                value={form.located_amount}
+                onChange={set("located_amount")}
+                placeholder="0.00"
+                data-testid="edit-located-amount"
+              />
+              <p className="text-[11px] text-[var(--aif-text-dim)] mt-1">
+                {isIt ? "Aggiorna l'importo sul tracciamento associato." : "Updates the amount on the linked trace."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--aif-line)]">
+          <button onClick={onClose} className="aif-btn-ghost !py-2 !px-4 !text-sm">{isIt ? "Annulla" : "Cancel"}</button>
+          <button onClick={save} disabled={saving} className="aif-btn-primary !py-2 !px-5 !text-sm inline-flex items-center gap-2 disabled:opacity-60" data-testid="edit-save">
+            <Save size={14}/> {saving ? "…" : (isIt ? "Salva" : "Save")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

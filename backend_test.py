@@ -473,6 +473,266 @@ def test_duplicate_trace():
         log_test("Duplicate trace check", False, f"Exception: {e}")
 
 
+def test_get_all_traces():
+    """Test 12: Get all traces (admin)."""
+    print("\n=== Test 12: Get All Traces ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Get all traces", False, "No admin token available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/admin/traces",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Get all traces", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        traces = resp.json()
+        
+        if not isinstance(traces, list):
+            log_test("Get all traces", False, f"Expected array, got: {type(traces)}")
+            return
+        
+        # Find a trace with fee_paid=false or null
+        unpaid_trace = None
+        for trace in traces:
+            if not trace.get("fee_paid"):
+                unpaid_trace = trace
+                test_data["unpaid_trace_id"] = trace.get("id")
+                break
+        
+        if unpaid_trace:
+            log_test("Get all traces", True, 
+                    f"Found {len(traces)} traces, unpaid trace ID: {test_data['unpaid_trace_id']}")
+        else:
+            # If no unpaid trace found, use the test user's trace
+            test_data["unpaid_trace_id"] = test_data.get("trace_id")
+            log_test("Get all traces", True, 
+                    f"Found {len(traces)} traces, using test trace ID: {test_data['unpaid_trace_id']}")
+    
+    except Exception as e:
+        log_test("Get all traces", False, f"Exception: {e}")
+
+
+def test_mark_fee_paid():
+    """Test 13: Mark fee as paid."""
+    print("\n=== Test 13: Mark Fee as Paid ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Mark fee paid", False, "No admin token available")
+        return
+    
+    trace_id = test_data.get("unpaid_trace_id") or test_data.get("trace_id")
+    if not trace_id:
+        log_test("Mark fee paid", False, "No trace ID available")
+        return
+    
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/admin/traces/{trace_id}/mark-fee-paid",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Mark fee paid", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        trace = resp.json()
+        
+        if trace.get("fee_paid") == True:
+            log_test("Mark fee paid", True, 
+                    f"Fee marked as paid for trace {trace_id}, fee_paid_at: {trace.get('fee_paid_at')}")
+        else:
+            log_test("Mark fee paid", False, 
+                    f"Expected fee_paid=true, got: {trace.get('fee_paid')}")
+    
+    except Exception as e:
+        log_test("Mark fee paid", False, f"Exception: {e}")
+
+
+def test_verify_fee_paid():
+    """Test 14: Verify fee paid is set."""
+    print("\n=== Test 14: Verify Fee Paid is Set ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Verify fee paid", False, "No admin token available")
+        return
+    
+    trace_id = test_data.get("unpaid_trace_id") or test_data.get("trace_id")
+    if not trace_id:
+        log_test("Verify fee paid", False, "No trace ID available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/admin/traces/{trace_id}",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Verify fee paid", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        trace = resp.json()
+        
+        if trace.get("fee_paid") == True:
+            log_test("Verify fee paid", True, 
+                    f"Fee paid verified: fee_paid=true, fee_paid_at={trace.get('fee_paid_at')}")
+        else:
+            log_test("Verify fee paid", False, 
+                    f"Expected fee_paid=true, got: {trace.get('fee_paid')}")
+    
+    except Exception as e:
+        log_test("Verify fee paid", False, f"Exception: {e}")
+
+
+def test_registered_users_with_fee_info():
+    """Test 15: Get registered users with fee_paid field."""
+    print("\n=== Test 15: Get Registered Users with Fee Info ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Registered users with fee info", False, "No admin token available")
+        return
+    
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/admin/registered-users",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Registered users with fee info", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        users = resp.json()
+        
+        if not isinstance(users, list):
+            log_test("Registered users with fee info", False, f"Expected array, got: {type(users)}")
+            return
+        
+        # Find our test user and verify fee_paid field
+        test_user_found = False
+        for user in users:
+            if user.get("email") == TEST_USER["email"]:
+                test_user_found = True
+                trace = user.get("trace")
+                
+                if trace and "fee_paid" in trace:
+                    test_data["test_user_id"] = user.get("id")
+                    log_test("Registered users with fee info", True, 
+                            f"User found with trace.fee_paid field: {trace.get('fee_paid')}")
+                else:
+                    log_test("Registered users with fee info", False, 
+                            f"User found but trace.fee_paid field missing")
+                break
+        
+        if not test_user_found:
+            log_test("Registered users with fee info", False, 
+                    f"Test user not found in list of {len(users)} users")
+    
+    except Exception as e:
+        log_test("Registered users with fee info", False, f"Exception: {e}")
+
+
+def test_edit_registered_user():
+    """Test 16: Edit registered user."""
+    print("\n=== Test 16: Edit Registered User ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Edit registered user", False, "No admin token available")
+        return
+    
+    user_id = test_data.get("test_user_id")
+    if not user_id:
+        log_test("Edit registered user", False, "No test user ID available")
+        return
+    
+    try:
+        resp = requests.put(
+            f"{BASE_URL}/admin/registered-users/{user_id}",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            json={
+                "first_name": "Mario Updated",
+                "located_amount": 250000.00
+            },
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Edit registered user", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        user = resp.json()
+        
+        if user.get("first_name") == "Mario Updated":
+            log_test("Edit registered user", True, 
+                    f"User updated: first_name={user.get('first_name')}, located_amount will be verified in next test")
+        else:
+            log_test("Edit registered user", False, 
+                    f"Expected first_name='Mario Updated', got: {user.get('first_name')}")
+    
+    except Exception as e:
+        log_test("Edit registered user", False, f"Exception: {e}")
+
+
+def test_verify_located_amount_updated():
+    """Test 17: Verify located amount updated on trace."""
+    print("\n=== Test 17: Verify Located Amount Updated ===")
+    
+    if not test_data["admin_token"]:
+        log_test("Verify located amount", False, "No admin token available")
+        return
+    
+    user_id = test_data.get("test_user_id")
+    if not user_id:
+        log_test("Verify located amount", False, "No test user ID available")
+        return
+    
+    try:
+        # Get all traces and find the one for our test user
+        resp = requests.get(
+            f"{BASE_URL}/admin/traces",
+            headers={"Authorization": f"Bearer {test_data['admin_token']}"},
+            timeout=10
+        )
+        
+        if resp.status_code != 200:
+            log_test("Verify located amount", False, f"Expected 200, got {resp.status_code}: {resp.text}")
+            return
+        
+        traces = resp.json()
+        
+        # Find trace for test user
+        test_trace = None
+        for trace in traces:
+            if trace.get("user_id") == user_id:
+                test_trace = trace
+                break
+        
+        if not test_trace:
+            log_test("Verify located amount", False, f"Trace not found for user {user_id}")
+            return
+        
+        located_amount = test_trace.get("located_amount")
+        if located_amount == 250000.00:
+            log_test("Verify located amount", True, 
+                    f"Located amount updated correctly: {located_amount}")
+        else:
+            log_test("Verify located amount", False, 
+                    f"Expected located_amount=250000.00, got: {located_amount}")
+    
+    except Exception as e:
+        log_test("Verify located amount", False, f"Exception: {e}")
+
+
 def print_summary():
     """Print test summary."""
     print("\n" + "=" * 70)
@@ -514,6 +774,14 @@ def main():
         test_admin_registered_users()
         test_duplicate_registration()
         test_duplicate_trace()
+        
+        # NEW TESTS for fee management features
+        test_get_all_traces()
+        test_mark_fee_paid()
+        test_verify_fee_paid()
+        test_registered_users_with_fee_info()
+        test_edit_registered_user()
+        test_verify_located_amount_updated()
         
         # Print summary
         print_summary()
