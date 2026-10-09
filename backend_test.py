@@ -9,7 +9,7 @@ import sys
 from typing import List, Dict, Tuple
 
 # Backend URL from frontend/.env
-BASE_URL = "https://unruffled-mendel-9.preview.emergentagent.com/api"
+BASE_URL = "https://nifty-hermann-10.preview.emergentagent.com/api"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@traccia-fondi.com"
