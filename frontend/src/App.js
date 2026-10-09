@@ -8,6 +8,7 @@ import LandingPage from "./components/LandingPage";
 import UserApp from "./components/UserApp";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
+import VerifyEmailPage from "./components/VerifyEmailPage";
 import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
 import LegalPage from "./components/LegalPage";
@@ -33,6 +34,7 @@ function App() {
             <Route path="/" element={<LandingPage/>}/>
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/register" element={<RegisterPage/>}/>
+            <Route path="/verify-email" element={<VerifyEmailPage/>}/>
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/start" element={<UserApp/>}/>
             <Route path="/trace" element={<UserApp/>}/>

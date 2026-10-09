@@ -87,7 +87,7 @@ export default function LoginPage() {
                     data-testid="login-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+                    placeholder="••••••••"
                     required
                   />
                   <button
@@ -107,7 +107,7 @@ export default function LoginPage() {
                 className="aif-btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {busy
-                  ? (isIt ? "Accesso in corso\u2026" : "Signing in\u2026")
+                  ? (isIt ? "Accesso in corso…" : "Signing in…")
                   : (isIt ? "Accedi" : "Sign in")}
                 {!busy && <ArrowRight size={16}/>}
               </button>

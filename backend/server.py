@@ -57,6 +57,7 @@ JWT_EXP_HOURS = 24 * 7
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@traccia-fondi.com").lower()
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+APP_URL = os.environ.get("APP_URL", "http://localhost:3000")
 
 # --- Bcrypt ---
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -535,7 +536,6 @@ class UserRegistrationIn(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
-    phone: str = Field(min_length=1, max_length=30)
     date_of_birth: str = Field(min_length=1, max_length=20)  # YYYY-MM-DD
     lang: Optional[str] = "it"
 
@@ -622,6 +622,80 @@ async def health():
     return HealthOut(status="ok", time=_now_iso())
 
 
+# ============================================================
+#   Email verification helper
+# ============================================================
+
+async def _send_verification_email(to_email: str, first_name: str, token: str, lang: str):
+    """Send the email-verification link to a newly registered user."""
+    verify_url = f"{APP_URL}/verify-email?token={token}"
+    year = datetime.now(timezone.utc).year
+
+    if lang == "en":
+        subject = "Verify your Traccia Fondi account"
+        body_html = f"""
+<p>Hi <strong>{first_name}</strong>,</p>
+<p>Thank you for registering with Traccia Fondi. Please verify your email address to activate your account and start the tracing procedure.</p>
+<div style="text-align:center;margin:28px 0">
+  <a href="{verify_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
+    Verify my email
+  </a>
+</div>
+<p style="color:#9FB0CC;font-size:12px">Or copy this link into your browser:<br/><a href="{verify_url}" style="color:#5FE3C9;word-break:break-all">{verify_url}</a></p>
+<p style="color:#9FB0CC;font-size:12px">This link is valid for 48 hours. If you did not create this account, you can ignore this email.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Security:</strong> Traccia Fondi will never ask for passwords, OTP codes, seed phrases, or any fees.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">The Traccia Fondi Team<br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+        text = (
+            f"Hi {first_name},\n\nPlease verify your email to activate your Traccia Fondi account:\n\n"
+            f"{verify_url}\n\nThis link is valid for 48 hours.\n\nTraccia Fondi Team"
+        )
+    else:
+        subject = "Verifica il tuo account Traccia Fondi"
+        body_html = f"""
+<p>Ciao <strong>{first_name}</strong>,</p>
+<p>Grazie per esserti registrato su Traccia Fondi. Verifica il tuo indirizzo email per attivare l'account e avviare la procedura di tracciamento.</p>
+<div style="text-align:center;margin:28px 0">
+  <a href="{verify_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
+    Verifica la mia email
+  </a>
+</div>
+<p style="color:#9FB0CC;font-size:12px">Oppure copia questo link nel browser:<br/><a href="{verify_url}" style="color:#5FE3C9;word-break:break-all">{verify_url}</a></p>
+<p style="color:#9FB0CC;font-size:12px">Il link è valido per 48 ore. Se non hai creato questo account, puoi ignorare questa email.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Sicurezza:</strong> Traccia Fondi non ti chiederà mai password, codici OTP, seed phrase o pagamenti.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Il Team di Traccia Fondi<br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+        text = (
+            f"Ciao {first_name},\n\nVerifica la tua email per attivare l'account Traccia Fondi:\n\n"
+            f"{verify_url}\n\nIl link è valido per 48 ore.\n\nIl Team di Traccia Fondi"
+        )
+
+    html = _email_html_wrapper(
+        "Verifica Email" if lang != "en" else "Email Verification",
+        body_html, year
+    )
+
+    if RESEND_API_KEY:
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_NOREPLY,
+                "to": [to_email],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text,
+                "html": html,
+                "tags": [{"name": "type", "value": "email_verification"}],
+            }))
+            logger.info("Verification email sent to %s", to_email)
+        except Exception as e:
+            logger.exception("Failed to send verification email to %s: %s", to_email, e)
+    else:
+        logger.warning("RESEND_API_KEY not set — verification email not sent to %s (token: %s)", to_email, token)
+
+
 @api.post("/auth/login", response_model=AuthOut)
 async def login(body: LoginIn, request: Request):
     ip = request.client.host if request.client else "unknown"
@@ -652,12 +726,17 @@ async def login(body: LoginIn, request: Request):
 
     safe = {k: v for k, v in user.items() if k not in ("password",)}
     safe["role"] = "user"
+
+    # Block login if email not verified (only for self-registered users)
+    if user.get("type") == "registered" and not user.get("email_verified", False):
+        raise HTTPException(403, "Please verify your email address before logging in. Check your inbox for the confirmation link.")
+
     return AuthOut(token=_make_token(user["id"], "user"), user=safe)
 
 
-@api.post("/auth/register", response_model=AuthOut)
+@api.post("/auth/register")
 async def register(body: UserRegistrationIn, request: Request):
-    """Self-registration — creates a new user with bcrypt password."""
+    """Self-registration — creates a new user with bcrypt password, sends verification email."""
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"register:{ip}", max_requests=5, window_seconds=600)
 
@@ -670,6 +749,7 @@ async def register(body: UserRegistrationIn, request: Request):
 
     # Hash password
     pw_hash = pwd_ctx.hash(body.password)
+    verification_token = _new_id()
 
     doc = {
         "id": _new_id(),
@@ -677,11 +757,13 @@ async def register(body: UserRegistrationIn, request: Request):
         "last_name": body.last_name.strip(),
         "email": em,
         "password": pw_hash,
-        "phone": body.phone.strip(),
         "date_of_birth": body.date_of_birth.strip(),
         "lang": body.lang or "it",
         "type": "registered",
         "role": "user",
+        "email_verified": False,
+        "email_verification_token": verification_token,
+        "email_verification_sent_at": _now_iso(),
         # Legacy fields (kept for compat)
         "recovery_destination": None,
         "notes": "",
@@ -692,10 +774,55 @@ async def register(body: UserRegistrationIn, request: Request):
         "created_at": _now_iso(),
     }
     await db.users.insert_one(doc)
-    doc.pop("_id", None)
-    safe = {k: v for k, v in doc.items() if k != "password"}
-    safe["role"] = "user"
-    return AuthOut(token=_make_token(doc["id"], "user"), user=safe)
+
+    # Send verification email
+    await _send_verification_email(em, body.first_name.strip(), verification_token, body.lang or "it")
+
+    return {"ok": True, "message": "Registration successful. Please check your email to verify your account."}
+
+
+@api.get("/auth/verify-email")
+async def verify_email(token: str):
+    """Verify a user's email with the token from the link."""
+    if not token:
+        raise HTTPException(400, "Missing verification token")
+
+    user = await db.users.find_one({"email_verification_token": token}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "Invalid or expired verification link")
+
+    if user.get("email_verified"):
+        return {"ok": True, "already_verified": True, "message": "Email already verified"}
+
+    await db.users.update_one(
+        {"email_verification_token": token},
+        {"$set": {"email_verified": True, "email_verified_at": _now_iso()}}
+    )
+    logger.info("Email verified for user %s", user.get("email"))
+    return {"ok": True, "already_verified": False, "message": "Email verified successfully"}
+
+
+@api.post("/auth/resend-verification")
+async def resend_verification(body: CheckEmailIn, request: Request):
+    """Resend the verification email for an unverified account."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"resend-verify:{ip}", max_requests=3, window_seconds=600)
+
+    em = body.email.lower().strip()
+    user = await db.users.find_one({"email": em}, {"_id": 0})
+    if not user:
+        # Don't reveal whether email exists
+        return {"ok": True}
+    if user.get("email_verified"):
+        return {"ok": True}
+
+    token = user.get("email_verification_token") or _new_id()
+    await db.users.update_one({"email": em}, {"$set": {
+        "email_verification_token": token,
+        "email_verification_sent_at": _now_iso(),
+    }})
+    await _send_verification_email(em, user.get("first_name", ""), token, user.get("lang", "it"))
+    return {"ok": True}
 
 
 @api.get("/auth/me")

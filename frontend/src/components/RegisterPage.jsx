@@ -3,30 +3,35 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  User, Mail, Lock, Phone, Calendar, ArrowRight, ShieldAlert, Eye, EyeOff
+  User, Mail, Lock, Calendar, ArrowRight, ShieldAlert, Eye, EyeOff,
+  CheckCircle2, RefreshCw
 } from "lucide-react";
 import Logo from "./Logo";
 import { useI18n } from "../i18n";
-import { useAuth } from "../auth";
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export default function RegisterPage() {
-  const { t, lang } = useI18n();
-  const { register } = useAuth();
+  const { lang } = useI18n();
   const nav = useNavigate();
   const isIt = lang === "it";
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", email: "",
-    password: "", phone: "", date_of_birth: ""
+    password: "", date_of_birth: ""
   });
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false); // show "check email" state
+  const [resending, setResending] = useState(false);
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.first_name || !form.last_name || !form.email || !form.password || !form.phone || !form.date_of_birth) {
+    if (!form.first_name || !form.last_name || !form.email || !form.password || !form.date_of_birth) {
       toast.error(isIt ? "Compila tutti i campi" : "Fill all fields");
       return;
     }
@@ -35,24 +40,87 @@ export default function RegisterPage() {
       return;
     }
     setBusy(true);
-    const result = await register({
-      ...form,
-      lang,
-    });
-    setBusy(false);
-    if (result.ok) {
-      toast.success(isIt ? "Account creato — benvenuto!" : "Account created — welcome!");
-      nav("/app");
-    } else {
-      toast.error(result.error || (isIt ? "Errore registrazione" : "Registration error"));
+    try {
+      await axios.post(`${API}/auth/register`, { ...form, lang });
+      setDone(true);
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : (isIt ? "Errore registrazione" : "Registration error"));
+    } finally {
+      setBusy(false);
     }
   };
 
+  const resend = async () => {
+    if (!form.email) return;
+    setResending(true);
+    try {
+      await axios.post(`${API}/auth/resend-verification`, { email: form.email });
+      toast.success(isIt ? "Email di verifica inviata di nuovo" : "Verification email resent");
+    } catch {
+      toast.error(isIt ? "Errore invio" : "Send error");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // ── "Check your email" screen ─────────────────────────────
+  if (done) {
+    return (
+      <div className="aif-app-bg min-h-screen relative flex flex-col">
+        <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
+        <div className="relative flex-1 flex flex-col">
+          <header className="px-5 lg:px-8 py-5">
+            <Link to="/"><Logo/></Link>
+          </header>
+          <main className="flex-1 flex items-center justify-center px-5 py-10">
+            <div className="w-full max-w-md space-y-5 text-center">
+              <div className="aif-card aif-glow p-8 md:p-10 relative overflow-hidden">
+                <div className="aif-grid-overlay absolute inset-0 opacity-25 pointer-events-none"/>
+                <div className="relative z-10">
+                  <div className="w-16 h-16 rounded-full bg-[#5FE3C9]/15 border border-[#5FE3C9]/40 flex items-center justify-center mx-auto mb-4">
+                    <Mail size={32} className="text-[#5FE3C9]"/>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">
+                    {isIt ? "Controlla la tua email" : "Check your email"}
+                  </h2>
+                  <p className="text-[var(--aif-text-dim)] mt-3 leading-relaxed text-[14px]">
+                    {isIt
+                      ? `Abbiamo inviato un link di conferma a ${form.email}. Clicca sul link per attivare il tuo account.`
+                      : `We sent a confirmation link to ${form.email}. Click the link to activate your account.`}
+                  </p>
+                  <div className="mt-4 aif-card !rounded-xl p-3 text-[12px] text-[var(--aif-text-dim)]">
+                    {isIt
+                      ? "Il link scade dopo 48 ore. Controlla anche la cartella spam."
+                      : "The link expires after 48 hours. Also check your spam folder."}
+                  </div>
+                  <button
+                    onClick={resend}
+                    disabled={resending}
+                    className="mt-5 aif-btn-ghost inline-flex items-center gap-2 !text-sm"
+                  >
+                    <RefreshCw size={14} className={resending ? "animate-spin" : ""}/>
+                    {isIt ? "Invia di nuovo" : "Resend email"}
+                  </button>
+                  <div className="mt-5">
+                    <Link to="/login" className="text-[#5FE3C9] text-[13px] hover:underline">
+                      {isIt ? "Vai al login" : "Go to login"}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Registration form ─────────────────────────────────────
   return (
     <div className="aif-app-bg min-h-screen relative flex flex-col">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative flex-1 flex flex-col">
-        {/* Minimal header */}
         <header className="px-5 lg:px-8 py-5">
           <Link to="/"><Logo/></Link>
         </header>
@@ -153,23 +221,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Phone */}
-              <div>
-                <label className="aif-label">{isIt ? "Telefono" : "Phone number"} *</label>
-                <div className="relative">
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
-                  <input
-                    type="tel"
-                    className="aif-input pl-10"
-                    data-testid="reg-phone"
-                    value={form.phone}
-                    onChange={set("phone")}
-                    placeholder="+39 333 1234567"
-                    required
-                  />
-                </div>
-              </div>
-
               {/* Date of birth */}
               <div>
                 <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"} *</label>
@@ -202,7 +253,7 @@ export default function RegisterPage() {
                 className="aif-btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {busy
-                  ? (isIt ? "Creazione account\u2026" : "Creating account\u2026")
+                  ? (isIt ? "Creazione account…" : "Creating account…")
                   : (isIt ? "Crea Account" : "Create Account")}
                 {!busy && <ArrowRight size={16}/>}
               </button>
