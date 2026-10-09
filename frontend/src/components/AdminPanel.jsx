@@ -7,7 +7,7 @@ import {
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
   Calendar, DollarSign, Link2, Key, Copy, Eye, Image as ImageIcon, FileType,
   Loader2, ZoomIn, ZoomOut, AlertCircle, Users, Search, ChevronLeft, ChevronRight,
-  Phone, CheckCircle2, Clock, Mail
+  Phone, CheckCircle2, Clock, Mail, Globe
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -32,7 +32,7 @@ const getAuthHeader = () => {
 
 export default function AdminPanel() {
   const { user, logout } = useAuth();
-  const { t, lang } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const nav = useNavigate();
   const isIt = lang === "it";
   const [tab, setTab] = useState("traces");
@@ -52,6 +52,14 @@ export default function AdminPanel() {
               <span className="aif-chip text-[10px] hidden md:inline-flex">{isIt ? "Pannello Admin" : "Admin Panel"}</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setLang(lang === "it" ? "en" : "it")}
+                className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--aif-text-dim)] hover:text-white transition px-2.5 py-1.5 rounded-lg border border-[var(--aif-line)]"
+                data-testid="adm-lang-toggle"
+                title={isIt ? "Cambia lingua" : "Switch language"}
+              >
+                <Globe size={13}/> {lang.toUpperCase()}
+              </button>
               <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
                 <LogOut size={14}/> <span className="hidden sm:inline">{isIt ? "Esci" : "Sign out"}</span>
               </button>
@@ -975,8 +983,8 @@ function RegisteredUsersTab({ isIt }) {
                   <tr key={u.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                     <td className="p-3">
                       <div className="font-semibold text-white">{u.first_name} {u.last_name}</div>
-                      <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
-                        {u.lang === "en" ? "🇬🇧 EN" : "🇮🇹 IT"}
+                      <div className="mt-0.5">
+                        <LangBadge lang={u.lang}/>
                       </div>
                     </td>
                     <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.email}</td>
@@ -1062,6 +1070,21 @@ function RegisteredUsersTab({ isIt }) {
         </div>
       )}
     </div>
+  );
+}
+
+function LangBadge({ lang }) {
+  const isEn = lang === "en";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide ${
+        isEn
+          ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+          : "bg-[#5FE3C9]/10 text-[#5FE3C9] border border-[#5FE3C9]/30"
+      }`}
+    >
+      {isEn ? "EN" : "IT"}
+    </span>
   );
 }
 
