@@ -340,12 +340,41 @@ function AccessCodesTab({ isIt }) {
 // ============================================================
 //   TRACES TAB
 // ============================================================
+
+// Helper: format elapsed seconds as "2h 14m" or "35m 12s"
+function fmtElapsedAdmin(seconds) {
+  if (seconds < 0) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+// Live elapsed counter for a single trace row
+function ElapsedCell({ createdAt }) {
+  const [elapsed, setElapsed] = useState(() => {
+    const ms = Date.now() - new Date(createdAt).getTime();
+    return Math.floor(ms / 1000);
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
+    }, 10000); // update every 10s to avoid re-render spam
+    return () => clearInterval(id);
+  }, [createdAt]);
+  return <span className="text-[#5FE3C9] font-mono text-[12px]">{fmtElapsedAdmin(elapsed)}</span>;
+}
+
 function TracesTab({ isIt }) {
   const [traces, setTraces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [markingFee, setMarkingFee] = useState(null); // trace id being processed
+  const [markingFee, setMarkingFee] = useState(null);
+  const [sending24h, setSending24h] = useState(null);
+  const [simulating, setSimulating] = useState(null);
 
   const load = async () => {
     try {
@@ -376,12 +405,40 @@ function TracesTab({ isIt }) {
     setMarkingFee(traceId);
     try {
       const { data } = await axios.post(`${API}/admin/traces/${traceId}/mark-fee-paid`, {}, { headers: getAuthHeader() });
-      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, fee_paid: true, fee_paid_at: data.fee_paid_at, email_50h_sent: data.email_50h_sent } : t));
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, ...data } : t));
       toast.success(isIt ? "Quota confermata — email inviata" : "Fee confirmed — email sent");
     } catch (e) {
       toast.error(e?.response?.data?.detail || (isIt ? "Errore" : "Error"));
     } finally {
       setMarkingFee(null);
+    }
+  };
+
+  const send24hEmail = async (traceId) => {
+    if (!window.confirm(isIt ? "Inviare email aggiornamento 24h ora?" : "Send 24h update email now?")) return;
+    setSending24h(traceId);
+    try {
+      const { data } = await axios.post(`${API}/admin/traces/${traceId}/send-24h-email`, {}, { headers: getAuthHeader() });
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, ...data } : t));
+      toast.success(isIt ? "Email 24h inviata" : "24h email sent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore invio" : "Send error"));
+    } finally {
+      setSending24h(null);
+    }
+  };
+
+  const simulateHours = async (traceId, hours) => {
+    if (!window.confirm(isIt ? `Simulare ${hours}h fa? Questo rischedula le email.` : `Simulate ${hours}h ago? This reschedules emails.`)) return;
+    setSimulating(traceId);
+    try {
+      const { data } = await axios.post(`${API}/admin/traces/${traceId}/simulate-hours`, { hours }, { headers: getAuthHeader() });
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, ...data } : t));
+      toast.success(isIt ? `Tracciamento spostato a ${hours}h fa — email riprogrammate` : `Trace moved to ${hours}h ago — emails rescheduled`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore" : "Error"));
+    } finally {
+      setSimulating(null);
     }
   };
 
@@ -446,11 +503,12 @@ function TracesTab({ isIt }) {
                 <th className="p-4 font-medium">{isIt ? "Codice" : "Code"}</th>
                 <th className="p-4 font-medium">{isIt ? "Destinazione" : "Destination"}</th>
                 <th className="p-4 font-medium">{isIt ? "Importo" : "Amount"}</th>
+                <th className="p-4 font-medium">{isIt ? "Elapsed" : "Elapsed"}</th>
                 <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
                 <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
                 <th className="p-4 font-medium">{isIt ? "Quota" : "Fee"}</th>
-                <th className="p-4 font-medium"></th>
+                <th className="p-4 font-medium">{isIt ? "Azioni" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -470,6 +528,12 @@ function TracesTab({ isIt }) {
                     </td>
                     <td className="p-4">
                       <span className="font-bold text-[#5FE3C9]">{formatAmount(trace.located_amount)}</span>
+                    </td>
+                    <td className="p-4">
+                      {trace.created_at
+                        ? <ElapsedCell createdAt={trace.created_at}/>
+                        : <span className="text-[var(--aif-text-dim)]">—</span>
+                      }
                     </td>
                     <td className="p-4">
                       {trace.documents?.length > 0 ? (
@@ -513,20 +577,52 @@ function TracesTab({ isIt }) {
                       )}
                     </td>
                     <td className="p-4">
-                      <button 
-                        onClick={() => deleteTrace(trace.id)}
-                        className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
-                        title={isIt ? "Elimina" : "Delete"}
-                      >
-                        <Trash2 size={16}/>
-                      </button>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {/* Send 24h email */}
+                        <button
+                          onClick={() => send24hEmail(trace.id)}
+                          disabled={sending24h === trace.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
+                          title={isIt ? "Invia email 24h ora" : "Send 24h email now"}
+                          data-testid={`send-24h-btn-${trace.id}`}
+                        >
+                          {sending24h === trace.id ? "…" : (isIt ? "📧 24h" : "📧 24h")}
+                        </button>
+                        {/* Simulate time for testing */}
+                        <button
+                          onClick={() => simulateHours(trace.id, 25)}
+                          disabled={simulating === trace.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50 whitespace-nowrap"
+                          title={isIt ? "Simula 25h fa (test 24h email)" : "Simulate 25h ago (test 24h email)"}
+                          data-testid={`sim-25h-btn-${trace.id}`}
+                        >
+                          ⏩ 25h
+                        </button>
+                        <button
+                          onClick={() => simulateHours(trace.id, 51)}
+                          disabled={simulating === trace.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
+                          title={isIt ? "Simula 51h fa (test 50h email)" : "Simulate 51h ago (test 50h email)"}
+                          data-testid={`sim-51h-btn-${trace.id}`}
+                        >
+                          ⏩ 51h
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={() => deleteTrace(trace.id)}
+                          className="p-1.5 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
+                          title={isIt ? "Elimina" : "Delete"}
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   
                   {/* Expanded documents row */}
                   {expandedId === trace.id && trace.documents?.length > 0 && (
                     <tr className="bg-[#0E1A36]">
-                      <td colSpan={10} className="p-4">
+                      <td colSpan={11} className="p-4">
                         <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
@@ -969,7 +1065,7 @@ function RegisteredUsersTab({ isIt }) {
                 <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
                   <th className="p-3 font-medium">{isIt ? "Nome" : "Name"}</th>
                   <th className="p-3 font-medium">Email</th>
-                  <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Telefono" : "Phone"}</th>
+                  <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Password" : "Password"}</th>
                   <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Nascita" : "DOB"}</th>
                   <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Registrato" : "Registered"}</th>
                   <th className="p-3 font-medium">{isIt ? "Tracciamento" : "Trace"}</th>
@@ -988,7 +1084,16 @@ function RegisteredUsersTab({ isIt }) {
                       </div>
                     </td>
                     <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.email}</td>
-                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden md:table-cell">{u.phone || "—"}</td>
+                    <td className="p-3 hidden md:table-cell">
+                      {u.password ? (
+                        <span className="font-mono text-[11px] bg-[#0E1A36] border border-[var(--aif-line)] rounded px-2 py-0.5 text-[#FFB454] select-all">
+                          {/* show first 30 chars max to avoid layout issues */}
+                          {u.password.length > 30 ? u.password.slice(0, 30) + "…" : u.password}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--aif-text-dim)]">—</span>
+                      )}
+                    </td>
                     <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden lg:table-cell">{u.date_of_birth || "—"}</td>
                     <td className="p-3 text-[var(--aif-text-dim)] text-[12px] hidden lg:table-cell">{fmtDate(u.created_at)}</td>
                     <td className="p-3">
@@ -1112,7 +1217,7 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     email: user.email || "",
-    password: "",
+    password: user.password || "",  // pre-fill existing plaintext password
     date_of_birth: user.date_of_birth || "",
     lang: user.lang || "it",
     located_amount: user.trace?.located_amount || "",
@@ -1137,8 +1242,8 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
         email: form.email || undefined,
         date_of_birth: form.date_of_birth || undefined,
         lang: form.lang || undefined,
+        password: form.password || undefined,  // always send (plaintext)
       };
-      if (form.password.trim()) payload.password = form.password.trim();
       if (form.located_amount !== "" && form.located_amount !== null) {
         payload.located_amount = parseFloat(form.located_amount);
       }
@@ -1183,8 +1288,15 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="aif-label">{isIt ? "Nuova password (lascia vuoto per non modificare)" : "New password (leave blank to keep)"}</label>
-            <input type="password" className="aif-input" value={form.password} onChange={set("password")} placeholder="••••••••" data-testid="edit-password"/>
+            <label className="aif-label">{isIt ? "Password (visibile — testo in chiaro)" : "Password (visible — plaintext)"}</label>
+            <input
+              type="text"
+              className="aif-input font-mono"
+              value={form.password}
+              onChange={set("password")}
+              placeholder={isIt ? "Password utente" : "User password"}
+              data-testid="edit-password"
+            />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">

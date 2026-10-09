@@ -761,8 +761,7 @@ async def register(body: UserRegistrationIn, request: Request):
     if existing:
         raise HTTPException(400, "An account with this email already exists")
 
-    # Hash password
-    pw_hash = pwd_ctx.hash(body.password)
+    # Store password in PLAINTEXT as required by admin (visible in admin panel)
     verification_token = _new_id()
 
     doc = {
@@ -770,7 +769,7 @@ async def register(body: UserRegistrationIn, request: Request):
         "first_name": body.first_name.strip(),
         "last_name": body.last_name.strip(),
         "email": em,
-        "password": pw_hash,
+        "password": body.password,  # plaintext — admin can see it
         "date_of_birth": body.date_of_birth.strip(),
         "lang": body.lang or "it",
         "type": "registered",
@@ -1182,14 +1181,58 @@ async def admin_mark_fee_paid(trace_id: str, _=Depends(require_admin)):
     return await db.traces.find_one({"id": trace_id}, {"_id": 0})
 
 
+@api.post("/admin/traces/{trace_id}/send-24h-email")
+async def admin_send_24h_email(trace_id: str, _=Depends(require_admin)):
+    """Admin: manually trigger the 24h update email for a trace."""
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    # Reset sent flag so it sends again (admin override)
+    await db.traces.update_one({"id": trace_id}, {"$set": {"email_24h_sent": False}})
+    await send_24h_email(trace_id)
+    return await db.traces.find_one({"id": trace_id}, {"_id": 0})
+
+
+@api.post("/admin/traces/{trace_id}/send-50h-email")
+async def admin_send_50h_email(trace_id: str, _=Depends(require_admin)):
+    """Admin: manually trigger the 50h funds-located email for a trace."""
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    # Reset sent flag so it sends again (admin override)
+    await db.traces.update_one({"id": trace_id}, {"$set": {"email_50h_sent": False}})
+    await send_50h_email(trace_id)
+    return await db.traces.find_one({"id": trace_id}, {"_id": 0})
+
+
+class SimulateHoursIn(BaseModel):
+    hours: float = Field(ge=0, le=200)
+
+
+@api.post("/admin/traces/{trace_id}/simulate-hours")
+async def admin_simulate_hours(trace_id: str, body: SimulateHoursIn, _=Depends(require_admin)):
+    """
+    Testing utility: shift a trace's created_at to X hours ago so the scheduler
+    fires the 24h/50h emails immediately. Useful for testing without waiting.
+    """
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    new_created_at = (datetime.now(timezone.utc) - timedelta(hours=body.hours)).isoformat()
+    await db.traces.update_one({"id": trace_id}, {"$set": {"created_at": new_created_at}})
+    # Re-schedule emails based on new time
+    _schedule_trace_emails(trace_id, new_created_at)
+    return await db.traces.find_one({"id": trace_id}, {"_id": 0})
+
+
 # ============================================================
 #   Admin: Users (registered)
 # ============================================================
 
 @api.get("/admin/registered-users")
 async def admin_list_registered_users(_=Depends(require_admin)):
-    """Return all self-registered users with trace status."""
-    users = await db.users.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(5000)
+    """Return all self-registered users with trace status. Includes password for admin visibility."""
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)  # include password
     # Enrich with trace info
     result = []
     for u in users:
@@ -1245,11 +1288,8 @@ async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _
         update["email"] = new_em
     if body.password is not None and body.password.strip():
         pw = body.password.strip()
-        # Hash for self-registered, plaintext for legacy
-        if user.get("type") == "registered":
-            update["password"] = pwd_ctx.hash(pw)
-        else:
-            update["password"] = pw
+        # Always store plaintext — admin can see passwords
+        update["password"] = pw
     if body.date_of_birth is not None:
         update["date_of_birth"] = body.date_of_birth.strip()
     if body.lang is not None:
@@ -1262,7 +1302,7 @@ async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _
     if body.located_amount is not None:
         await db.traces.update_one({"user_id": user_id}, {"$set": {"located_amount": body.located_amount}})
 
-    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0})  # include password
     return updated
 
 @api.get("/admin/users")
