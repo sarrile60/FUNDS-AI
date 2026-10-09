@@ -300,8 +300,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "All Traccia Fondi backend features tested and verified"
-  stuck_tasks: []
+    - "Registration and Login Page Input Field Visual Layout - COMPLETED"
+    - "Admin Panel Document Preview (PDF blank page issue) - STUCK"
+  stuck_tasks:
+    - "Admin Panel — Document Preview & Correct-Filename Download"
   test_all: false
   test_priority: "high_first"
 
@@ -326,6 +328,20 @@ agent_communication:
     message: "❌ CRITICAL BUG STILL EXISTS AFTER THIRD FIX ATTEMPT: PDF preview STILL shows BLANK WHITE PAGE. The third fix did NOT solve the problem. Despite removing ALL blob URL revocation from preview code, we STILL see ERR_ABORTED errors and blank PDF iframe. COMPREHENSIVE TEST RESULTS: (1) ✅ Login successful. (2) ✅ Tracciamenti tab working. (3) ✅ Mario Rossi trace expanded with 2 documents. (4) ✅ PDF modal opens. (5) ✅ Iframe present (990x810px, has contentWindow). (6) ✅ Iframe src starts with 'blob:'. (7) ❌ ERR_ABORTED on blob URLs: 5 DIFFERENT blob URLs failed with net::ERR_ABORTED. (8) ❌ PDF iframe displays BLANK WHITE PAGE (screenshot evidence). (9) ⚠️ JavaScript reports blob URL as 'valid and fetchable' when checked AFTER iframe load attempt. (10) ✅ Modal close/reopen works. (11) ✅ Image preview works perfectly. (12) ✅ Image download works (screenshot-truffa.png). (13) ✅ PDF download works (4910_001.pdf). (14) ✅ ESC key close works. (15) ✅ Backdrop click close works. ROOT CAUSE - WHY THIRD FIX FAILED: React.StrictMode (still enabled in /app/frontend/src/index.js line 8) causes double-invoke of effects. EXECUTION: (a) First mount → Creates blob URL #1 → Sets state → Iframe src=URL #1. (b) Cleanup → Sets cancelled=true (URL #1 still exists). (c) Second mount → Creates blob URL #2 → Sets state → Iframe src=URL #2. (d) Browser ABORTS first load when iframe src CHANGES from URL #1 to URL #2 → ERR_ABORTED. (e) Iframe stuck in failed state or race condition prevents retry. CRITICAL INSIGHT: ERR_ABORTED is NOT from explicit revokeObjectURL() (those are gone), but from BROWSER aborting iframe load when src attribute CHANGES during StrictMode double-invoke. FIX OPTIONS: (1) DISABLE React.StrictMode (remove wrapper in /app/frontend/src/index.js) - StrictMode is dev-only tool, not needed in production. (2) Use useRef with initialization flag to prevent double-creation: const initialized = useRef(false); if (!initialized.current) { create blob URL; initialized.current = true; }. (3) Move blob URL creation outside useEffect (useMemo or different pattern). (4) Use class component (not affected by StrictMode). RECOMMENDATION: Option 1 (disable StrictMode) is simplest and most appropriate. Alternatively, Option 2 (useRef initialization flag) works in both dev and prod. This task is now STUCK after 3 failed attempts - requires different approach."
   - agent: "testing"
     message: "✅ MOBILE RESPONSIVE UI BUG FIXES RE-VERIFIED (Simplified 3-minute test as requested). Tested both Bug A (ProcedureAnimation header chips overlap) and Bug B (Located amount display cutoff) on mobile 390×844 and desktop 1920×1080. RESULTS: Bug A - Mobile: AES-256 and 'Non chiudere' chips are NOT VISIBLE (hidden correctly via 'hidden sm:flex' wrapper at line 387), Cancel X button IS VISIBLE. Desktop: Both chips ARE VISIBLE (regression test passed). Bug B - Mobile: Located amount font size computed to 35.1px (within expected 28-48px range), NO horizontal overflow (scrollWidth=252px, clientWidth=252px). The clamp(1.75rem,9vw,3rem) CSS at line 520 scales correctly for narrow viewports. Both fixes CONFIRMED WORKING. Screenshots captured at both viewports. Total test time: ~3 minutes as requested."
+  - agent: "testing"
+    message: "✅ REGISTRATION AND LOGIN PAGE INPUT FIELD VISUAL LAYOUT BUG FIX VERIFIED. Comprehensive testing completed on both /register and /login pages. RESULTS: ALL 8 INPUT FIELDS PASSED with proper icon and placeholder text separation. Registration page: 6/6 fields passed (Nome, Cognome, Email, Password, Telefono, Data di nascita). Login page: 2/2 fields passed (Email, Password). MEASUREMENTS: All inputs have padding-left: 40px (pl-10 class), icons positioned at left: 14px, resulting in 10px clearance between icon and text. ORIGINAL BUG: Icons and placeholder text were overlapping. FIX APPLIED: Added pl-10 (40px) left padding to all input fields with left icons. Visual confirmation via screenshots shows clean separation with no overlap. Bug fix working correctly."
+
+  - task: "Registration and Login Page Input Field Visual Layout"
+    implemented: true
+    working: true
+    file: "frontend/src/components/RegisterPage.jsx, frontend/src/components/LoginPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BUG FIX VERIFIED - Icon overlap issue RESOLVED. Tested registration page (6 input fields) and login page (2 input fields). ALL 8 FIELDS PASSED with proper icon and placeholder text separation. MEASUREMENTS: All inputs have padding-left: 40px (pl-10 class), icons positioned at left: 14px (left-3.5 class), resulting in 10px clearance between icon end and text start. TESTED FIELDS - Registration: (1) Nome/First Name with User icon, (2) Cognome/Last Name with User icon, (3) Email with Mail icon, (4) Password with Lock icon, (5) Telefono/Phone with Phone icon, (6) Data di nascita/Date of Birth with Calendar icon. Login: (1) Email with Mail icon, (2) Password with Lock icon. ROOT CAUSE OF ORIGINAL BUG: Icons and placeholder text were overlapping due to insufficient left padding. FIX APPLIED: Added pl-10 (40px) class to all input fields with left icons. VISUAL CONFIRMATION: Screenshots show clean separation between icons and placeholder text on both pages. No overlap detected. Bug fix is working correctly across all input fields."
 
   - task: "Admin Panel — Document Preview & Correct-Filename Download"
     section: "frontend"

@@ -1,4 +1,4 @@
-// LoginPage — clean login page for self-registered users
+// LoginPage — clean login page
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { useI18n } from "../i18n";
 import { useAuth } from "../auth";
 
 export default function LoginPage() {
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
   const { login } = useAuth();
   const nav = useNavigate();
   const isIt = lang === "it";
@@ -64,10 +64,10 @@ export default function LoginPage() {
               <div>
                 <label className="aif-label">Email *</label>
                 <div className="relative">
-                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type="email"
-                    className="aif-input pl-9"
+                    className="aif-input pl-10"
                     data-testid="login-email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -78,24 +78,24 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="aif-label">{isIt ? "Password" : "Password"} *</label>
+                <label className="aif-label">Password *</label>
                 <div className="relative">
-                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type={showPw ? "text" : "password"}
-                    className="aif-input pl-9 pr-10"
+                    className="aif-input pl-10 pr-10"
                     data-testid="login-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white"
                   >
-                    {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    {showPw ? <EyeOff size={16}/> : <Eye size={16}/>}
                   </button>
                 </div>
               </div>
@@ -107,7 +107,7 @@ export default function LoginPage() {
                 className="aif-btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {busy
-                  ? (isIt ? "Accesso in corso…" : "Signing in…")
+                  ? (isIt ? "Accesso in corso\u2026" : "Signing in\u2026")
                   : (isIt ? "Accedi" : "Sign in")}
                 {!busy && <ArrowRight size={16}/>}
               </button>

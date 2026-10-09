@@ -136,7 +136,8 @@ html, body {
   line-height: 1.5;
 }
 .aif-input::placeholder { color: rgba(159,176,204,0.55); }
-/* When input has Tailwind padding utilities (pl-10, pr-10), they win over the base 14px */
+/* When input has Tailwind padding utilities (pl-9, pl-10, pr-10), they win over the base 14px */
+.aif-input.pl-9  { padding-left: 36px; }
 .aif-input.pl-10 { padding-left: 40px; }
 .aif-input.pr-10 { padding-right: 40px; }
 .aif-input:focus { border-color: rgba(95,227,201,0.6); box-shadow: 0 0 0 3px rgba(95,227,201,0.10); }

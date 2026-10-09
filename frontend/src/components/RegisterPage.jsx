@@ -85,9 +85,9 @@ export default function RegisterPage() {
                 <div>
                   <label className="aif-label">{isIt ? "Nome" : "First name"} *</label>
                   <div className="relative">
-                    <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                     <input
-                      className="aif-input pl-9"
+                      className="aif-input pl-10"
                       data-testid="reg-first"
                       value={form.first_name}
                       onChange={set("first_name")}
@@ -99,9 +99,9 @@ export default function RegisterPage() {
                 <div>
                   <label className="aif-label">{isIt ? "Cognome" : "Last name"} *</label>
                   <div className="relative">
-                    <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                     <input
-                      className="aif-input pl-9"
+                      className="aif-input pl-10"
                       data-testid="reg-last"
                       value={form.last_name}
                       onChange={set("last_name")}
@@ -116,10 +116,10 @@ export default function RegisterPage() {
               <div>
                 <label className="aif-label">Email *</label>
                 <div className="relative">
-                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type="email"
-                    className="aif-input pl-9"
+                    className="aif-input pl-10"
                     data-testid="reg-email"
                     value={form.email}
                     onChange={set("email")}
@@ -131,12 +131,12 @@ export default function RegisterPage() {
 
               {/* Password */}
               <div>
-                <label className="aif-label">{isIt ? "Password" : "Password"} *</label>
+                <label className="aif-label">Password *</label>
                 <div className="relative">
-                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type={showPw ? "text" : "password"}
-                    className="aif-input pl-9 pr-10"
+                    className="aif-input pl-10 pr-10"
                     data-testid="reg-password"
                     value={form.password}
                     onChange={set("password")}
@@ -146,9 +146,9 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white"
                   >
-                    {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    {showPw ? <EyeOff size={16}/> : <Eye size={16}/>}
                   </button>
                 </div>
               </div>
@@ -157,10 +157,10 @@ export default function RegisterPage() {
               <div>
                 <label className="aif-label">{isIt ? "Telefono" : "Phone number"} *</label>
                 <div className="relative">
-                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type="tel"
-                    className="aif-input pl-9"
+                    className="aif-input pl-10"
                     data-testid="reg-phone"
                     value={form.phone}
                     onChange={set("phone")}
@@ -174,10 +174,10 @@ export default function RegisterPage() {
               <div>
                 <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"} *</label>
                 <div className="relative">
-                  <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                  <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input
                     type="date"
-                    className="aif-input pl-9"
+                    className="aif-input pl-10"
                     data-testid="reg-dob"
                     value={form.date_of_birth}
                     onChange={set("date_of_birth")}
@@ -202,7 +202,7 @@ export default function RegisterPage() {
                 className="aif-btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {busy
-                  ? (isIt ? "Creazione account…" : "Creating account…")
+                  ? (isIt ? "Creazione account\u2026" : "Creating account\u2026")
                   : (isIt ? "Crea Account" : "Create Account")}
                 {!busy && <ArrowRight size={16}/>}
               </button>
