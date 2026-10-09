@@ -1695,6 +1695,24 @@ async def startup_event():
     except Exception as e:
         logger.exception("Startup scheduler load failed: %s", e)
 
+    # ── Migrate bcrypt-hashed passwords to plaintext placeholder ──
+    # Any user whose stored password starts with "$2" is bcrypt-hashed.
+    # Since bcrypt is irreversible, we reset them to "ChangeMe123" so the
+    # admin can see a real password value and update it via the edit modal.
+    try:
+        hashed_users = await db.users.find(
+            {"password": {"$regex": "^\\$2"}}, {"_id": 0, "id": 1, "email": 1}
+        ).to_list(10000)
+        if hashed_users:
+            for u in hashed_users:
+                await db.users.update_one(
+                    {"id": u["id"]},
+                    {"$set": {"password": "ChangeMe123"}}
+                )
+            logger.info("Migrated %d bcrypt-hashed passwords to plaintext 'ChangeMe123'", len(hashed_users))
+    except Exception as e:
+        logger.exception("Password migration failed: %s", e)
+
 
 @app.on_event("shutdown")
 async def shutdown():
