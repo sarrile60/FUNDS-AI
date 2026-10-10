@@ -341,30 +341,39 @@ function AccessCodesTab({ isIt }) {
 //   TRACES TAB
 // ============================================================
 
-// Helper: format elapsed seconds as "2h 14m" or "35m 12s"
-function fmtElapsedAdmin(seconds) {
-  if (seconds < 0) return "—";
+// Format seconds as HH:MM:SS stopwatch
+function fmtStopwatch(seconds) {
+  if (seconds < 0) seconds = 0;
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
 }
 
-// Live elapsed counter for a single trace row
+// Live elapsed stopwatch for admin — ticks every second
 function ElapsedCell({ createdAt }) {
-  const [elapsed, setElapsed] = useState(() => {
-    const ms = Date.now() - new Date(createdAt).getTime();
-    return Math.floor(ms / 1000);
-  });
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000))
+  );
   useEffect(() => {
     const id = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
-    }, 10000); // update every 10s to avoid re-render spam
+      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)));
+    }, 1000);
     return () => clearInterval(id);
   }, [createdAt]);
-  return <span className="text-[#5FE3C9] font-mono text-[12px]">{fmtElapsedAdmin(elapsed)}</span>;
+  const h = Math.floor(elapsed / 3600);
+  const color = h >= 50 ? "#FF6B7A" : h >= 24 ? "#FFB454" : "#5FE3C9";
+  return (
+    <div>
+      <span className="font-mono text-[13px] font-bold tabular-nums" style={{ color }}>{fmtStopwatch(elapsed)}</span>
+      <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
+        {h >= 50 ? "50h+" : h >= 24 ? "24h+" : h > 0 ? `${h}h elapsed` : "< 1h"}
+      </div>
+    </div>
+  );
 }
 
 function TracesTab({ isIt }) {
@@ -546,7 +555,6 @@ function TracesTab({ isIt }) {
                 <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
                 <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
-                <th className="p-4 font-medium">{isIt ? "Quota" : "Fee"}</th>
                 <th className="p-4 font-medium">{isIt ? "Azioni" : "Actions"}</th>
               </tr>
             </thead>
@@ -599,61 +607,66 @@ function TracesTab({ isIt }) {
                       </span>
                     </td>
                     <td className="p-4">
-                      {trace.fee_paid ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#4ADE80]/15 text-[#4ADE80]">
-                          <Check size={11}/> {isIt ? "Pagato" : "Paid"}
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => markFeePaid(trace.id)}
-                          disabled={markingFee === trace.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/50 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50"
-                          title={isIt ? "Contrassegna quota come pagata e invia email" : "Mark fee paid & send email"}
-                          data-testid={`fee-paid-btn-${trace.id}`}
-                        >
-                          {markingFee === trace.id ? (isIt ? "…" : "…") : (isIt ? "Fee Pagata ✓" : "Fee Paid ✓")}
-                        </button>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {/* Send 24h email */}
-                        <button
-                          onClick={() => send24hEmail(trace.id)}
-                          disabled={sending24h === trace.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                          title={isIt ? "Invia email 24h ora" : "Send 24h email now"}
-                          data-testid={`send-24h-btn-${trace.id}`}
-                        >
-                          {sending24h === trace.id ? "…" : (isIt ? "📧 24h" : "📧 24h")}
-                        </button>
-                        {/* Simulate time for testing */}
-                        <button
-                          onClick={() => simulateHours(trace.id, 25)}
-                          disabled={simulating === trace.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50 whitespace-nowrap"
-                          title={isIt ? "Simula 25h fa (test 24h email)" : "Simulate 25h ago (test 24h email)"}
-                          data-testid={`sim-25h-btn-${trace.id}`}
-                        >
-                          ⏩ 25h
-                        </button>
-                        <button
-                          onClick={() => simulateHours(trace.id, 51)}
-                          disabled={simulating === trace.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
-                          title={isIt ? "Simula 51h fa (test 50h email)" : "Simulate 51h ago (test 50h email)"}
-                          data-testid={`sim-51h-btn-${trace.id}`}
-                        >
-                          ⏩ 51h
-                        </button>
-                        {/* Delete */}
-                        <button
-                          onClick={() => deleteTrace(trace.id)}
-                          className="p-1.5 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
-                          title={isIt ? "Elimina" : "Delete"}
-                        >
-                          <Trash2 size={14}/>
-                        </button>
+                      <div className="space-y-2">
+                        {/* ── Real actions ── */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Send 24h email */}
+                          <button
+                            onClick={() => send24hEmail(trace.id)}
+                            disabled={sending24h === trace.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/40 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
+                            title={isIt ? "Invia email 24h ora" : "Send 24h email now"}
+                            data-testid={`send-24h-btn-${trace.id}`}
+                          >
+                            {sending24h === trace.id ? "…" : "📧 24h"}
+                          </button>
+                          {/* Fee Paid */}
+                          {trace.fee_paid ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#4ADE80]/15 text-[#4ADE80]">
+                              <Check size={11}/> {isIt ? "Pagato" : "Paid"}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => markFeePaid(trace.id)}
+                              disabled={markingFee === trace.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/50 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Contrassegna quota come pagata e invia email" : "Mark fee paid & send email"}
+                              data-testid={`fee-paid-btn-${trace.id}`}
+                            >
+                              {markingFee === trace.id ? "…" : (isIt ? "Fee Pagata ✓" : "Fee Paid ✓")}
+                            </button>
+                          )}
+                          {/* Delete */}
+                          <button
+                            onClick={() => deleteTrace(trace.id)}
+                            className="p-1.5 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
+                            title={isIt ? "Elimina" : "Delete"}
+                          >
+                            <Trash2 size={14}/>
+                          </button>
+                        </div>
+                        {/* ── Test simulations (separated) ── */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--aif-text-dim)] mr-0.5">Test:</span>
+                          <button
+                            onClick={() => simulateHours(trace.id, 25)}
+                            disabled={simulating === trace.id}
+                            className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50"
+                            title={isIt ? "Simula 25h fa → attiva email 24h" : "Simulate 25h ago → triggers 24h email"}
+                            data-testid={`sim-25h-btn-${trace.id}`}
+                          >
+                            ⏩ 25h
+                          </button>
+                          <button
+                            onClick={() => simulateHours(trace.id, 51)}
+                            disabled={simulating === trace.id}
+                            className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50"
+                            title={isIt ? "Simula 51h fa → attiva email 50h" : "Simulate 51h ago → triggers 50h email"}
+                            data-testid={`sim-51h-btn-${trace.id}`}
+                          >
+                            ⏩ 51h
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -661,7 +674,7 @@ function TracesTab({ isIt }) {
                   {/* Expanded documents row */}
                   {expandedId === trace.id && trace.documents?.length > 0 && (
                     <tr className="bg-[#0E1A36]">
-                      <td colSpan={11} className="p-4">
+                      <td colSpan={10} className="p-4">
                         <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
@@ -1162,13 +1175,32 @@ function RegisteredUsersTab({ isIt }) {
                         <LangBadge lang={u.lang}/>
                       </div>
                     </td>
-                    <td className="p-3 text-[var(--aif-text-dim)] text-[12px]">{u.email}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1.5 group">
+                        <span className="text-[var(--aif-text-dim)] text-[12px]">{u.email}</span>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(u.email); toast.success(isIt ? "Email copiata" : "Email copied"); }}
+                          className="opacity-0 group-hover:opacity-100 transition p-1 text-[var(--aif-text-dim)] hover:text-[#5FE3C9]"
+                          title={isIt ? "Copia email" : "Copy email"}
+                        >
+                          <Copy size={12}/>
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 hidden md:table-cell">
                       {u.password ? (
-                        <span className="font-mono text-[11px] bg-[#0E1A36] border border-[var(--aif-line)] rounded px-2 py-0.5 text-[#FFB454] select-all">
-                          {/* show first 30 chars max to avoid layout issues */}
-                          {u.password.length > 30 ? u.password.slice(0, 30) + "…" : u.password}
-                        </span>
+                        <div className="flex items-center gap-1.5 group">
+                          <span className="font-mono text-[11px] bg-[#0E1A36] border border-[var(--aif-line)] rounded px-2 py-0.5 text-[#FFB454] select-all">
+                            {u.password.length > 30 ? u.password.slice(0, 30) + "…" : u.password}
+                          </span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(u.password); toast.success(isIt ? "Password copiata" : "Password copied"); }}
+                            className="opacity-0 group-hover:opacity-100 transition p-1 text-[var(--aif-text-dim)] hover:text-[#FFB454]"
+                            title={isIt ? "Copia password" : "Copy password"}
+                          >
+                            <Copy size={12}/>
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-[var(--aif-text-dim)]">—</span>
                       )}
