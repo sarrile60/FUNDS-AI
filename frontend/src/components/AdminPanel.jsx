@@ -574,7 +574,7 @@ function TracesTab({ isIt }) {
                       <span className="text-white text-[13px]">{trace.destination_name || "—"}</span>
                     </td>
                     <td className="p-4">
-                      <span className="font-bold text-[#5FE3C9]">{formatAmount(trace.located_amount)}</span>
+                      <span className="font-bold text-[#5FE3C9] whitespace-nowrap">{formatAmount(trace.located_amount)}</span>
                     </td>
                     <td className="p-4">
                       {trace.created_at
