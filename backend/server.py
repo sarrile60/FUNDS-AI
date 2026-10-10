@@ -92,17 +92,8 @@ _rate_buckets: Dict[str, deque] = defaultdict(deque)
 
 
 def _rate_limit(key: str, max_requests: int, window_seconds: int):
-    now = _time.time()
-    q = _rate_buckets[key]
-    while q and (now - q[0]) > window_seconds:
-        q.popleft()
-    if len(q) >= max_requests:
-        retry = int(window_seconds - (now - q[0])) + 1
-        raise HTTPException(
-            status_code=429,
-            detail=f"Too many requests. Please try again in {retry} seconds.",
-        )
-    q.append(now)
+    """Rate limiting disabled — all requests allowed."""
+    pass
 
 
 app = FastAPI(title="Traccia Fondi API", version="4.0.0")

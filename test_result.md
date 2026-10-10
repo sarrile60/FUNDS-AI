@@ -426,6 +426,9 @@ agent_communication:
 
     message: "✅ ALL 5 BUG FIXES VERIFIED AND WORKING. Comprehensive testing completed for user-reported bug fixes. RESULTS: (1) ✅ Password placeholder fix (CRITICAL): Login page password field shows actual bullet dots (••••••••), NOT unicode escape text like \\u2022. CRITICAL BUG FIXED. (2) ✅ Phone number removed from registration: Registration form has exactly 5 fields (Nome, Cognome, Email, Password, Data di nascita) with NO phone/telefono field. Phone field successfully removed. (3) ✅ Email verification flow: After registration, user is redirected to 'Controlla la tua email' / 'Check your email' screen showing email address, 'Invia di nuovo'/'Resend email' button, and 'Vai al login' link. User is NOT redirected directly to /app. Email verification flow working correctly. (4) ✅ Login blocked for unverified user: Attempted login with unverified account (test.verify.91474@example.com) was BLOCKED with error message 'Please verify your email address before logging in. Check your inbox for the confirmation link.' User remained on login page. Unverified user blocking working correctly. (5) ✅ Verify-email page exists: Navigated to /verify-email?token=fake-token-123 and page loaded successfully (no 404) showing error state with 'Link non valido'/'Invalid link' heading, XCircle icon, and error message 'Invalid or expired verification link'. Verify-email page working correctly. All 5 bug fixes confirmed working as expected. No critical issues found."
 
+  - agent: "testing"
+    message: "✅ RATE LIMITING REMOVAL VERIFICATION COMPLETED - ALL TESTS PASSED. Tested Traccia Fondi API at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api for rate limiting removal. TEST 1 - Check Email Endpoint (/api/trace/check-email): Sent 20 rapid consecutive POST requests with {email: 'test@test.com'}. ALL 20 requests returned 200 status code, ZERO 429 errors. Average response time: 0.193s, total time: 3.85s. TEST 2 - Login Endpoint (/api/auth/login): Sent 10 rapid consecutive POST requests with {email: 'test@test.com', password: 'wrong'}. ALL 10 requests returned 401 status code (unauthorized - expected), ZERO 429 errors. Average response time: 0.119s, total time: 1.19s. CONCLUSION: Rate limiting has been successfully removed from both endpoints. No rate limiting detected in 30 total rapid consecutive requests. Both endpoints respond correctly without 429 status codes."
+
 
   - task: "Registration and Login Page Input Field Visual Layout"
     implemented: true
@@ -556,3 +559,15 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ BUG FIX VERIFIED - Password column now shows PLAINTEXT passwords instead of bcrypt hashes. Comprehensive testing completed on Users tab at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin. TEST RESULTS: (1) ✅ Logged in successfully with admin@traccia-fondi.com / admin123. (2) ✅ Navigated to Utenti/Users tab. (3) ✅ Password column header found at index 2 (3rd column). (4) ✅ ALL 5 USER ROWS show PLAINTEXT password 'ChangeMe123' - NO bcrypt hashes detected. (5) ✅ NONE of the password cells start with '$2b$' or show hash format. (6) ✅ All passwords show readable plaintext values. ORIGINAL BUG: Password column was showing bcrypt hashes like '$2b$12$u39JR00e9oIw8eVKf5TatuF…' instead of plaintext passwords. FIX CONFIRMED: Password column now correctly displays plaintext passwords ('ChangeMe123') for all users. Screenshot evidence shows Password column (3rd column) with yellow/orange text displaying 'ChangeMe123' for all 5 users. Test passed with 100% success rate (5/5 users showing plaintext). BUG IS FIXED."
+
+  - task: "Rate Limiting Removal Verification"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ RATE LIMITING REMOVAL VERIFIED - ALL TESTS PASSED. Comprehensive testing completed on Traccia Fondi API at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api. TEST 1 (Check Email Endpoint): Sent 20 rapid consecutive POST requests to /api/trace/check-email with body {email: 'test@test.com'}. RESULTS: (1) ✅ ALL 20 requests returned 200 status code. (2) ✅ ZERO requests returned 429 (rate limited). (3) ✅ Average response time: 0.193 seconds. (4) ✅ Total test time: 3.85 seconds. TEST 2 (Login Endpoint): Sent 10 rapid consecutive POST requests to /api/auth/login with body {email: 'test@test.com', password: 'wrong'}. RESULTS: (1) ✅ ALL 10 requests returned 401 status code (unauthorized - expected for wrong credentials). (2) ✅ ZERO requests returned 429 (rate limited). (3) ✅ Average response time: 0.119 seconds. (4) ✅ Total test time: 1.19 seconds. CONCLUSION: Rate limiting has been successfully removed from both /api/trace/check-email and /api/auth/login endpoints. No 429 status codes detected in any of the 30 total rapid consecutive requests. Both endpoints respond correctly without rate limiting restrictions."
