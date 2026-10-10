@@ -375,6 +375,9 @@ function TracesTab({ isIt }) {
   const [markingFee, setMarkingFee] = useState(null);
   const [sending24h, setSending24h] = useState(null);
   const [simulating, setSimulating] = useState(null);
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
 
   const load = async () => {
     try {
@@ -453,6 +456,25 @@ function TracesTab({ isIt }) {
 
   const formatAmount = (n) => `€ ${(n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  // Client-side filter
+  const filtered = traces.filter(t => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (t.first_name || "").toLowerCase().includes(q) ||
+      (t.last_name || "").toLowerCase().includes(q) ||
+      (t.email || "").toLowerCase().includes(q) ||
+      (t.code_used || "").toLowerCase().includes(q) ||
+      (t.destination_name || "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Reset page when search changes
+  useEffect(() => { setPage(0); }, [search]);
+
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
   }
@@ -468,31 +490,48 @@ function TracesTab({ isIt }) {
 
   return (
     <div className="space-y-4">
+      {/* Header with search + page size */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+            <input
+              type="text"
+              className="aif-input pl-9 !py-2 text-[13px] w-64"
+              placeholder={isIt ? "Cerca nome, email, codice…" : "Search name, email, code…"}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              data-testid="traces-search"
+            />
+          </div>
+          <select
+            className="aif-input !py-2 text-[13px] w-28"
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}
+          >
+            {[20, 50, 100].map(s => <option key={s} value={s}>{s} / {isIt ? "pag." : "page"}</option>)}
+          </select>
+        </div>
+        <div className="text-[12px] text-[var(--aif-text-dim)]">
+          {filtered.length} {isIt ? "risultati" : "results"}
+        </div>
+      </div>
+
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard 
-          label={isIt ? "Totale Tracciamenti" : "Total Traces"} 
-          value={traces.length}
-          icon={BarChart3}
-        />
-        <StatCard 
-          label={isIt ? "Completati" : "Completed"} 
-          value={traces.filter(t => t.status === "completed").length}
-          icon={Check}
-        />
-        <StatCard 
-          label={isIt ? "Importo Totale" : "Total Amount"} 
-          value={formatAmount(traces.reduce((sum, t) => sum + (t.located_amount || 0), 0))}
-          icon={DollarSign}
-        />
-        <StatCard 
-          label={isIt ? "Con Documenti" : "With Documents"} 
-          value={traces.filter(t => t.documents?.length > 0).length}
-          icon={FileText}
-        />
+        <StatCard label={isIt ? "Totale Tracciamenti" : "Total Traces"} value={traces.length} icon={BarChart3}/>
+        <StatCard label={isIt ? "Completati" : "Completed"} value={traces.filter(t => t.status === "completed").length} icon={Check}/>
+        <StatCard label={isIt ? "Importo Totale" : "Total Amount"} value={formatAmount(traces.reduce((sum, t) => sum + (t.located_amount || 0), 0))} icon={DollarSign}/>
+        <StatCard label={isIt ? "Con Documenti" : "With Documents"} value={traces.filter(t => t.documents?.length > 0).length} icon={FileText}/>
       </div>
 
       {/* Traces list */}
+      {filtered.length === 0 ? (
+        <div className="aif-card p-8 text-center">
+          <Search size={36} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+          <p className="text-[var(--aif-text-dim)]">{search ? (isIt ? "Nessun risultato." : "No results found.") : (isIt ? "Nessun tracciamento ancora." : "No traces yet.")}</p>
+        </div>
+      ) : (
       <div className="aif-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -503,7 +542,7 @@ function TracesTab({ isIt }) {
                 <th className="p-4 font-medium">{isIt ? "Codice" : "Code"}</th>
                 <th className="p-4 font-medium">{isIt ? "Destinazione" : "Destination"}</th>
                 <th className="p-4 font-medium">{isIt ? "Importo" : "Amount"}</th>
-                <th className="p-4 font-medium">{isIt ? "Elapsed" : "Elapsed"}</th>
+                <th className="p-4 font-medium">Elapsed</th>
                 <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
                 <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
@@ -512,7 +551,7 @@ function TracesTab({ isIt }) {
               </tr>
             </thead>
             <tbody>
-              {traces.map(trace => (
+              {paginated.map(trace => (
                 <React.Fragment key={trace.id}>
                   <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                     <td className="p-4">
@@ -661,7 +700,47 @@ function TracesTab({ isIt }) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--aif-line)]">
+            <div className="text-[12px] text-[var(--aif-text-dim)]">
+              {isIt
+                ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} di ${filtered.length}`
+                : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} of ${filtered.length}`}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="p-2 text-[var(--aif-text-dim)] hover:text-white disabled:opacity-30 transition"
+              >
+                <ChevronLeft size={16}/>
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-7 h-7 rounded text-[12px] transition ${pageNum === page ? "bg-[#5FE3C9] text-[#06122A] font-bold" : "text-[var(--aif-text-dim)] hover:text-white"}`}
+                  >
+                    {pageNum + 1}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="p-2 text-[var(--aif-text-dim)] hover:text-white disabled:opacity-30 transition"
+              >
+                <ChevronRight size={16}/>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+      )}
 
       {/* Document preview modal */}
       {previewDoc && (
