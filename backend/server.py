@@ -513,6 +513,164 @@ async def send_50h_email(trace_id: str):
         logger.exception("50h email job failed for trace %s: %s", trace_id, e)
 
 
+async def send_fee_paid_email(trace_id: str):
+    """
+    Send the 'payment confirmed + destination reveal' email.
+    Triggered when admin clicks 'Fee Paid ✓'. This is the ONLY place
+    the destination name/URL is revealed to the client.
+    """
+    try:
+        trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+        if not trace:
+            logger.warning("Fee-paid email: trace %s not found", trace_id)
+            return
+
+        to_email = trace.get("email")
+        if not to_email:
+            logger.warning("Fee-paid email: no email on trace %s", trace_id)
+            return
+
+        lang = trace.get("user_lang", "it")
+        first_name = trace.get("first_name", "")
+        last_name = trace.get("last_name", "")
+        amount = trace.get("located_amount", 0)
+        dest_name = trace.get("destination_name", "")
+        dest_url = trace.get("destination_url", "")
+        safe_url = dest_url if dest_url.startswith("http") else f"http://{dest_url}" if dest_url else ""
+        amount_str = _fmt_amount(amount)
+        case_ref = f"TF-{trace_id[:8].upper()}"
+        year = datetime.now(timezone.utc).year
+        fee_paid_at = trace.get("fee_paid_at", _now_iso())
+        fee_paid_date = datetime.fromisoformat(fee_paid_at.replace("Z", "+00:00")).strftime("%d %B %Y, %H:%M UTC")
+
+        if lang == "en":
+            subject = f"[{case_ref}] Payment received — Fund release instructions enclosed"
+            portal_block_en = ""
+            if safe_url:
+                portal_block_en = (
+                    f'<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0;text-align:center">'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:10px">Access the fund release portal</div>'
+                    f'<a href="{safe_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
+                    f'ACCESS PORTAL &rarr; {dest_name}</a>'
+                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;word-break:break-all">{safe_url}</div></div>'
+                )
+            body_html = (
+                f'<p>Dear <strong>{first_name} {last_name}</strong>,</p>'
+                f'<p>We are pleased to confirm that your case-processing fee of <strong style="color:#4ADE80">€100.00</strong> has been successfully received and verified by our Compliance Division.</p>'
+                f'<div style="background:#06122A;border:1px solid #4ADE80;border-radius:10px;padding:16px;margin:20px 0">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+                f'<div><div style="color:#9FB0CC;font-size:11px;letter-spacing:0.15em;text-transform:uppercase">Payment Status</div>'
+                f'<div style="color:#4ADE80;font-size:15px;font-weight:700;margin-top:3px">&#10003; CONFIRMED &amp; VERIFIED</div></div>'
+                f'<div style="text-align:right"><div style="color:#9FB0CC;font-size:11px;letter-spacing:0.15em;text-transform:uppercase">Case Reference</div>'
+                f'<div style="color:#fff;font-family:monospace;font-size:13px;font-weight:700;margin-top:3px">{case_ref}</div></div></div>'
+                f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;border-top:1px solid #1f2d4f;padding-top:10px">Confirmed on: {fee_paid_date}</div></div>'
+                f'<p style="font-weight:600;color:#fff;margin-top:24px">Fund Release Instructions</p>'
+                f'<p>As agreed, following payment confirmation we are now releasing the full case report and fund location details. The complete amount of <strong style="color:#5FE3C9">{amount_str}</strong> identified during the forensic investigation has been secured at the following custodial institution:</p>'
+                f'<div style="background:#06122A;border:2px solid #5FE3C9;border-radius:12px;padding:24px;margin:20px 0;text-align:center">'
+                f'<div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:6px">Funds Held At</div>'
+                f'<div style="color:#fff;font-size:22px;font-weight:900;margin-bottom:4px">{dest_name}</div>'
+                f'<div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;margin-top:16px;margin-bottom:6px">Total Amount Available</div>'
+                f'<div style="color:#5FE3C9;font-size:36px;font-weight:900;font-family:monospace">{amount_str}</div></div>'
+                + portal_block_en +
+                f'<p>Your assigned case agent will contact you within 24 hours to guide you through the final steps of the fund repatriation process. Please ensure you have your case reference number ready: <strong style="font-family:monospace">{case_ref}</strong>.</p>'
+                f'<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">'
+                f'<strong>Security notice:</strong> No further fees of any kind are required. Traccia Fondi will never contact you requesting additional payments, OTP codes, remote access software, or credentials of any kind.</div>'
+                f'<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Yours sincerely,<br/>'
+                f'<strong style="color:#fff">Traccia Fondi — Fund Release Division</strong><br/>'
+                f'<span style="font-size:11px">Forensic Financial Recovery · Case Management Unit</span><br/>'
+                f'<a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>'
+            )
+            html = _email_html_wrapper("Payment Confirmed — Fund Release Instructions", body_html, year)
+            text = (
+                f"Dear {first_name} {last_name},\n\n"
+                f"CASE REFERENCE: {case_ref}\n"
+                f"PAYMENT STATUS: CONFIRMED & VERIFIED\n"
+                f"Confirmed on: {fee_paid_date}\n\n"
+                "Your case-processing fee of €100.00 has been successfully received.\n\n"
+                "FUND RELEASE INSTRUCTIONS:\n"
+                f"Amount: {amount_str}\n"
+                f"Held at: {dest_name}\n"
+                + (f"Portal: {safe_url}\n" if safe_url else "") +
+                "\nYour assigned case agent will contact you within 24 hours.\n\n"
+                "No further fees are required. Any request for additional payment is fraudulent.\n\n"
+                "Traccia Fondi — Fund Release Division\n"
+                "support@traccia-fondi.com"
+            )
+        else:
+            subject = f"[{case_ref}] Pagamento ricevuto — Istruzioni di rilascio fondi"
+            portal_block_it = ""
+            if safe_url:
+                portal_block_it = (
+                    f'<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0;text-align:center">'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:10px">Acceda al portale di rilascio fondi</div>'
+                    f'<a href="{safe_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
+                    f'ACCEDI AL PORTALE &rarr; {dest_name}</a>'
+                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;word-break:break-all">{safe_url}</div></div>'
+                )
+            body_html = (
+                f'<p>Gentile <strong>{first_name} {last_name}</strong>,</p>'
+                f'<p>Siamo lieti di confermarLe che la quota di elaborazione pratica di <strong style="color:#4ADE80">€100,00</strong> è stata ricevuta e verificata con successo dalla nostra Divisione Compliance.</p>'
+                f'<div style="background:#06122A;border:1px solid #4ADE80;border-radius:10px;padding:16px;margin:20px 0">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+                f'<div><div style="color:#9FB0CC;font-size:11px;letter-spacing:0.15em;text-transform:uppercase">Stato Pagamento</div>'
+                f'<div style="color:#4ADE80;font-size:15px;font-weight:700;margin-top:3px">&#10003; CONFERMATO E VERIFICATO</div></div>'
+                f'<div style="text-align:right"><div style="color:#9FB0CC;font-size:11px;letter-spacing:0.15em;text-transform:uppercase">Riferimento Pratica</div>'
+                f'<div style="color:#fff;font-family:monospace;font-size:13px;font-weight:700;margin-top:3px">{case_ref}</div></div></div>'
+                f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;border-top:1px solid #1f2d4f;padding-top:10px">Confermato il: {fee_paid_date}</div></div>'
+                f'<p style="font-weight:600;color:#fff;margin-top:24px">Istruzioni per il Rilascio dei Fondi</p>'
+                f'<p>Come concordato, a seguito della conferma del pagamento, provvediamo ora a rilasciare il rapporto completo del caso. L\'importo complessivo di <strong style="color:#5FE3C9">{amount_str}</strong> è stato messo in sicurezza presso il seguente istituto custodiale:</p>'
+                f'<div style="background:#06122A;border:2px solid #5FE3C9;border-radius:12px;padding:24px;margin:20px 0;text-align:center">'
+                f'<div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:6px">Fondi Depositati Presso</div>'
+                f'<div style="color:#fff;font-size:22px;font-weight:900;margin-bottom:4px">{dest_name}</div>'
+                f'<div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;margin-top:16px;margin-bottom:6px">Importo Totale Disponibile</div>'
+                f'<div style="color:#5FE3C9;font-size:36px;font-weight:900;font-family:monospace">{amount_str}</div></div>'
+                + portal_block_it +
+                f'<p>L\'agente assegnato al Suo caso La contatterà entro 24 ore per guidarLa nelle fasi finali del processo di rimpatrio dei fondi. Riferimento pratica: <strong style="font-family:monospace">{case_ref}</strong>.</p>'
+                f'<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">'
+                f'<strong>Avviso di sicurezza:</strong> Non è richiesto alcun ulteriore pagamento. Traccia Fondi non La contatterà mai per richiedere pagamenti aggiuntivi, codici OTP, software di accesso remoto o credenziali di alcun tipo.</div>'
+                f'<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Distinti saluti,<br/>'
+                f'<strong style="color:#fff">Traccia Fondi — Divisione Rilascio Fondi</strong><br/>'
+                f'<span style="font-size:11px">Recupero Forense Finanziario · Unità di Gestione Pratiche</span><br/>'
+                f'<a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>'
+            )
+            html = _email_html_wrapper("Pagamento Confermato — Istruzioni Rilascio Fondi", body_html, year)
+            text = (
+                f"Gentile {first_name} {last_name},\n\n"
+                f"RIFERIMENTO PRATICA: {case_ref}\n"
+                f"STATO PAGAMENTO: CONFERMATO E VERIFICATO\n"
+                f"Confermato il: {fee_paid_date}\n\n"
+                "La quota di elaborazione di €100,00 è stata ricevuta con successo.\n\n"
+                "ISTRUZIONI RILASCIO FONDI:\n"
+                f"Importo: {amount_str}\n"
+                f"Depositato presso: {dest_name}\n"
+                + (f"Portale: {safe_url}\n" if safe_url else "") +
+                "\nL'agente assegnato La contatterà entro 24 ore.\n\n"
+                "Non è richiesto alcun ulteriore pagamento. Qualsiasi richiesta aggiuntiva è fraudolenta.\n\n"
+                "Traccia Fondi — Divisione Rilascio Fondi\n"
+                "support@traccia-fondi.com"
+            )
+
+        if RESEND_API_KEY:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_RECOVERY,
+                "to": [to_email],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text,
+                "html": html,
+                "tags": [{"name": "type", "value": "fee_paid_destination_reveal"}],
+            }))
+            logger.info("Fee-paid email sent to %s for trace %s", to_email, trace_id)
+        else:
+            logger.warning("Fee-paid email: RESEND_API_KEY not set, skipping for trace %s", trace_id)
+
+        await db.traces.update_one({"id": trace_id}, {"$set": {"email_fee_paid_sent": True, "email_fee_paid_sent_at": _now_iso()}})
+
+    except Exception as e:
+        logger.exception("Fee-paid email failed for trace %s: %s", trace_id, e)
+
+
 def _schedule_trace_emails(trace_id: str, created_at_iso: str):
     """Schedule the 24h and 50h email jobs for a trace."""
     try:
@@ -1215,9 +1373,8 @@ async def admin_mark_fee_paid(trace_id: str, _=Depends(require_admin)):
         {"$set": {"fee_paid": True, "fee_paid_at": _now_iso()}}
     )
 
-    # Send funds-located email if not already sent
-    if not trace.get("email_50h_sent"):
-        await send_50h_email(trace_id)
+    # Send the "payment confirmed + destination reveal" email
+    await send_fee_paid_email(trace_id)
 
     return await db.traces.find_one({"id": trace_id}, {"_id": 0})
 
