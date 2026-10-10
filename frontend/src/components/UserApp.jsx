@@ -530,7 +530,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
       </div>
 
       {/* Fee status */}
-      <FeeStatusCard trace={trace} isIt={isIt}/>
+      {/* Fee card hidden — fee is requested only via the 50h automated email */}
 
       {/* Procedure details — no destination, no time */}
       <div className="aif-card p-5 md:p-6">
