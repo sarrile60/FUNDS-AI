@@ -254,26 +254,23 @@ function _line(stageKey, lang = "it") {
   const r = Math.random();
   const S = STATUS_I18N[lang] || STATUS_I18N.it;
   const P = PREFIX_I18N[lang] || PREFIX_I18N.it;
+  // Generic log lines — no specific bank/wallet names shown to client
+  const nodeId = () => `NODE-${Math.floor(Math.random() * 9000 + 1000)}`;
+  const refId = () => _hex(8).slice(2).toUpperCase();
   if (stageKey === "italian_banks") {
-    const ds = DATABASES.italian_banks;
-    const item = ds[Math.floor(Math.random() * ds.length)];
-    return `[${P.BANK}] ${item}  ·  ${S.acct}=${_iban().slice(0, 18)}…  ${S.match}=${r < 0.07 ? S.flagged : S.clean}`;
+    return `[${P.BANK}] ${nodeId()}  ·  ${S.acct}=${_iban().slice(0, 18)}…  ${S.match}=${r < 0.07 ? S.flagged : S.clean}`;
   }
   if (stageKey === "sepa") {
-    const ds = DATABASES.sepa;
-    return `[${P.SEPA}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${_iban()}  ·  €${Math.floor(Math.random() * 90000 + 1000)}`;
+    return `[${P.SEPA}] CLUSTER-${refId()}  ·  ${_iban()}  ·  ref=${refId()}`;
   }
   if (stageKey === "fintech") {
-    const ds = DATABASES.fintech;
-    return `[${P.FINTECH}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.txn}=${_hex(10).slice(2)}  ·  ${r < 0.1 ? S.suspect : S.ok}`;
+    return `[${P.FINTECH}] INST-${refId()}  ·  ${S.txn}=${_hex(10).slice(2)}  ·  ${r < 0.1 ? S.suspect : S.ok}`;
   }
   if (stageKey === "crypto") {
-    const ds = DATABASES.crypto;
-    return `[${P.CHAIN}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.tx} ${_hex(20)}…  ·  ${r < 0.08 ? S.tainted : S.scanned}`;
+    return `[${P.CHAIN}] WALLET-${refId()}  ·  ${S.tx} ${_hex(20)}…  ·  ${r < 0.08 ? S.tainted : S.scanned}`;
   }
   if (stageKey === "brokers") {
-    const ds = DATABASES.brokers;
-    return `[${P.BROKER}] ${ds[Math.floor(Math.random() * ds.length)]}  ·  ${S.exposure}=${(Math.random() * 100).toFixed(1)}%`;
+    return `[${P.BROKER}] ENTITY-${refId()}  ·  ${S.exposure}=${(Math.random() * 100).toFixed(1)}%`;
   }
   if (stageKey === "aml") {
     const ds = DATABASES.aml[lang] || DATABASES.aml.it;
@@ -404,9 +401,11 @@ export default function ProcedureAnimation({ duration = 120, startedAt, destinat
           <TimeBox label={t("trc.progress")} value={`${progressPct}%`}/>
         </div>
       ) : (
-        <div className="mt-7 relative z-10 text-center">
-          <div className="text-[11px] uppercase tracking-[0.25em] text-[var(--aif-text-dim)] mb-1">{t("trc.elapsed")}</div>
-          <div className="text-4xl sm:text-5xl font-extrabold tabular-nums text-[#5FE3C9]">{fmtTime(elapsed)}</div>
+        <div className="mt-7 relative z-10 flex items-center justify-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#4ADE80] aif-pulse"/>
+          <span className="text-[12px] text-[var(--aif-text-dim)]">
+            {t("trc.do_not_close")}
+          </span>
         </div>
       )}
 

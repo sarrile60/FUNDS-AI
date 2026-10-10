@@ -87,49 +87,62 @@ export default function UserApp() {
       <div className="relative">
         <Navbar/>
         <main className="max-w-5xl mx-auto px-5 lg:px-8 py-8 space-y-6">
-          {/* Profile header */}
-          <ProfileCard user={user} isIt={isIt} onLogout={() => { logout(); nav("/"); }}/>
 
-          {/* Trace section */}
-          {loadingTrace ? (
-            <div className="aif-card p-10 text-center">
-              <RefreshCw size={28} className="mx-auto text-[#5FE3C9] animate-spin mb-3"/>
-              <p className="text-[var(--aif-text-dim)]">{isIt ? "Caricamento procedura…" : "Loading procedure…"}</p>
+          {/* ── ACCOUNT SECTION ── */}
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.25em] text-[#5FE3C9] mb-3 flex items-center gap-2">
+              <User size={13}/> {isIt ? "Il mio account" : "My account"}
             </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              {!activeTrace && view === "dashboard" && (
-                <motion.div key="no-trace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                  <NoTraceCard isIt={isIt} onStart={() => setView("trace-form")}/>
-                </motion.div>
-              )}
+            <ProfileCard user={user} isIt={isIt} onLogout={() => { logout(); nav("/"); }}/>
+          </div>
 
-              {!activeTrace && view === "trace-form" && (
-                <motion.div key="trace-form" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                  <TraceForm
-                    user={user}
-                    token={token}
-                    isIt={isIt}
-                    onCancel={() => setView("dashboard")}
-                    onStarted={(trace) => {
-                      setActiveTrace(trace);
-                      setView("dashboard");
-                    }}
-                  />
-                </motion.div>
-              )}
+          {/* ── MY CASES SECTION ── */}
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.25em] text-[#5FE3C9] mb-3 flex items-center gap-2">
+              <Shield size={13}/> {isIt ? "I miei casi" : "My cases"}
+            </div>
 
-              {activeTrace && (
-                <motion.div key="active-trace" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <ActiveTracePanel
-                    trace={activeTrace}
-                    isIt={isIt}
-                    onRefresh={loadTrace}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          )}
+            {loadingTrace ? (
+              <div className="aif-card p-10 text-center">
+                <RefreshCw size={28} className="mx-auto text-[#5FE3C9] animate-spin mb-3"/>
+                <p className="text-[var(--aif-text-dim)]">{isIt ? "Caricamento caso…" : "Loading case…"}</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                {!activeTrace && view === "dashboard" && (
+                  <motion.div key="no-trace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <NoTraceCard isIt={isIt} onStart={() => setView("trace-form")}/>
+                  </motion.div>
+                )}
+
+                {!activeTrace && view === "trace-form" && (
+                  <motion.div key="trace-form" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                    <TraceForm
+                      user={user}
+                      token={token}
+                      isIt={isIt}
+                      onCancel={() => setView("dashboard")}
+                      onStarted={(trace) => {
+                        setActiveTrace(trace);
+                        setView("dashboard");
+                      }}
+                    />
+                  </motion.div>
+                )}
+
+                {activeTrace && (
+                  <motion.div key="active-trace" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <ActiveTracePanel
+                      trace={activeTrace}
+                      isIt={isIt}
+                      onRefresh={loadTrace}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
+          </div>
+
         </main>
         <Footer/>
       </div>
@@ -455,35 +468,19 @@ function TraceForm({ user, token, isIt, onCancel, onStarted }) {
 }
 
 // ============================================================
-//   ACTIVE TRACE PANEL — radar + elapsed time counter
+//   ACTIVE TRACE PANEL — no time, no destination
 // ============================================================
 function ActiveTracePanel({ trace, isIt, onRefresh }) {
-  const [elapsed, setElapsed] = useState(0); // seconds
-
-  // Calculate real elapsed from trace.created_at
-  useEffect(() => {
-    const createdAt = trace?.created_at ? new Date(trace.created_at).getTime() : Date.now();
-    const tick = () => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - createdAt) / 1000)));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [trace?.created_at]);
-
-  const elapsedStr = fmtElapsed(elapsed);
-  const amount = trace?.located_amount || 0;
-  const destName = trace?.destination_name || "";
-  const destUrl = trace?.destination_url || "";
-  const safeUrl = destUrl && !destUrl.startsWith("http") ? `http://${destUrl}` : destUrl;
+  // Generate a stable case reference from trace ID
+  const caseRef = trace?.id ? `TF-${trace.id.slice(0, 8).toUpperCase()}` : "TF-XXXXXXXX";
 
   return (
     <div className="space-y-5" data-testid="active-trace-panel">
-      {/* Live searching card */}
+      {/* Status card */}
       <div className="aif-card aif-glow p-6 md:p-8 relative overflow-hidden">
         <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
         <div className="relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-20 animate-ping"/>
@@ -496,7 +493,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
                   {isIt ? "Procedura attiva" : "Active procedure"}
                 </div>
                 <div className="text-white font-bold text-lg">
-                  {isIt ? "Ricerca in corso" : "Searching"}
+                  {isIt ? "Indagine in corso" : "Investigation in progress"}
                 </div>
               </div>
             </div>
@@ -505,23 +502,16 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
             </button>
           </div>
 
-          {/* Big elapsed counter */}
-          <div className="text-center py-6">
-            <div className="text-[11px] uppercase tracking-[0.25em] text-[var(--aif-text-dim)] mb-3">
-              {isIt ? "In ricerca da" : "Searching for"}
-            </div>
-            <div
-              className="font-black tabular-nums bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] leading-none"
-              style={{ fontSize: "clamp(2.5rem, 10vw, 5rem)" }}
-              data-testid="elapsed-counter"
-            >
-              {elapsedStr}
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-3">
+          {/* Status badge */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 aif-card !rounded-full px-4 py-2 !border-[#5FE3C9]/30">
               <span className="inline-block w-2 h-2 rounded-full bg-[#4ADE80] aif-pulse"/>
-              <span className="text-[12px] text-[var(--aif-text-dim)]">
+              <span className="text-[12px] text-[#5FE3C9] font-medium">
                 {isIt ? "Sistema di tracciamento attivo" : "Tracing system active"}
               </span>
+            </div>
+            <div className="text-[12px] text-[var(--aif-text-dim)]">
+              {isIt ? "Riferimento caso:" : "Case reference:"} <span className="text-white font-mono">{caseRef}</span>
             </div>
           </div>
         </div>
@@ -531,8 +521,8 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
       <div className="!max-w-none -mx-5 lg:-mx-8">
         <ProcedureAnimation
           startedAt={trace.created_at}
-          destination={destName}
-          locatedAmount={amount}
+          destination=""
+          locatedAmount={0}
           onComplete={null}
           onCancel={null}
           persistent={true}
@@ -542,7 +532,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
       {/* Fee status */}
       <FeeStatusCard trace={trace} isIt={isIt}/>
 
-      {/* Trace info */}
+      {/* Procedure details — no destination, no time */}
       <div className="aif-card p-5 md:p-6">
         <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
           {isIt ? "Dettagli procedura" : "Procedure details"}
@@ -550,9 +540,9 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             [isIt ? "Stato" : "Status", isIt ? "Analisi in corso" : "Analysis in progress"],
-            [isIt ? "Destinazione" : "Destination", destName || "—"],
+            [isIt ? "Tipo scansione" : "Scan type", isIt ? "Multi-livello (Bancaria · SEPA · Crypto · AML)" : "Multi-layer (Banking · SEPA · Crypto · AML)"],
             [isIt ? "Standard sicurezza" : "Security", "AES-256 · TLS 1.3 · GDPR"],
-            [isIt ? "Avviata il" : "Started on", trace.created_at ? new Date(trace.created_at).toLocaleString(isIt ? "it-IT" : "en-US") : "—"],
+            [isIt ? "Riferimento" : "Reference", caseRef],
           ].map(([k, v]) => (
             <div key={k} className="aif-card !rounded-xl p-3 flex items-start justify-between gap-3">
               <span className="text-[12px] text-[var(--aif-text-dim)]">{k}</span>
@@ -569,8 +559,8 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
           <p className="text-[13px] text-[var(--aif-text-dim)]">
             <strong className="text-[#FFB454]">{isIt ? "Promemoria." : "Reminder."}</strong>{" "}
             {isIt
-              ? "Traccia Fondi non ti chiederà mai password, OTP, seed phrase o pagamenti."
-              : "Traccia Fondi will never ask for passwords, OTP codes, seed phrases or payments."}
+              ? "Traccia Fondi non ti chiederà mai password, OTP, seed phrase o pagamenti non autorizzati."
+              : "Traccia Fondi will never ask for passwords, OTP codes, seed phrases or unauthorized payments."}
           </p>
         </div>
       </div>

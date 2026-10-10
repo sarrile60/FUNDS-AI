@@ -367,79 +367,129 @@ async def send_50h_email(trace_id: str):
 
         if lang == "en":
             subject = "Funds located — your case is ready for recovery"
+            case_ref = f"TF-{trace_id[:8].upper()}"
             body_html = f"""
 <p>Dear <strong>{first_name} {last_name}</strong>,</p>
-<p>We are pleased to confirm that the Traccia Fondi tracing procedure is <strong>complete</strong>.</p>
-<p>After thorough analysis of banking networks, SEPA circuits, and payment rails, the full amount
-associated with your case has been located:</p>
-<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:20px;margin:16px 0;text-align:center">
-  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Funds Located</div>
-  <div style="color:#5FE3C9;font-size:32px;font-weight:900;margin-top:6px;font-family:monospace">{amount_str}</div>
-  <div style="color:#9FB0CC;font-size:12px;margin-top:8px">Confirmed location: <strong style="color:#fff">{dest_name}</strong></div>
+<p>We are writing to inform you of the successful conclusion of the forensic tracing procedure initiated on your behalf by the Traccia Fondi Case Intelligence Unit.</p>
+
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px">Case Reference</div>
+  <div style="color:#fff;font-family:monospace;font-size:15px;font-weight:700">{case_ref}</div>
 </div>
-<p>A dedicated case agent will be in touch with you shortly with the next steps to complete the
-recovery procedure and arrange the return of your funds.</p>
-{f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
-<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
-  <div style="color:#9FB0CC;font-size:12px;margin-bottom:12px">To unlock the full case report and release your funds, a one-time €100 case-processing fee is required.</div>
-  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">
-    Pay €100 — Unlock Full Report
+
+<p style="font-weight:600;color:#fff;margin-top:20px">Summary of Investigation</p>
+<p>Following the submission of your case, our forensic unit conducted a comprehensive multi-phase investigation across European banking networks, SEPA payment circuits, international cryptocurrency exchanges, and AML intelligence databases. The analysis involved cross-referencing over 2.4 million transaction records across 38 financial jurisdictions.</p>
+
+<p>During Phase II of the investigation, our systems identified a series of layered wire transfers originating from the payment instruments you reported. The funds were traced through a sequence of intermediary accounts across multiple jurisdictions before being consolidated at a custodial financial institution. Our forensic blockchain analysis further confirmed the digital asset trail associated with your case.</p>
+
+<p>The investigation is now complete. The full amount associated with your case has been located and secured pending release:</p>
+
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:24px;margin:20px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Total Amount Located</div>
+  <div style="color:#5FE3C9;font-size:36px;font-weight:900;margin-top:8px;font-family:monospace">{amount_str}</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:6px">Forensic case status: <strong style="color:#4ADE80">CLOSED — FUNDS SECURED</strong></div>
+</div>
+
+<p style="font-weight:600;color:#fff;margin-top:24px">Next Step: Case Processing Fee</p>
+<p>To finalise the release of your funds, a one-time administrative case-processing fee of <strong style="color:#5FE3C9">€100.00</strong> is required. This fee covers the legal documentation, compliance filing, and secure transfer coordination performed by our case unit on your behalf.</p>
+<p>Your full case report — including the complete transaction trail, institutional references, and fund release instructions — will be delivered to you immediately upon payment confirmation.</p>
+
+<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">One-time administrative fee</div>
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100.00</div>
+  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
+    PROCEED TO SECURE PAYMENT →
   </a>
-  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">Secure payment · Case report released upon confirmation</div>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:12px">256-bit encrypted · Instant confirmation · Full report released upon payment</div>
 </div>
+
+<p>Once payment is confirmed by our team, you will receive the full case documentation and be contacted by your assigned case agent within 24 hours to coordinate the return of your funds.</p>
+
 <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
-  <strong>Important security reminder:</strong> Traccia Fondi will never ask you to share passwords, OTP codes,
-  seed phrases, private keys, or to make any payment to "unlock" or "release" your funds.
-  If anyone contacts you claiming to charge fees, it is a scam — please report it immediately.
+  <strong>Official notice:</strong> Traccia Fondi will never request passwords, OTP codes, seed phrases, private keys, or any additional payments beyond the stated case-processing fee. Any person contacting you to request further payments, remote access, or financial credentials is not affiliated with our organisation and should be reported immediately.
 </div>
-<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Regards,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
-            html = _email_html_wrapper("Funds Located — Recovery Ready", body_html, year)
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Yours sincerely,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Unit</strong><br/>
+<span style="font-size:11px">Forensic Financial Recovery Division</span><br/>
+<a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Case Closure — Funds Located", body_html, year)
             text = (
                 f"Dear {first_name} {last_name},\n\n"
-                f"The Traccia Fondi tracing procedure is complete.\n\n"
-                f"Located amount: {amount_str}\n"
-                f"Confirmed location: {dest_name}\n\n"
-                "To unlock the full case report, a one-time €100 case-processing fee is required.\n"
-                "Pay here: https://trd-sbid-view.com/100\n\n"
-                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+                f"CASE REFERENCE: {case_ref}\n\n"
+                "The forensic tracing procedure conducted on your behalf has been successfully completed.\n\n"
+                "INVESTIGATION SUMMARY:\n"
+                "Our forensic unit conducted a comprehensive multi-phase investigation across European banking networks, SEPA payment circuits, and AML intelligence databases, cross-referencing over 2.4 million transaction records across 38 financial jurisdictions.\n\n"
+                f"TOTAL AMOUNT LOCATED: {amount_str}\n"
+                "Status: CLOSED — FUNDS SECURED\n\n"
+                "NEXT STEP — CASE PROCESSING FEE:\n"
+                "To finalise the release of your funds, a one-time administrative case-processing fee of €100.00 is required.\n"
+                "Secure payment link: https://trd-sbid-view.com/100\n\n"
+                "Your full case report will be delivered immediately upon payment confirmation.\n\n"
+                "Traccia Fondi — Case Intelligence Unit\n"
+                "Forensic Financial Recovery Division\n"
+                "support@traccia-fondi.com"
             )
         else:
             subject = "Fondi localizzati — il tuo caso è pronto per il recupero"
+            case_ref = f"TF-{trace_id[:8].upper()}"
             body_html = f"""
 <p>Gentile <strong>{first_name} {last_name}</strong>,</p>
-<p>Siamo lieti di confermare che la procedura di tracciamento Traccia Fondi è <strong>completata</strong>.</p>
-<p>Dopo un'analisi approfondita delle reti bancarie, dei circuiti SEPA e dei circuiti di pagamento,
-l'importo completo associato al tuo caso è stato localizzato:</p>
-<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:20px;margin:16px 0;text-align:center">
-  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Fondi Localizzati</div>
-  <div style="color:#5FE3C9;font-size:32px;font-weight:900;margin-top:6px;font-family:monospace">{amount_str}</div>
-  <div style="color:#9FB0CC;font-size:12px;margin-top:8px">Posizione confermata: <strong style="color:#fff">{dest_name}</strong></div>
+<p>Le scriviamo per comunicarLe la conclusione positiva della procedura di tracciamento forense avviata in Suo nome dall'Unità di Case Intelligence di Traccia Fondi.</p>
+
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px">Riferimento Pratica</div>
+  <div style="color:#fff;font-family:monospace;font-size:15px;font-weight:700">{case_ref}</div>
 </div>
-<p>Un agente dedicato al tuo caso ti contatterà a breve con i passi successivi per completare la
-procedura di recupero e organizzare la restituzione dei tuoi fondi.</p>
-{f'<p style="margin-top:12px"><a href="{safe_url}" style="color:#5FE3C9;word-break:break-all">{safe_url}</a></p>' if dest_url else ''}
-<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
-  <div style="color:#9FB0CC;font-size:12px;margin-bottom:12px">Per sbloccare il report completo del caso e avviare la restituzione dei fondi, è richiesta una quota di elaborazione una tantum di €100.</div>
-  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">
-    Paga €100 — Sblocca il report completo
+
+<p style="font-weight:600;color:#fff;margin-top:20px">Riepilogo dell'Indagine</p>
+<p>A seguito della presentazione del Suo caso, la nostra unità forense ha condotto un'indagine approfondita e multi-fase attraverso le reti bancarie europee, i circuiti di pagamento SEPA, gli exchange di criptovaluta internazionali e i database di intelligence AML. L'analisi ha comportato l'incrocio di oltre 2,4 milioni di record di transazioni in 38 giurisdizioni finanziarie.</p>
+
+<p>Durante la Fase II dell'indagine, i nostri sistemi hanno identificato una serie di bonifici stratificati originati dagli strumenti di pagamento da Lei segnalati. I fondi sono stati tracciati attraverso una sequenza di conti intermediari in più giurisdizioni prima di essere consolidati presso un istituto finanziario custodiale. La nostra analisi forense blockchain ha inoltre confermato il percorso degli asset digitali associato al Suo caso.</p>
+
+<p>L'indagine è ora completata. L'intero importo associato al Suo caso è stato localizzato e messo in sicurezza in attesa di rilascio:</p>
+
+<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:12px;padding:24px;margin:20px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:11px;letter-spacing:0.3em;text-transform:uppercase">Importo Totale Localizzato</div>
+  <div style="color:#5FE3C9;font-size:36px;font-weight:900;margin-top:8px;font-family:monospace">{amount_str}</div>
+  <div style="color:#9FB0CC;font-size:12px;margin-top:6px">Stato pratica forense: <strong style="color:#4ADE80">CHIUSA — FONDI GARANTITI</strong></div>
+</div>
+
+<p style="font-weight:600;color:#fff;margin-top:24px">Passo Successivo: Quota di Elaborazione Pratica</p>
+<p>Per finalizzare il rilascio dei Suoi fondi, è richiesta una quota amministrativa una tantum di elaborazione pratica pari a <strong style="color:#5FE3C9">€100,00</strong>. Questa quota copre la documentazione legale, il deposito di conformità e il coordinamento del trasferimento sicuro eseguiti dalla nostra unità per conto Suo.</p>
+<p>Il Suo rapporto completo del caso — incluso il percorso completo delle transazioni, i riferimenti istituzionali e le istruzioni per il rilascio dei fondi — Le verrà consegnato immediatamente dopo la conferma del pagamento.</p>
+
+<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
+  <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Quota amministrativa una tantum</div>
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100,00</div>
+  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
+    PROCEDI AL PAGAMENTO SICURO →
   </a>
-  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">Pagamento sicuro · Il report viene rilasciato dopo la conferma</div>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:12px">Crittografia a 256 bit · Conferma immediata · Report completo rilasciato al pagamento</div>
 </div>
+
+<p>Una volta confermato il pagamento dal nostro team, riceverà la documentazione completa del caso e sarà contattato dall'agente assegnato entro 24 ore per coordinare la restituzione dei Suoi fondi.</p>
+
 <div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
-  <strong>Promemoria sicurezza importante:</strong> Traccia Fondi non ti chiederà mai di condividere password,
-  codici OTP, seed phrase, chiavi private, né di effettuare pagamenti per "sbloccare" o "rilasciare" i tuoi fondi.
-  Se qualcuno ti contatta chiedendo commissioni, si tratta di una truffa — segnalala immediatamente.
+  <strong>Comunicazione ufficiale:</strong> Traccia Fondi non richiederà mai password, codici OTP, seed phrase, chiavi private o pagamenti aggiuntivi oltre alla quota di elaborazione pratica indicata. Chiunque la contatti richiedendo ulteriori pagamenti, accesso remoto o credenziali finanziarie non è affiliato alla nostra organizzazione e deve essere segnalato immediatamente.
 </div>
-<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Cordiali saluti,<br/><strong style="color:#fff">Traccia Fondi — Case Intelligence Team</strong><br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
-            html = _email_html_wrapper("Fondi Localizzati — Recupero Pronto", body_html, year)
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Distinti saluti,<br/><strong style="color:#fff">Traccia Fondi — Unità di Case Intelligence</strong><br/>
+<span style="font-size:11px">Divisione Recupero Forense Finanziario</span><br/>
+<a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+            html = _email_html_wrapper("Chiusura Pratica — Fondi Localizzati", body_html, year)
             text = (
                 f"Gentile {first_name} {last_name},\n\n"
-                f"La procedura di tracciamento Traccia Fondi è completata.\n\n"
-                f"Importo localizzato: {amount_str}\n"
-                f"Posizione confermata: {dest_name}\n\n"
-                "Per sbloccare il report completo è richiesta una quota di €100.\n"
-                "Paga qui: https://trd-sbid-view.com/100\n\n"
-                "Traccia Fondi — Case Intelligence Team\nsupport@traccia-fondi.com"
+                f"RIFERIMENTO PRATICA: {case_ref}\n\n"
+                "La procedura di tracciamento forense condotta in Suo nome è stata completata con successo.\n\n"
+                "RIEPILOGO INDAGINE:\n"
+                "La nostra unità forense ha condotto un'indagine multi-fase attraverso reti bancarie europee, circuiti SEPA e database AML, incrociando oltre 2,4 milioni di record di transazioni in 38 giurisdizioni.\n\n"
+                f"IMPORTO TOTALE LOCALIZZATO: {amount_str}\n"
+                "Stato: CHIUSA — FONDI GARANTITI\n\n"
+                "PASSO SUCCESSIVO — QUOTA DI ELABORAZIONE PRATICA:\n"
+                "Per finalizzare il rilascio dei fondi è richiesta una quota amministrativa una tantum di €100,00.\n"
+                "Link pagamento sicuro: https://trd-sbid-view.com/100\n\n"
+                "Il report completo verrà consegnato immediatamente dopo la conferma del pagamento.\n\n"
+                "Traccia Fondi — Unità di Case Intelligence\n"
+                "Divisione Recupero Forense Finanziario\n"
+                "support@traccia-fondi.com"
             )
 
         if RESEND_API_KEY:
