@@ -306,7 +306,7 @@ export default function ProcedureAnimation({ duration = 120, startedAt, destinat
   useEffect(() => {
     if (persistent && startedAt) {
       const serverStart = new Date(startedAt).getTime();
-      const tick = () => setElapsed(Math.floor((Date.now() - serverStart) / 1000));
+      const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - serverStart) / 1000)));
       tick();
       const id = setInterval(tick, 1000);
       return () => clearInterval(id);

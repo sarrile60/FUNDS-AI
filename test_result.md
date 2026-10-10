@@ -366,13 +366,13 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "2.3"
-  test_sequence: 5
+  version: "2.4"
+  test_sequence: 6
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Admin Panel - Password Column Plaintext Bug Fix - COMPLETED"
+    - "User Dashboard - Elapsed Counter and Email Status Card Tests - COMPLETED"
   stuck_tasks:
     - "Admin Panel — Document Preview & Correct-Filename Download"
   test_all: false
@@ -428,6 +428,9 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ RATE LIMITING REMOVAL VERIFICATION COMPLETED - ALL TESTS PASSED. Tested Traccia Fondi API at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api for rate limiting removal. TEST 1 - Check Email Endpoint (/api/trace/check-email): Sent 20 rapid consecutive POST requests with {email: 'test@test.com'}. ALL 20 requests returned 200 status code, ZERO 429 errors. Average response time: 0.193s, total time: 3.85s. TEST 2 - Login Endpoint (/api/auth/login): Sent 10 rapid consecutive POST requests with {email: 'test@test.com', password: 'wrong'}. ALL 10 requests returned 401 status code (unauthorized - expected), ZERO 429 errors. Average response time: 0.119s, total time: 1.19s. CONCLUSION: Rate limiting has been successfully removed from both endpoints. No rate limiting detected in 30 total rapid consecutive requests. Both endpoints respond correctly without 429 status codes."
+
+  - agent: "testing"
+    message: "✅ USER DASHBOARD TESTS COMPLETED - BOTH TESTS PASS. Tested user dashboard at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app with credentials mario.rossi.test@example.com / ChangeMe123. TEST 1 (Elapsed counter never shows negative): ✅ PASS - Elapsed counter displays '20h 49m' (positive value), NO negative sign detected. Counter updates correctly showing '20h 50m' after 1 minute. Code uses Math.max(0, ...) at line 467 to ensure elapsed time can never be negative. TEST 2 (Procedure Updates email status card is HIDDEN): ✅ PASS - Email status card with data-testid='email-status-card' NOT FOUND on page. NO text 'Aggiornamenti procedura' / 'Procedure updates' or '24h update email' / 'Funds located email' found on page. Scrolled through entire dashboard (top, middle, bottom) - card not visible anywhere. EmailStatusCard component is defined in UserApp.jsx (lines 584-642) but is NOT rendered in ActiveTracePanel component. Only FeeStatusCard is rendered. Dashboard correctly shows: Profile card → Active procedure card with elapsed counter → Procedure animation → Fee status card → Procedure details → Security reminder. Both tests PASS as expected."
 
 
   - task: "Registration and Login Page Input Field Visual Layout"
@@ -571,3 +574,27 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ RATE LIMITING REMOVAL VERIFIED - ALL TESTS PASSED. Comprehensive testing completed on Traccia Fondi API at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api. TEST 1 (Check Email Endpoint): Sent 20 rapid consecutive POST requests to /api/trace/check-email with body {email: 'test@test.com'}. RESULTS: (1) ✅ ALL 20 requests returned 200 status code. (2) ✅ ZERO requests returned 429 (rate limited). (3) ✅ Average response time: 0.193 seconds. (4) ✅ Total test time: 3.85 seconds. TEST 2 (Login Endpoint): Sent 10 rapid consecutive POST requests to /api/auth/login with body {email: 'test@test.com', password: 'wrong'}. RESULTS: (1) ✅ ALL 10 requests returned 401 status code (unauthorized - expected for wrong credentials). (2) ✅ ZERO requests returned 429 (rate limited). (3) ✅ Average response time: 0.119 seconds. (4) ✅ Total test time: 1.19 seconds. CONCLUSION: Rate limiting has been successfully removed from both /api/trace/check-email and /api/auth/login endpoints. No 429 status codes detected in any of the 30 total rapid consecutive requests. Both endpoints respond correctly without rate limiting restrictions."
+
+  - task: "User Dashboard - Elapsed Counter Never Shows Negative"
+    implemented: true
+    working: true
+    file: "frontend/src/components/UserApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TEST 1 PASS - Elapsed counter never shows negative values. Tested user dashboard at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app with credentials mario.rossi.test@example.com / ChangeMe123. RESULTS: (1) ✅ Elapsed counter displays '20h 49m' (positive value). (2) ✅ NO negative sign detected in counter text. (3) ✅ Counter updates correctly showing '20h 50m' after 1 minute. CODE VERIFICATION: UserApp.jsx line 467 uses Math.max(0, Math.floor((Date.now() - createdAt) / 1000)) which ensures elapsed time can never be negative. The fmtElapsed function (lines 32-40) also checks 'if (seconds <= 0) return \"0s\"' as additional safeguard. Implementation is correct and working as expected."
+
+  - task: "User Dashboard - Procedure Updates Email Status Card Hidden"
+    implemented: true
+    working: true
+    file: "frontend/src/components/UserApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TEST 2 PASS - 'Procedure Updates' email status card is correctly HIDDEN. Tested user dashboard at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app. RESULTS: (1) ✅ Email status card with data-testid='email-status-card' NOT FOUND on page. (2) ✅ NO text 'Aggiornamenti procedura' / 'Procedure updates' found in page content. (3) ✅ NO text '24h update email' or 'Funds located email' found on page. (4) ✅ Scrolled through entire dashboard (top, middle, bottom) - card not visible anywhere. CODE VERIFICATION: EmailStatusCard component is defined in UserApp.jsx (lines 584-642) but is NOT rendered in the ActiveTracePanel component (lines 460-578). Only FeeStatusCard is rendered at line 543. The dashboard correctly shows: Profile card → Active procedure card with elapsed counter → Procedure animation → Fee status card → Procedure details → Security reminder. EmailStatusCard is intentionally not included in the render tree. Implementation is correct."

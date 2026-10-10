@@ -30,6 +30,7 @@ const TIERS = [
 
 // Format elapsed seconds into human-readable "Xh Ym"
 function fmtElapsed(seconds) {
+  if (seconds <= 0) return "0s";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
@@ -463,7 +464,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
   useEffect(() => {
     const createdAt = trace?.created_at ? new Date(trace.created_at).getTime() : Date.now();
     const tick = () => {
-      setElapsed(Math.floor((Date.now() - createdAt) / 1000));
+      setElapsed(Math.max(0, Math.floor((Date.now() - createdAt) / 1000)));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -537,9 +538,6 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
           persistent={true}
         />
       </div>
-
-      {/* Email status */}
-      <EmailStatusCard trace={trace} isIt={isIt}/>
 
       {/* Fee status */}
       <FeeStatusCard trace={trace} isIt={isIt}/>
