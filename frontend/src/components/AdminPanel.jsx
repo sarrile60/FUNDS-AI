@@ -354,13 +354,20 @@ function fmtStopwatch(seconds) {
 }
 
 // Live elapsed stopwatch for admin — ticks every second
+// Uses increment-based approach to avoid server/client clock skew issues
 function ElapsedCell({ createdAt }) {
-  const [elapsed, setElapsed] = useState(() =>
-    Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000))
-  );
+  const [elapsed, setElapsed] = useState(() => {
+    const ms = Date.now() - new Date(createdAt).getTime();
+    return ms > 0 ? Math.floor(ms / 1000) : 0;
+  });
   useEffect(() => {
+    // Recalculate once from createdAt to sync
+    const ms = Date.now() - new Date(createdAt).getTime();
+    const initial = ms > 0 ? Math.floor(ms / 1000) : 0;
+    setElapsed(initial);
+    // Then just increment by 1 every second — immune to clock skew
     const id = setInterval(() => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)));
+      setElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(id);
   }, [createdAt]);
