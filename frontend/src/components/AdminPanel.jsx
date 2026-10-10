@@ -556,6 +556,7 @@ function TracesTab({ isIt }) {
                 <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
                 <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
                 <th className="p-4 font-medium">{isIt ? "Azioni" : "Actions"}</th>
+                <th className="p-4 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -594,7 +595,7 @@ function TracesTab({ isIt }) {
                         <span className="text-[var(--aif-text-dim)]">—</span>
                       )}
                     </td>
-                    <td className="p-4 text-[var(--aif-text-dim)] text-[12px]">
+                    <td className="p-4 text-[var(--aif-text-dim)] text-[12px] whitespace-nowrap">
                       {formatDate(trace.created_at)}
                     </td>
                     <td className="p-4">
@@ -636,14 +637,7 @@ function TracesTab({ isIt }) {
                               {markingFee === trace.id ? "…" : (isIt ? "Fee Pagata ✓" : "Fee Paid ✓")}
                             </button>
                           )}
-                          {/* Delete */}
-                          <button
-                            onClick={() => deleteTrace(trace.id)}
-                            className="p-1.5 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
-                            title={isIt ? "Elimina" : "Delete"}
-                          >
-                            <Trash2 size={14}/>
-                          </button>
+                          {/* Delete — moved to its own column */}
                         </div>
                         {/* ── Test simulations (separated) ── */}
                         <div className="flex items-center gap-1.5">
@@ -669,12 +663,22 @@ function TracesTab({ isIt }) {
                         </div>
                       </div>
                     </td>
+                    {/* Delete — own column, far right */}
+                    <td className="p-4">
+                      <button
+                        onClick={() => deleteTrace(trace.id)}
+                        className="p-2 rounded-lg text-[var(--aif-text-dim)] hover:text-[#FF6B7A] hover:bg-[#FF6B7A]/10 transition"
+                        title={isIt ? "Elimina tracciamento" : "Delete trace"}
+                      >
+                        <Trash2 size={15}/>
+                      </button>
+                    </td>
                   </tr>
                   
                   {/* Expanded documents row */}
                   {expandedId === trace.id && trace.documents?.length > 0 && (
                     <tr className="bg-[#0E1A36]">
-                      <td colSpan={10} className="p-4">
+                      <td colSpan={11} className="p-4">
                         <div className="text-[11px] uppercase tracking-wider text-[#5FE3C9] mb-3">
                           {isIt ? "Documenti caricati" : "Uploaded documents"}
                         </div>
