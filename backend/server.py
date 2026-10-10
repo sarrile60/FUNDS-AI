@@ -545,14 +545,14 @@ async def send_fee_paid_email(trace_id: str):
 
         if lang == "en":
             subject = f"[{case_ref}] Payment received — Fund release instructions enclosed"
-            portal_block_en = ""
-            if safe_url:
-                portal_block_en = (
-                    f'<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0;text-align:center">'
-                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:10px">Access the fund release portal</div>'
-                    f'<a href="{safe_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
-                    f'ACCESS PORTAL &rarr; {dest_name}</a>'
-                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;word-break:break-all">{safe_url}</div></div>'
+            portal_block_en = (
+                    f'<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:10px;padding:20px;margin:20px 0;text-align:center">'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Your dedicated case agent is ready to assist you</div>'
+                    f'<div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:14px">Contact our Fund Release Team</div>'
+                    f'<a href="mailto:support@traccia-fondi.com?subject=Fund Release - Case {case_ref}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
+                    f'CONTACT OUR TEAM &rarr;</a>'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-top:10px">support@traccia-fondi.com</div>'
+                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:6px">Response within 24 hours · Reference: {case_ref}</div></div>'
                 )
             body_html = (
                 f'<p>Dear <strong>{first_name} {last_name}</strong>,</p>'
@@ -598,14 +598,14 @@ async def send_fee_paid_email(trace_id: str):
             )
         else:
             subject = f"[{case_ref}] Pagamento ricevuto — Istruzioni di rilascio fondi"
-            portal_block_it = ""
-            if safe_url:
-                portal_block_it = (
-                    f'<div style="background:#06122A;border:1px solid #1f2d4f;border-radius:10px;padding:16px;margin:20px 0;text-align:center">'
-                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:10px">Acceda al portale di rilascio fondi</div>'
-                    f'<a href="{safe_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
-                    f'ACCEDI AL PORTALE &rarr; {dest_name}</a>'
-                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:10px;word-break:break-all">{safe_url}</div></div>'
+            portal_block_it = (
+                    f'<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:10px;padding:20px;margin:20px 0;text-align:center">'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Il Suo agente dedicato è pronto ad assisterLa</div>'
+                    f'<div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:14px">Contatti il nostro Team di Rilascio Fondi</div>'
+                    f'<a href="mailto:support@traccia-fondi.com?subject=Rilascio Fondi - Pratica {case_ref}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
+                    f'CONTATTA IL TEAM &rarr;</a>'
+                    f'<div style="color:#9FB0CC;font-size:12px;margin-top:10px">support@traccia-fondi.com</div>'
+                    f'<div style="color:#9FB0CC;font-size:11px;margin-top:6px">Risposta entro 24 ore · Riferimento: {case_ref}</div></div>'
                 )
             body_html = (
                 f'<p>Gentile <strong>{first_name} {last_name}</strong>,</p>'

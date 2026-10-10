@@ -113,9 +113,9 @@ const dict = {
 
     // CTA banner
     "cta.tag": "Privacy al primo posto • Conforme GDPR",
-    "cta.title": "Inizia ora la tua analisi gratuita",
-    "cta.body": "Nessuna seed phrase, nessuna OTP, nessun pagamento per 'sbloccare' fondi. Solo evidenze e report.",
-    "cta.btn": "Avvia Analisi Gratuita",
+    "cta.title": "Avvia ora la tua procedura di tracciamento",
+    "cta.body": "Nessuna seed phrase, nessuna OTP. Quota di elaborazione di €100 richiesta solo dopo la conferma dell'esito del tracciamento.",
+    "cta.btn": "Avvia il Tracciamento",
 
     // Footer
     "footer.tag1": "Sicurezza",
@@ -583,9 +583,9 @@ const dict = {
 
     // CTA banner
     "cta.tag": "Privacy-first • GDPR aware",
-    "cta.title": "Start your free case analysis now",
-    "cta.body": "No seed phrase, no OTP, no payments to 'unlock' funds. Only evidence and reports.",
-    "cta.btn": "Start Free Analysis",
+    "cta.title": "Start your tracing procedure now",
+    "cta.body": "No seed phrase, no OTP. A €100 case-processing fee applies only after the tracing outcome is confirmed.",
+    "cta.btn": "Start Tracing",
 
     // Footer
     "footer.tag1": "Security",
