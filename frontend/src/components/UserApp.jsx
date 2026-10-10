@@ -45,18 +45,15 @@ export default function UserApp() {
   const nav = useNavigate();
   const isIt = lang === "it";
 
+  const [tab, setTab] = useState("cases"); // "account" | "cases"
   const [activeTrace, setActiveTrace] = useState(null);
   const [loadingTrace, setLoadingTrace] = useState(true);
-  const [view, setView] = useState("dashboard"); // "dashboard" | "trace-form"
+  const [traceView, setTraceView] = useState("list"); // "list" | "form"
 
-  // Redirect to register if not logged in
   useEffect(() => {
-    if (!user) {
-      nav("/register", { replace: true });
-    }
+    if (!user) nav("/register", { replace: true });
   }, [user, nav]);
 
-  // Load user's active trace on mount
   const loadTrace = useCallback(async () => {
     if (!user || !token) return;
     setLoadingTrace(true);
@@ -66,82 +63,104 @@ export default function UserApp() {
       });
       setActiveTrace(data || null);
     } catch (e) {
-      if (e?.response?.status !== 404) {
-        console.error("Failed to load trace:", e);
-      }
+      if (e?.response?.status !== 404) console.error("Failed to load trace:", e);
       setActiveTrace(null);
     } finally {
       setLoadingTrace(false);
     }
   }, [user, token]);
 
-  useEffect(() => {
-    loadTrace();
-  }, [loadTrace]);
+  useEffect(() => { loadTrace(); }, [loadTrace]);
 
-  if (!user) return null; // redirecting
+  if (!user) return null;
+
+  const initials = `${(user.first_name||"")[0]||""}${(user.last_name||"")[0]||""}`.toUpperCase();
 
   return (
     <div className="aif-app-bg min-h-screen relative">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
       <div className="relative">
         <Navbar/>
-        <main className="max-w-5xl mx-auto px-5 lg:px-8 py-8 space-y-6">
+        <main className="max-w-5xl mx-auto px-5 lg:px-8 py-8">
 
-          {/* ── ACCOUNT SECTION ── */}
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.25em] text-[#5FE3C9] mb-3 flex items-center gap-2">
-              <User size={13}/> {isIt ? "Il mio account" : "My account"}
-            </div>
-            <ProfileCard user={user} isIt={isIt} onLogout={() => { logout(); nav("/"); }}/>
-          </div>
-
-          {/* ── MY CASES SECTION ── */}
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.25em] text-[#5FE3C9] mb-3 flex items-center gap-2">
-              <Shield size={13}/> {isIt ? "I miei casi" : "My cases"}
-            </div>
-
-            {loadingTrace ? (
-              <div className="aif-card p-10 text-center">
-                <RefreshCw size={28} className="mx-auto text-[#5FE3C9] animate-spin mb-3"/>
-                <p className="text-[var(--aif-text-dim)]">{isIt ? "Caricamento caso…" : "Loading case…"}</p>
+          {/* ── TOP PROFILE BAR ── */}
+          <div className="aif-card p-4 md:p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center text-[#06122A] font-black text-base shrink-0">
+                {initials || <User size={18}/>}
               </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                {!activeTrace && view === "dashboard" && (
-                  <motion.div key="no-trace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <NoTraceCard isIt={isIt} onStart={() => setView("trace-form")}/>
-                  </motion.div>
-                )}
-
-                {!activeTrace && view === "trace-form" && (
-                  <motion.div key="trace-form" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                    <TraceForm
-                      user={user}
-                      token={token}
-                      isIt={isIt}
-                      onCancel={() => setView("dashboard")}
-                      onStarted={(trace) => {
-                        setActiveTrace(trace);
-                        setView("dashboard");
-                      }}
-                    />
-                  </motion.div>
-                )}
-
-                {activeTrace && (
-                  <motion.div key="active-trace" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <ActiveTracePanel
-                      trace={activeTrace}
-                      isIt={isIt}
-                      onRefresh={loadTrace}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
+              <div>
+                <div className="text-white font-semibold">{user.first_name} {user.last_name}</div>
+                <div className="text-[12px] text-[var(--aif-text-dim)]">{user.email}</div>
+              </div>
+            </div>
+            <button onClick={() => { logout(); nav("/"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-2" data-testid="app-logout">
+              <LogOut size={14}/> {isIt ? "Esci" : "Sign out"}
+            </button>
           </div>
+
+          {/* ── TABS ── */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setTab("account")}
+              data-testid="tab-account"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[14px] font-medium transition border ${tab === "account" ? "border-[#5FE3C9] bg-[#5FE3C9]/10 text-white" : "border-[var(--aif-line)] text-[var(--aif-text-dim)] hover:text-white"}`}
+            >
+              <User size={15}/> Account
+            </button>
+            <button
+              onClick={() => setTab("cases")}
+              data-testid="tab-cases"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[14px] font-medium transition border ${tab === "cases" ? "border-[#5FE3C9] bg-[#5FE3C9]/10 text-white" : "border-[var(--aif-line)] text-[var(--aif-text-dim)] hover:text-white"}`}
+            >
+              <Shield size={15}/> {isIt ? "I miei casi" : "My cases"}
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {/* ── ACCOUNT TAB ── */}
+            {tab === "account" && (
+              <motion.div key="account" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <ProfileCard user={user} isIt={isIt} onLogout={() => { logout(); nav("/"); }}/>
+              </motion.div>
+            )}
+
+            {/* ── MY CASES TAB ── */}
+            {tab === "cases" && (
+              <motion.div key="cases" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                {loadingTrace ? (
+                  <div className="aif-card p-12 text-center">
+                    <RefreshCw size={28} className="mx-auto text-[#5FE3C9] animate-spin mb-3"/>
+                    <p className="text-[var(--aif-text-dim)]">{isIt ? "Caricamento…" : "Loading…"}</p>
+                  </div>
+                ) : (
+                  <AnimatePresence mode="wait">
+                    {!activeTrace && traceView === "list" && (
+                      <motion.div key="no-trace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                        <NoTraceCard isIt={isIt} onStart={() => setTraceView("form")}/>
+                      </motion.div>
+                    )}
+                    {!activeTrace && traceView === "form" && (
+                      <motion.div key="trace-form" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                        <TraceForm
+                          user={user}
+                          token={token}
+                          isIt={isIt}
+                          onCancel={() => setTraceView("list")}
+                          onStarted={(trace) => { setActiveTrace(trace); setTraceView("list"); }}
+                        />
+                      </motion.div>
+                    )}
+                    {activeTrace && (
+                      <motion.div key="active-trace" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <ActiveTracePanel trace={activeTrace} isIt={isIt} onRefresh={loadTrace}/>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </main>
         <Footer/>
@@ -149,6 +168,7 @@ export default function UserApp() {
     </div>
   );
 }
+
 
 // ============================================================
 //   PROFILE CARD

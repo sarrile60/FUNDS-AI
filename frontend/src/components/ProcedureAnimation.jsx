@@ -384,7 +384,6 @@ export default function ProcedureAnimation({ duration = 120, startedAt, destinat
         </div>
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <div className="aif-chip text-[10px] sm:text-[11px]"><Lock size={12}/> AES-256</div>
-          <div className="aif-chip text-[10px] sm:text-[11px]"><Activity size={12}/> {t("trc.do_not_close")}</div>
         </div>
         {!persistent && onCancel && (
           <button onClick={onCancel} className="text-[var(--aif-text-dim)] hover:text-[#FF6B7A] p-2 shrink-0" title={t("trc.cancel")} data-testid="proc-cancel">
@@ -403,8 +402,8 @@ export default function ProcedureAnimation({ duration = 120, startedAt, destinat
       ) : (
         <div className="mt-7 relative z-10 flex items-center justify-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-[#4ADE80] aif-pulse"/>
-          <span className="text-[12px] text-[var(--aif-text-dim)]">
-            {t("trc.do_not_close")}
+          <span className="text-[12px] text-[#5FE3C9] font-medium uppercase tracking-[0.15em]">
+            {t("trc.scanning")} · LIVE
           </span>
         </div>
       )}
@@ -445,10 +444,12 @@ export default function ProcedureAnimation({ duration = 120, startedAt, destinat
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="mt-6 text-[12px] text-[var(--aif-text-dim)] text-center relative z-10 flex items-center justify-center gap-2">
-        <Lock size={12}/> {t("trc.disclaimer")}
-      </div>
+      {/* Disclaimer — only shown in non-persistent mode */}
+      {!persistent && (
+        <div className="mt-6 text-[12px] text-[var(--aif-text-dim)] text-center relative z-10 flex items-center justify-center gap-2">
+          <Lock size={12}/> {t("trc.disclaimer")}
+        </div>
+      )}
     </div>
   );
 }
