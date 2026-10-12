@@ -458,6 +458,7 @@ export default function LandingPage() {
         <Navbar/>
         <Hero/>
         <TrustWarning/>
+        <FeeDisclosure/>
         <FeaturedInStrip/>
         <ItalianContext/>
         <HowItWorks/>
@@ -465,7 +466,6 @@ export default function LandingPage() {
         <TracingTeaser/>
         <ReportsGallery/>
         <TrustStrip/>
-        <FeeDisclosure/>
         <FAQ/>
         <CtaBanner/>
         <Footer/>
