@@ -546,15 +546,9 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
               </p>
               <div className="mt-4 aif-card !rounded-xl p-4 !border-[#5FE3C9]/30 text-center">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--aif-text-dim)] mb-1">{isIt ? "Importo localizzato" : "Located amount"}</div>
-                {amount > 0 ? (
-                  <div className="text-[28px] font-black tabular-nums bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">
-                    € {amountStr}
-                  </div>
-                ) : (
-                  <div className="text-[15px] font-semibold text-[var(--aif-text-dim)]">
-                    {isIt ? "In elaborazione — il tuo agente ti fornirà i dettagli" : "Being processed — your agent will provide details"}
-                  </div>
-                )}
+                <div className="text-[28px] font-black tabular-nums bg-clip-text text-transparent bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]">
+                  € {amountStr}
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <a

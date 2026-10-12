@@ -176,24 +176,19 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
     return payload
 
 
-# Located amount ranges
-# 100000_plus is NOT auto-generated — admin sets manually via edit modal
+# Located amount ranges — auto-generated for all tiers including 100k+
+# Admin can override any individual trace's located_amount via the edit modal before the 50h email fires
 TIER_HIGH_END = {
     "5000_20000":     (90000, 130000),   # < €20k lost → shows €90k–€130k
     "20000_50000":    (275000, 305000),
     "50000_100000":   (355000, 385000),
-    # "100000_plus" intentionally omitted — admin sets located_amount manually
+    "100000_plus":    (430000, 470000),  # auto €430k–€470k; admin can override per client
 }
 VALID_TIERS = {"5000_20000", "20000_50000", "50000_100000", "100000_plus"}
 
 
 def _located_amount_for(tier: str) -> float:
-    """
-    Auto-generate a located amount for the given tier.
-    100000_plus returns 0 — the admin must set it manually via the edit modal.
-    """
-    if tier == "100000_plus":
-        return 0.0  # admin sets manually
+    """Auto-generate a located amount for the given tier. Admin can override per client via edit modal."""
     lo, hi = TIER_HIGH_END.get(tier, (90000, 130000))
     n = random.randint(lo, hi)
     units = random.randint(0, 999)
