@@ -45,7 +45,7 @@ export default function UserApp() {
   const nav = useNavigate();
   const isIt = lang === "it";
 
-  const [tab, setTab] = useState("cases"); // "account" | "cases"
+  const [tab, setTab] = useState("account"); // "account" | "cases"
   const [activeTrace, setActiveTrace] = useState(null);
   const [loadingTrace, setLoadingTrace] = useState(true);
   const [traceView, setTraceView] = useState("list"); // "list" | "form"
