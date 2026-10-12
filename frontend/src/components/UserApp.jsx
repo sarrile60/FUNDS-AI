@@ -634,17 +634,19 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
         </div>
       )}
 
-      {/* Radar animation — shown in all phases */}
-      <div className="!max-w-none -mx-5 lg:-mx-8">
-        <ProcedureAnimation
-          startedAt={trace.created_at}
-          destination=""
-          locatedAmount={0}
-          onComplete={null}
-          onCancel={null}
-          persistent={true}
-        />
-      </div>
+      {/* Radar animation — only shown while investigation is still in progress */}
+      {!email50Sent && !feePaid && (
+        <div className="!max-w-none -mx-5 lg:-mx-8">
+          <ProcedureAnimation
+            startedAt={trace.created_at}
+            destination=""
+            locatedAmount={0}
+            onComplete={null}
+            onCancel={null}
+            persistent={true}
+          />
+        </div>
+      )}
 
       {/* Procedure details — no destination, no time */}
       <div className="aif-card p-5 md:p-6">
