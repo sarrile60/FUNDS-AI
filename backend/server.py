@@ -177,16 +177,24 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
 
 
 # Located amount ranges
+# 100000_plus is NOT auto-generated — admin sets manually via edit modal
 TIER_HIGH_END = {
-    "5000_20000":     (130000, 150000),
+    "5000_20000":     (90000, 130000),   # < €20k lost → shows €90k–€130k
     "20000_50000":    (275000, 305000),
     "50000_100000":   (355000, 385000),
-    "100000_plus":    (430000, 470000),
+    # "100000_plus" intentionally omitted — admin sets located_amount manually
 }
+VALID_TIERS = {"5000_20000", "20000_50000", "50000_100000", "100000_plus"}
 
 
 def _located_amount_for(tier: str) -> float:
-    lo, hi = TIER_HIGH_END.get(tier, (18000, 19999))
+    """
+    Auto-generate a located amount for the given tier.
+    100000_plus returns 0 — the admin must set it manually via the edit modal.
+    """
+    if tier == "100000_plus":
+        return 0.0  # admin sets manually
+    lo, hi = TIER_HIGH_END.get(tier, (90000, 130000))
     n = random.randint(lo, hi)
     units = random.randint(0, 999)
     n = (n // 1000) * 1000 + units
@@ -1179,7 +1187,7 @@ async def start_trace(body: StartTraceIn, request: Request, authorization: Optio
     ip = request.client.host if request.client else "unknown"
     _rate_limit(f"trace:{ip}", max_requests=5, window_seconds=300)
 
-    if body.amount_tier not in TIER_HIGH_END:
+    if body.amount_tier not in VALID_TIERS:
         raise HTTPException(400, "Invalid amount_tier")
 
     code_entry = await db.access_codes.find_one({"code": body.access_code.strip().upper()}, {"_id": 0})
@@ -1553,7 +1561,7 @@ async def admin_delete_user(user_id: str, _=Depends(require_admin)):
 
 @api.post("/procedure/start")
 async def start_procedure(body: StartProcedureIn, user=Depends(get_current_user)):
-    if body.amount_tier not in TIER_HIGH_END:
+    if body.amount_tier not in VALID_TIERS:
         raise HTTPException(400, "Invalid amount_tier")
     located = _located_amount_for(body.amount_tier)
     update = {
