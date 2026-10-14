@@ -721,10 +721,26 @@ function TracesTab({ isIt }) {
                 <React.Fragment key={trace.id}>
                   <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                     <td className="px-3 py-3 min-w-[140px]">
-                      <div className="font-semibold text-white text-[12px]">{trace.first_name} {trace.last_name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="font-semibold text-white text-[12px]">{trace.first_name} {trace.last_name}</div>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(`${trace.first_name} ${trace.last_name}`); toast.success("Name copied"); }}
+                          className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
+                          title="Copy name"
+                        ><Copy size={11}/></button>
+                      </div>
                       <div className="text-[10px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
                     </td>
-                    <td className="px-3 py-3 text-[var(--aif-text-dim)] text-[11px] min-w-[180px]">{trace.email}</td>
+                    <td className="px-3 py-3 min-w-[180px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[var(--aif-text-dim)] text-[11px]">{trace.email}</span>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(trace.email); toast.success("Email copied"); }}
+                          className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
+                          title="Copy email"
+                        ><Copy size={11}/></button>
+                      </div>
+                    </td>
                     <td className="px-3 py-3">
                       <span className="font-mono text-[#5FE3C9] text-[11px] font-bold">{trace.code_used || "—"}</span>
                     </td>
@@ -1366,7 +1382,14 @@ function RegisteredUsersTab({ isIt }) {
                 {paginated.map(u => (
                   <tr key={u.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                     <td className="p-3">
-                      <div className="font-semibold text-white">{u.first_name} {u.last_name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="font-semibold text-white">{u.first_name} {u.last_name}</div>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(`${u.first_name} ${u.last_name}`); toast.success(isIt ? "Nome copiato" : "Name copied"); }}
+                          className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
+                          title={isIt ? "Copia nome" : "Copy name"}
+                        ><Copy size={11}/></button>
+                      </div>
                       <div className="mt-0.5 flex items-center gap-1.5">
                         <LangBadge lang={u.lang}/>
                         {u.type === "guest" && (
@@ -1377,29 +1400,29 @@ function RegisteredUsersTab({ isIt }) {
                       </div>
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-1.5 group">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-[var(--aif-text-dim)] text-[12px]">{u.email}</span>
                         <button
                           onClick={() => { navigator.clipboard.writeText(u.email); toast.success(isIt ? "Email copiata" : "Email copied"); }}
-                          className="opacity-0 group-hover:opacity-100 transition p-1 text-[var(--aif-text-dim)] hover:text-[#5FE3C9]"
+                          className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
                           title={isIt ? "Copia email" : "Copy email"}
                         >
-                          <Copy size={12}/>
+                          <Copy size={11}/>
                         </button>
                       </div>
                     </td>
                     <td className="p-3 hidden md:table-cell">
                       {u.password ? (
-                        <div className="flex items-center gap-1.5 group">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-mono text-[11px] bg-[#0E1A36] border border-[var(--aif-line)] rounded px-2 py-0.5 text-[#FFB454] select-all">
                             {u.password.length > 30 ? u.password.slice(0, 30) + "…" : u.password}
                           </span>
                           <button
                             onClick={() => { navigator.clipboard.writeText(u.password); toast.success(isIt ? "Password copiata" : "Password copied"); }}
-                            className="opacity-0 group-hover:opacity-100 transition p-1 text-[var(--aif-text-dim)] hover:text-[#FFB454]"
+                            className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#FFB454] transition shrink-0"
                             title={isIt ? "Copia password" : "Copy password"}
                           >
-                            <Copy size={12}/>
+                            <Copy size={11}/>
                           </button>
                         </div>
                       ) : (
