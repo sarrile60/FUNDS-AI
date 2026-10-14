@@ -41,10 +41,11 @@ export default function AdminPanel() {
   const [notifications, setNotifications] = useState([]);
   const [bellOpen, setBellOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const notifiedRef = useRef(new Set()); // trace IDs already notified for 50h
+  const [notifyPrefs, setNotifyPrefs] = useState({ h24: true, h50: true }); // user preferences
+  const notifiedRef = useRef(new Set()); // "traceId_24h" or "traceId_50h" already notified
 
-  // Poll traces every 60s for newly crossed 50h threshold
-  const checkFor50h = useCallback(async () => {
+  // Poll traces every 60s for newly crossed 24h / 50h thresholds
+  const checkThresholds = useCallback(async () => {
     try {
       const token = localStorage.getItem("aif_token");
       const { data: traces } = await axios.get(
@@ -53,38 +54,46 @@ export default function AdminPanel() {
       );
       const now = Date.now();
       traces.forEach(trace => {
-        if (notifiedRef.current.has(trace.id)) return;
-        if (trace.email_50h_sent) { notifiedRef.current.add(trace.id); return; }
         const created = new Date(trace.created_at).getTime();
         const elapsed = (now - created) / 1000 / 3600; // hours
-        if (elapsed >= 50) {
-          notifiedRef.current.add(trace.id);
-          const label = `${trace.first_name} ${trace.last_name}`;
+        const label = `${trace.first_name} ${trace.last_name}`;
+
+        // 24h check
+        const key24 = `${trace.id}_24h`;
+        if (notifyPrefs.h24 && !notifiedRef.current.has(key24) && elapsed >= 24 && !trace.email_24h_sent) {
+          notifiedRef.current.add(key24);
           const msg = isIt
-            ? `${label} ha superato le 50 ore — pronto per l'email fondi localizzati`
-            : `${label} has passed 50 hours — ready for funds located email`;
-          setNotifications(prev => [{ id: trace.id, msg, time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
+            ? `${label} ha superato 24h — invia l'email aggiornamento`
+            : `${label} passed 24h — send update email`;
+          setNotifications(prev => [{ id: key24, msg, type: "24h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
           setUnread(u => u + 1);
-          // Browser notification (if permission granted)
-          if (Notification.permission === "granted") {
-            new Notification("Traccia Fondi Admin", { body: msg, icon: "/favicon.ico" });
-          }
+          if (Notification.permission === "granted") new Notification("Traccia Fondi — 24h", { body: msg });
+        }
+
+        // 50h check
+        const key50 = `${trace.id}_50h`;
+        if (notifyPrefs.h50 && !notifiedRef.current.has(key50) && elapsed >= 50 && !trace.email_50h_sent) {
+          notifiedRef.current.add(key50);
+          const msg = isIt
+            ? `${label} ha superato 50h — fondi localizzati pronti`
+            : `${label} passed 50h — funds located ready`;
+          setNotifications(prev => [{ id: key50, msg, type: "50h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
+          setUnread(u => u + 1);
+          if (Notification.permission === "granted") new Notification("Traccia Fondi — 50h", { body: msg });
         }
       });
     } catch (e) { /* silent fail — polling */ }
-  }, [isIt]);
+  }, [isIt, notifyPrefs]);
 
   useEffect(() => {
-    // Request browser notification permission once
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-    checkFor50h();
-    const id = setInterval(checkFor50h, 60000);
+    if (Notification.permission === "default") Notification.requestPermission();
+    checkThresholds();
+    const id = setInterval(checkThresholds, 60000);
     return () => clearInterval(id);
-  }, [checkFor50h]);
+  }, [checkThresholds]);
 
-  const markAllRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); setUnread(0); setBellOpen(false); };
+  const markAllRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); setUnread(0); };
+  const togglePref = (key) => setNotifyPrefs(prev => ({ ...prev, [key]: !prev[key] }));
 
   if (!user) return <Navigate to="/login" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
@@ -122,20 +131,42 @@ export default function AdminPanel() {
                   )}
                 </button>
                 {bellOpen && (
-                  <div className="absolute right-0 top-10 w-80 aif-card !rounded-xl shadow-2xl z-50 border border-[var(--aif-line)] overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aif-line)]">
-                      <span className="text-[13px] font-semibold text-white">{isIt ? "Notifiche 50h" : "50h Notifications"}</span>
-                      <button onClick={markAllRead} className="text-[11px] text-[#5FE3C9] hover:underline">{isIt ? "Segna tutte lette" : "Mark all read"}</button>
+                  <div className="absolute right-0 top-10 w-84 aif-card !rounded-xl shadow-2xl z-50 border border-[var(--aif-line)] overflow-hidden" style={{width:"340px"}}>
+                    {/* Header */}
+                    <div className="px-4 py-3 border-b border-[var(--aif-line)]">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[13px] font-semibold text-white">{isIt ? "Notifiche" : "Notifications"}</span>
+                        <button onClick={markAllRead} className="text-[11px] text-[#5FE3C9] hover:underline">{isIt ? "Segna tutte lette" : "Mark all read"}</button>
+                      </div>
+                      {/* Preference toggles */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "Notifica per:" : "Notify for:"}</span>
+                        <button
+                          onClick={() => togglePref("h24")}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition border ${notifyPrefs.h24 ? "bg-[#FFB454]/20 text-[#FFB454] border-[#FFB454]/40" : "border-[var(--aif-line)] text-[var(--aif-text-dim)]"}`}
+                        >
+                          {notifyPrefs.h24 ? "✓" : ""} 24h
+                        </button>
+                        <button
+                          onClick={() => togglePref("h50")}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition border ${notifyPrefs.h50 ? "bg-[#FF6B7A]/20 text-[#FF6B7A] border-[#FF6B7A]/40" : "border-[var(--aif-line)] text-[var(--aif-text-dim)]"}`}
+                        >
+                          {notifyPrefs.h50 ? "✓" : ""} 50h
+                        </button>
+                      </div>
                     </div>
+                    {/* Notification list */}
                     <div className="max-h-72 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <div className="px-4 py-6 text-center text-[12px] text-[var(--aif-text-dim)]">
-                          {isIt ? "Nessuna notifica" : "No notifications"}
+                          {isIt ? "Nessuna notifica ancora" : "No notifications yet"}
                         </div>
                       ) : notifications.map(n => (
-                        <div key={n.id + n.time} className={`px-4 py-3 border-b border-[var(--aif-line)] ${n.read ? "opacity-60" : "bg-[#FFB454]/5"}`}>
+                        <div key={n.id + n.time} className={`px-4 py-3 border-b border-[var(--aif-line)] ${n.read ? "opacity-50" : n.type === "50h" ? "bg-[#FF6B7A]/5" : "bg-[#FFB454]/5"}`}>
                           <div className="flex items-start gap-2">
-                            <BellRing size={13} className="text-[#FFB454] mt-0.5 shrink-0"/>
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 mt-0.5 ${n.type === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]" : "bg-[#FFB454]/20 text-[#FFB454]"}`}>
+                              {n.type || "50h"}
+                            </span>
                             <div>
                               <p className="text-[12px] text-white leading-snug">{n.msg}</p>
                               <p className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">{n.time}</p>
