@@ -1192,7 +1192,8 @@ function RegisteredUsersTab({ isIt }) {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
-  const [editingUser, setEditingUser] = useState(null); // user to edit
+  const [editingUser, setEditingUser] = useState(null);
+  const [feeFilter, setFeeFilter] = useState("all"); // "all" | "paid" | "unpaid"
 
   const load = async () => {
     setLoading(true);
@@ -1210,20 +1211,27 @@ function RegisteredUsersTab({ isIt }) {
 
   // Client-side filter
   const filtered = users.filter(u => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (u.first_name || "").toLowerCase().includes(q) ||
-      (u.last_name || "").toLowerCase().includes(q) ||
-      (u.email || "").toLowerCase().includes(q) ||
-      (u.phone || "").toLowerCase().includes(q)
-    );
+    // Text search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchText = (
+        (u.first_name || "").toLowerCase().includes(q) ||
+        (u.last_name || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        (u.phone || "").toLowerCase().includes(q)
+      );
+      if (!matchText) return false;
+    }
+    // Fee filter
+    if (feeFilter === "paid" && !u.trace?.fee_paid) return false;
+    if (feeFilter === "unpaid" && u.trace?.fee_paid) return false;
+    return true;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  useEffect(() => { setPage(0); }, [search]);
+  useEffect(() => { setPage(0); }, [search, feeFilter]);
 
   const fmtDate = (iso) => {
     if (!iso) return "—";
@@ -1292,6 +1300,26 @@ function RegisteredUsersTab({ isIt }) {
               data-testid="users-search"
             />
           </div>
+          {/* Fee filter */}
+          <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
+            {[
+              { key: "all",    label: isIt ? "Tutti" : "All" },
+              { key: "paid",   label: isIt ? "Pagato ✓" : "Paid ✓" },
+              { key: "unpaid", label: isIt ? "Non pagato" : "Unpaid" },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFeeFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition whitespace-nowrap ${
+                  feeFilter === f.key
+                    ? f.key === "paid" ? "bg-[#4ADE80]/20 text-[#4ADE80]" : f.key === "unpaid" ? "bg-[#FFB454]/20 text-[#FFB454]" : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
+                    : "text-[var(--aif-text-dim)] hover:text-white"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <select
             className="aif-input !py-2 text-[13px] w-24"
             value={pageSize}
@@ -1308,7 +1336,7 @@ function RegisteredUsersTab({ isIt }) {
         <StatCard label={isIt ? "Totale utenti" : "Total users"} value={users.length} icon={Users}/>
         <StatCard label={isIt ? "Con tracciamento" : "With trace"} value={users.filter(u => u.trace).length} icon={BarChart3}/>
         <StatCard label={isIt ? "Email 24h inviate" : "24h emails sent"} value={users.filter(u => u.trace?.email_24h_sent).length} icon={Mail}/>
-        <StatCard label={isIt ? "Email 50h inviate" : "50h emails sent"} value={users.filter(u => u.trace?.email_50h_sent).length} icon={CheckCircle2}/>
+        <StatCard label={isIt ? "Pagato €100" : "Paid €100"} value={users.filter(u => u.trace?.fee_paid).length} icon={CheckCircle2}/>
       </div>
 
       {/* Table */}
