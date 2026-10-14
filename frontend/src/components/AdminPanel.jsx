@@ -392,7 +392,7 @@ function TracesTab({ isIt }) {
   const [sending24h, setSending24h] = useState(null);
   const [simulating, setSimulating] = useState(null);
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
 
   const load = async () => {
@@ -1040,7 +1040,7 @@ function RegisteredUsersTab({ isIt }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
   const [editingUser, setEditingUser] = useState(null); // user to edit
 
