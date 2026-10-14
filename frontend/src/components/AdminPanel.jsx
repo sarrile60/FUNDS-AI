@@ -514,6 +514,9 @@ function TracesTab({ isIt }) {
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState("all"); // "all" | "24h" | "50h"
+  const [dateFrom, setDateFrom] = useState("");  // YYYY-MM-DD
+  const [dateTo, setDateTo] = useState("");
+  const [destFilter, setDestFilter] = useState("all"); // "all" | dest name
 
   const load = async () => {
     try {
@@ -612,11 +615,27 @@ function TracesTab({ isIt }) {
       if (filter === "24h" && hours < 24) return false;
       if (filter === "50h" && hours < 50) return false;
     }
+    // Date range filter
+    if (dateFrom && t.created_at) {
+      if (new Date(t.created_at) < new Date(dateFrom)) return false;
+    }
+    if (dateTo && t.created_at) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59);
+      if (new Date(t.created_at) > to) return false;
+    }
+    // Destination filter
+    if (destFilter !== "all") {
+      if ((t.destination_name || "").toLowerCase() !== destFilter.toLowerCase()) return false;
+    }
     return true;
   });
 
-  // Reset page when search/filter changes
-  useEffect(() => { setPage(0); }, [search, filter]);
+  // Get unique destinations for filter dropdown
+  const destinations = [...new Set(traces.map(t => t.destination_name).filter(Boolean))].sort();
+
+  // Reset page when any filter changes
+  useEffect(() => { setPage(0); }, [search, filter, dateFrom, dateTo, destFilter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -643,38 +662,48 @@ function TracesTab({ isIt }) {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
             <input
               type="text"
-              className="aif-input pl-9 !py-2 text-[13px] w-96"
-              placeholder={isIt ? "Cerca nome, email, codice, destinazione…" : "Search name, email, code, destination…"}
+              className="aif-input pl-9 !py-2 text-[13px] w-72"
+              placeholder={isIt ? "Cerca nome, email, codice…" : "Search name, email, code…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               data-testid="traces-search"
             />
           </div>
           {/* Elapsed filters */}
-          <div className="flex items-center gap-1.5 border border-[var(--aif-line)] rounded-xl p-1">
+          <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
             {[
-              { key: "all",  label: isIt ? "Tutti" : "All" },
-              { key: "24h",  label: "24h+" },
-              { key: "50h",  label: "50h+" },
+              { key: "all", label: isIt ? "Tutti" : "All" },
+              { key: "24h", label: "24h+" },
+              { key: "50h", label: "50h+" },
             ].map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
+              <button key={f.key} onClick={() => setFilter(f.key)}
                 className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition ${
                   filter === f.key
                     ? f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]" : f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]" : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
                     : "text-[var(--aif-text-dim)] hover:text-white"
-                }`}
-              >
-                {f.label}
-              </button>
+                }`}>{f.label}</button>
             ))}
           </div>
+          {/* Destination filter */}
           <select
-            className="aif-input !py-2 text-[13px] w-28"
-            value={pageSize}
-            onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}
+            className="aif-input !py-2 text-[12px] w-40"
+            value={destFilter}
+            onChange={e => setDestFilter(e.target.value)}
           >
+            <option value="all">{isIt ? "Tutte le dest." : "All destinations"}</option>
+            {destinations.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          {/* Date range */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "Dal" : "From"}</span>
+            <input type="date" className="aif-input !py-1.5 text-[12px] w-36" value={dateFrom} onChange={e => setDateFrom(e.target.value)}/>
+            <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "al" : "to"}</span>
+            <input type="date" className="aif-input !py-1.5 text-[12px] w-36" value={dateTo} onChange={e => setDateTo(e.target.value)}/>
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="text-[11px] text-[#FF6B7A] hover:underline px-1">✕</button>
+            )}
+          </div>
+          <select className="aif-input !py-2 text-[13px] w-28" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}>
             {[20, 50, 100].map(s => <option key={s} value={s}>{s} / {isIt ? "pag." : "page"}</option>)}
           </select>
         </div>
@@ -1209,7 +1238,9 @@ function RegisteredUsersTab({ isIt }) {
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
   const [editingUser, setEditingUser] = useState(null);
-  const [feeFilter, setFeeFilter] = useState("all"); // "all" | "paid" | "unpaid"
+  const [feeFilter, setFeeFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -1241,13 +1272,22 @@ function RegisteredUsersTab({ isIt }) {
     // Fee filter
     if (feeFilter === "paid" && !u.trace?.fee_paid) return false;
     if (feeFilter === "unpaid" && u.trace?.fee_paid) return false;
+    // Date range filter (by registration date)
+    if (dateFrom && u.created_at) {
+      if (new Date(u.created_at) < new Date(dateFrom)) return false;
+    }
+    if (dateTo && u.created_at) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59);
+      if (new Date(u.created_at) > to) return false;
+    }
     return true;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  useEffect(() => { setPage(0); }, [search, feeFilter]);
+  useEffect(() => { setPage(0); }, [search, feeFilter, dateFrom, dateTo]);
 
   const fmtDate = (iso) => {
     if (!iso) return "—";
@@ -1335,6 +1375,16 @@ function RegisteredUsersTab({ isIt }) {
                 {f.label}
               </button>
             ))}
+          </div>
+          {/* Date range filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "Dal" : "From"}</span>
+            <input type="date" className="aif-input !py-1.5 text-[12px] w-36" value={dateFrom} onChange={e => setDateFrom(e.target.value)}/>
+            <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "al" : "to"}</span>
+            <input type="date" className="aif-input !py-1.5 text-[12px] w-36" value={dateTo} onChange={e => setDateTo(e.target.value)}/>
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="text-[11px] text-[#FF6B7A] hover:underline px-1">✕</button>
+            )}
           </div>
           <select
             className="aif-input !py-2 text-[13px] w-24"
