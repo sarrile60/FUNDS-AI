@@ -67,7 +67,7 @@ export default function AdminPanel() {
           </div>
         </header>
 
-        <main className="w-full px-4 lg:px-8 py-8 space-y-5">
+        <main className="max-w-screen-2xl mx-auto px-4 lg:px-8 py-8 space-y-5">
           {/* Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
             <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
@@ -513,8 +513,8 @@ function TracesTab({ isIt }) {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
             <input
               type="text"
-              className="aif-input pl-9 !py-2 text-[13px] w-64"
-              placeholder={isIt ? "Cerca nome, email, codice…" : "Search name, email, code…"}
+              className="aif-input pl-9 !py-2 text-[13px] w-96"
+              placeholder={isIt ? "Cerca nome, email, codice, destinazione…" : "Search name, email, code, destination…"}
               value={search}
               onChange={e => setSearch(e.target.value)}
               data-testid="traces-search"
