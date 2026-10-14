@@ -60,14 +60,14 @@ export default function AdminPanel() {
               >
                 <Globe size={13}/> {lang.toUpperCase()}
               </button>
-              <button onClick={() => { logout(); nav("/admin"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
+              <button onClick={() => { logout(); nav("/login"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
                 <LogOut size={14}/> <span className="hidden sm:inline">{isIt ? "Esci" : "Sign out"}</span>
               </button>
             </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-5 lg:px-8 py-8 space-y-5">
+        <main className="w-full px-4 lg:px-8 py-8 space-y-5">
           {/* Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
             <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
@@ -549,132 +549,135 @@ function TracesTab({ isIt }) {
         </div>
       ) : (
       <div className="aif-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="w-full">
+          <table className="w-full text-sm" style={{tableLayout:"fixed"}}>
+            <colgroup>
+              <col style={{width:"140px"}}/>
+              <col style={{width:"190px"}}/>
+              <col style={{width:"70px"}}/>
+              <col style={{width:"120px"}}/>
+              <col style={{width:"120px"}}/>
+              <col style={{width:"100px"}}/>
+              <col style={{width:"50px"}}/>
+              <col style={{width:"130px"}}/>
+              <col style={{width:"90px"}}/>
+              <col/>
+              <col style={{width:"44px"}}/>
+            </colgroup>
             <thead>
               <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
-                <th className="p-4 font-medium">{isIt ? "Nome" : "Name"}</th>
-                <th className="p-4 font-medium">Email</th>
-                <th className="p-4 font-medium">{isIt ? "Codice" : "Code"}</th>
-                <th className="p-4 font-medium">{isIt ? "Destinazione" : "Destination"}</th>
-                <th className="p-4 font-medium">{isIt ? "Importo" : "Amount"}</th>
-                <th className="p-4 font-medium">Elapsed</th>
-                <th className="p-4 font-medium">{isIt ? "Documenti" : "Docs"}</th>
-                <th className="p-4 font-medium">{isIt ? "Data" : "Date"}</th>
-                <th className="p-4 font-medium">{isIt ? "Stato" : "Status"}</th>
-                <th className="p-4 font-medium">{isIt ? "Azioni" : "Actions"}</th>
-                <th className="p-4 font-medium w-10"></th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Nome" : "Name"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">Email</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Cod." : "Code"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Dest." : "Dest."}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Importo" : "Amount"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">Elapsed</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Doc" : "Doc"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Data" : "Date"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Stato" : "Status"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Azioni" : "Actions"}</th>
+                <th className="px-3 py-3 font-medium text-[12px]"></th>
               </tr>
             </thead>
             <tbody>
               {paginated.map(trace => (
                 <React.Fragment key={trace.id}>
                   <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
-                    <td className="p-4">
-                      <div className="font-semibold text-white">{trace.first_name} {trace.last_name}</div>
-                      <div className="text-[11px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
+                    <td className="px-3 py-3">
+                      <div className="font-semibold text-white text-[12px] truncate">{trace.first_name} {trace.last_name}</div>
+                      <div className="text-[10px] text-[var(--aif-text-dim)] truncate">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
                     </td>
-                    <td className="p-4 text-[var(--aif-text-dim)]">{trace.email}</td>
-                    <td className="p-4">
-                      <span className="font-mono text-[#5FE3C9] text-[12px] font-bold">{trace.code_used || "—"}</span>
+                    <td className="px-3 py-3 text-[var(--aif-text-dim)] text-[11px] truncate">{trace.email}</td>
+                    <td className="px-3 py-3">
+                      <span className="font-mono text-[#5FE3C9] text-[11px] font-bold">{trace.code_used || "—"}</span>
                     </td>
-                    <td className="p-4">
-                      <span className="text-white text-[13px]">{trace.destination_name || "—"}</span>
+                    <td className="px-3 py-3">
+                      <span className="text-white text-[12px] truncate block">{trace.destination_name || "—"}</span>
                     </td>
-                    <td className="p-4">
-                      <span className="font-bold text-[#5FE3C9] whitespace-nowrap">{formatAmount(trace.located_amount)}</span>
+                    <td className="px-3 py-3">
+                      <span className="font-bold text-[#5FE3C9] text-[12px] whitespace-nowrap">{formatAmount(trace.located_amount)}</span>
                     </td>
-                    <td className="p-4">
+                    <td className="px-3 py-3">
                       {trace.created_at
                         ? <ElapsedCell createdAt={trace.created_at}/>
                         : <span className="text-[var(--aif-text-dim)]">—</span>
                       }
                     </td>
-                    <td className="p-4">
+                    <td className="px-3 py-3">
                       {trace.documents?.length > 0 ? (
                         <button 
                           onClick={() => setExpandedId(expandedId === trace.id ? null : trace.id)}
-                          className="inline-flex items-center gap-1 text-[#5FE3C9] hover:underline"
+                          className="inline-flex items-center gap-1 text-[#5FE3C9] hover:underline text-[11px]"
                         >
-                          <FileText size={14}/> {trace.documents.length}
+                          <FileText size={12}/> {trace.documents.length}
                         </button>
                       ) : (
                         <span className="text-[var(--aif-text-dim)]">—</span>
                       )}
                     </td>
-                    <td className="p-4 text-[var(--aif-text-dim)] text-[12px] whitespace-nowrap">
+                    <td className="px-3 py-3 text-[var(--aif-text-dim)] text-[11px] whitespace-nowrap">
                       {formatDate(trace.created_at)}
                     </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${
                         trace.status === "completed" 
                           ? "bg-[#4ADE80]/15 text-[#4ADE80]" 
                           : "bg-[#FFB454]/15 text-[#FFB454]"
                       }`}>
-                        {trace.status === "completed" ? (isIt ? "Completato" : "Completed") : (isIt ? "In corso" : "In progress")}
+                        {trace.status === "completed" ? (isIt ? "Fine" : "Done") : (isIt ? "Attivo" : "Active")}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <div className="space-y-2">
+                    <td className="px-3 py-3">
+                      <div className="space-y-1.5">
                         {/* ── Real actions ── */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* Send 24h email */}
+                        <div className="flex items-center gap-1 flex-nowrap">
                           <button
                             onClick={() => send24hEmail(trace.id)}
                             disabled={sending24h === trace.id}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/40 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                            title={isIt ? "Invia email 24h ora" : "Send 24h email now"}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
+                            title={isIt ? "Invia email 24h" : "Send 24h email"}
                             data-testid={`send-24h-btn-${trace.id}`}
                           >
                             {sending24h === trace.id ? "…" : "📧 24h"}
                           </button>
-                          {/* Fee Paid */}
                           {trace.fee_paid ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#4ADE80]/15 text-[#4ADE80]">
-                              <Check size={11}/> {isIt ? "Pagato" : "Paid"}
+                            <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
+                              <Check size={10}/> {isIt ? "Pagato" : "Paid"}
                             </span>
                           ) : (
                             <button
                               onClick={() => markFeePaid(trace.id)}
                               disabled={markingFee === trace.id}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#5FE3C9]/50 text-[#5FE3C9] text-[11px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                              title={isIt ? "Contrassegna quota come pagata e invia email" : "Mark fee paid & send email"}
+                              className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#5FE3C9]/50 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
                               data-testid={`fee-paid-btn-${trace.id}`}
                             >
-                              {markingFee === trace.id ? "…" : (isIt ? "Fee Pagata ✓" : "Fee Paid ✓")}
+                              {markingFee === trace.id ? "…" : "Fee ✓"}
                             </button>
                           )}
-                          {/* Delete — moved to its own column */}
                         </div>
-                        {/* ── Test simulations (separated) ── */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--aif-text-dim)] mr-0.5">Test:</span>
+                        {/* ── Test simulations ── */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] uppercase text-[var(--aif-text-dim)]">T:</span>
                           <button
                             onClick={() => simulateHours(trace.id, 25)}
                             disabled={simulating === trace.id}
-                            className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50"
-                            title={isIt ? "Simula 25h fa → attiva email 24h" : "Simulate 25h ago → triggers 24h email"}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50"
                             data-testid={`sim-25h-btn-${trace.id}`}
-                          >
-                            ⏩ 25h
-                          </button>
+                          >⏩25h</button>
                           <button
                             onClick={() => simulateHours(trace.id, 51)}
                             disabled={simulating === trace.id}
-                            className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50"
-                            title={isIt ? "Simula 51h fa → attiva email 50h" : "Simulate 51h ago → triggers 50h email"}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50"
                             data-testid={`sim-51h-btn-${trace.id}`}
-                          >
-                            ⏩ 51h
-                          </button>
+                          >⏩51h</button>
                         </div>
                       </div>
                     </td>
-                    {/* Delete — own column, far right */}
-                    <td className="p-4">
+                    {/* Delete — own column */}
+                    <td className="px-2 py-3">
                       <button
                         onClick={() => deleteTrace(trace.id)}
-                        className="p-2 rounded-lg text-[var(--aif-text-dim)] hover:text-[#FF6B7A] hover:bg-[#FF6B7A]/10 transition"
+                        className="p-1.5 rounded text-[var(--aif-text-dim)] hover:text-[#FF6B7A] hover:bg-[#FF6B7A]/10 transition"
                         title={isIt ? "Elimina tracciamento" : "Delete trace"}
                       >
                         <Trash2 size={15}/>

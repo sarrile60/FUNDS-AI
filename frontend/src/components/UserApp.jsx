@@ -52,6 +52,7 @@ export default function UserApp() {
 
   useEffect(() => {
     if (!user) nav("/register", { replace: true });
+    else if (user.role === "admin") nav("/admin/dashboard", { replace: true });
   }, [user, nav]);
 
   const loadTrace = useCallback(async () => {

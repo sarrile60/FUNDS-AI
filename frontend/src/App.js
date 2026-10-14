@@ -9,7 +9,6 @@ import UserApp from "./components/UserApp";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import VerifyEmailPage from "./components/VerifyEmailPage";
-import AdminLogin from "./components/AdminLogin";
 import AdminPanel from "./components/AdminPanel";
 import LegalPage from "./components/LegalPage";
 import AboutPage from "./components/AboutPage";
@@ -20,7 +19,7 @@ import CookieBanner from "./components/CookieBanner";
 
 function RequireAdmin({ children }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/admin" replace/>;
+  if (!user) return <Navigate to="/login" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
   return children;
 }
@@ -38,7 +37,8 @@ function App() {
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/start" element={<UserApp/>}/>
             <Route path="/trace" element={<UserApp/>}/>
-            <Route path="/admin" element={<AdminLogin/>}/>
+            {/* /admin now redirects to /login — login page handles both admin & user */}
+            <Route path="/admin" element={<Navigate to="/login" replace/>}/>
             <Route path="/admin/dashboard" element={<RequireAdmin><AdminPanel/></RequireAdmin>}/>
             <Route path="/about"   element={<AboutPage/>}/>
             <Route path="/contact" element={<ContactPage/>}/>
