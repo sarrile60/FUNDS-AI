@@ -1185,8 +1185,13 @@ function RegisteredUsersTab({ isIt }) {
                   <tr key={u.id} className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
                     <td className="p-3">
                       <div className="font-semibold text-white">{u.first_name} {u.last_name}</div>
-                      <div className="mt-0.5">
+                      <div className="mt-0.5 flex items-center gap-1.5">
                         <LangBadge lang={u.lang}/>
+                        {u.type === "guest" && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FFB454]/15 text-[#FFB454] border border-[#FFB454]/30 uppercase tracking-wide">
+                            Guest
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3">
@@ -1244,14 +1249,18 @@ function RegisteredUsersTab({ isIt }) {
                       <EmailBadge sent={u.trace?.email_50h_sent} isIt={isIt}/>
                     </td>
                     <td className="p-3">
-                      <button
-                        onClick={() => setEditingUser(u)}
-                        className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
-                        title={isIt ? "Modifica" : "Edit"}
-                        data-testid={`edit-user-btn-${u.id}`}
-                      >
-                        <Edit2 size={15}/>
-                      </button>
+                      {u.type !== "guest" ? (
+                        <button
+                          onClick={() => setEditingUser(u)}
+                          className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                          title={isIt ? "Modifica" : "Edit"}
+                          data-testid={`edit-user-btn-${u.id}`}
+                        >
+                          <Edit2 size={15}/>
+                        </button>
+                      ) : (
+                        <span className="text-[var(--aif-text-dim)] text-[10px]">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1432,9 +1432,20 @@ async def admin_simulate_hours(trace_id: str, body: SimulateHoursIn, _=Depends(r
 
 @api.get("/admin/registered-users")
 async def admin_list_registered_users(_=Depends(require_admin)):
-    """Return all self-registered users with trace status. Includes password for admin visibility."""
-    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)  # include password
-    # Enrich with trace info
+    """
+    Return all users with trace status.
+    Includes:
+    1. Self-registered users (with or without a trace)
+    2. Orphan traces — traces started without a registered account (user_id is null)
+       These are shown as ghost entries so admin can see every client.
+    """
+    # Fetch all registered users
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
+
+    # Build a set of user_ids that have a linked account
+    user_ids_with_account = {u["id"] for u in users}
+
+    # Enrich registered users with their trace
     result = []
     for u in users:
         trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
@@ -1453,6 +1464,40 @@ async def admin_list_registered_users(_=Depends(require_admin)):
         else:
             u_out["trace"] = None
         result.append(u_out)
+
+    # Find orphan traces (no linked account) and add them as ghost entries
+    orphan_traces = await db.traces.find(
+        {"$or": [{"user_id": None}, {"user_id": {"$exists": False}}]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(5000)
+
+    for trace in orphan_traces:
+        ghost = {
+            "id": f"ghost_{trace.get('id', '')}",
+            "first_name": trace.get("first_name", ""),
+            "last_name": trace.get("last_name", ""),
+            "email": trace.get("email", ""),
+            "password": "—",
+            "date_of_birth": None,
+            "lang": trace.get("user_lang", "it"),
+            "type": "guest",   # no registered account
+            "role": "user",
+            "created_at": trace.get("created_at"),
+            "trace": {
+                "id": trace.get("id"),
+                "status": trace.get("status"),
+                "created_at": trace.get("created_at"),
+                "located_amount": trace.get("located_amount"),
+                "email_24h_sent": trace.get("email_24h_sent", False),
+                "email_50h_sent": trace.get("email_50h_sent", False),
+                "fee_paid": trace.get("fee_paid", False),
+                "destination_name": trace.get("destination_name"),
+            }
+        }
+        result.append(ghost)
+
+    # Sort all by created_at desc
+    result.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     return result
 
 

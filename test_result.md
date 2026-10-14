@@ -321,6 +321,18 @@ backend:
         agent: "testing"
         comment: "✅ Verified that updating located_amount via PUT /api/admin/registered-users/{user_id} correctly updates the linked trace document. Retrieved trace via GET /api/admin/traces and confirmed located_amount=250000.0 matches the value set in edit request. Cross-document update working correctly."
 
+  - task: "Orphan Traces Bug Fix - Guest Entries in Admin Users Tab"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BUG FIX VERIFIED. Comprehensive testing completed for orphan traces visibility in admin Users tab. TEST RESULTS: (1) ✅ Created orphan trace without authentication (user_id=null) - trace ID 3ed40e0a-8b98-4d0d-a09b-0aa07f9c99be with email orphan.test20364@example.com. (2) ✅ Verified orphan trace exists in GET /api/admin/traces with user_id=null. (3) ✅ Verified guest entry (type='guest') appears in GET /api/admin/registered-users endpoint. (4) ✅ Guest entry contains all required fields: first_name='Orphan', last_name='Test20364', email='orphan.test20364@example.com', and trace object with trace_id, status, and located_amount. ORIGINAL BUG: Traces started without a registered account (user_id=null, orphan traces) were NOT showing in the admin Users tab. Only registered users appeared. FIX CONFIRMED: The /api/admin/registered-users endpoint (lines 1468-1497 in server.py) now correctly queries for orphan traces using {'$or': [{'user_id': None}, {'user_id': {'$exists': False}}]} and returns them as guest entries with type='guest'. Orphan traces are now visible in the admin Users tab. Bug fix working correctly."
+
 frontend:
   - task: "Frontend Testing"
     implemented: "NA"
@@ -366,13 +378,13 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "2.4"
-  test_sequence: 6
+  version: "2.5"
+  test_sequence: 7
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Admin Panel - Users Tab: Copy Icons on Email and Password - Completed"
+    - "Orphan Traces Bug Fix - Completed"
   stuck_tasks:
     - "Admin Panel — Document Preview & Correct-Filename Download"
   test_all: false
@@ -411,6 +423,8 @@ agent_communication:
     message: "✅ LANGUAGE BADGES AND TOGGLE BUTTON BUG FIXES VERIFIED - BOTH FIXES PASS. Tested admin panel at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin with credentials admin@traccia-fondi.com / admin123. FIX 1 (Language badges in Users table): ✅ PASS - All 5 user rows show clean language badges with 'IT' or 'EN' text. Row 1: 'IT' badge (teal/green), Row 2: 'IT', Row 3: 'EN' (blue), Row 4: 'IT', Row 5: 'IT'. NO broken emoji characters detected - no 'IT IT' or 'GB EN' raw text. Badges properly styled with colored backgrounds and borders. FIX 2 (Language toggle button in admin header): ✅ PASS - Button found in top-right header with Globe icon and language text. Initially shows 'IT', switches to 'EN' when clicked. Tab labels change correctly: 'Tracciamenti' → 'Traces', 'Codici Accesso' → 'Access Codes', 'Utenti' → 'Users'. Both fixes working correctly as specified in review request. Screenshots captured showing clean badge display and functional language toggle."
   - agent: "testing"
     message: "✅ ADMIN PANEL 4 NEW FEATURES TESTING COMPLETED - ALL 4 TESTS PASSED. Tested admin panel at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin with credentials admin@traccia-fondi.com / admin123. RESULTS: TEST 1 (Users tab - Telefono removed, Password added): ✅ PASS - Table headers show NO Telefono/Phone column. ✅ PASS - Password column IS present (3rd column). ✅ PASS - Password cells show PLAINTEXT bcrypt hash values (e.g., '$2b$12$u39JR00e9oIw8eVKf5TatuF…'), NOT dots. TEST 2 (Users tab - Edit modal plaintext password): ✅ PASS - Password field type is 'text' (visible, not masked). ✅ PASS - Password field shows actual bcrypt hash (60 chars). ✅ PASS - Label says 'Password (visibile — testo in chiaro)' / 'Password (visible — plaintext)'. TEST 3 (Traces tab - Elapsed column): ✅ PASS - 'Elapsed' column present in table header (6th column). ✅ PASS - Elapsed cells show time values (e.g., '53m 57s', '1h 2m'). ✅ PASS - Elapsed cells use teal color (rgb(95, 227, 201)) and monospace font. TEST 4 (Traces tab - Action buttons): ✅ PASS - '📧 24h' button present (found 2 for 2 traces). ✅ PASS - '⏩ 25h' button present (found 2 for 2 traces). ✅ PASS - '⏩ 51h' button present (found 2 for 2 traces). All 4 features working correctly as specified in review request. Screenshots captured for all tests. No critical issues found."
+  - agent: "testing"
+    message: "✅ ORPHAN TRACES BUG FIX VERIFIED - GUEST ENTRIES NOW SHOWING IN ADMIN USERS TAB. Comprehensive testing completed at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/api. BUG DESCRIPTION: Traces started without a registered account (user_id=null, orphan traces) were NOT showing in the admin Users tab. Only registered users appeared. TEST RESULTS: (1) ✅ Admin login successful with admin@traccia-fondi.com / admin123. (2) ✅ Created orphan trace without authentication - trace ID 3ed40e0a-8b98-4d0d-a09b-0aa07f9c99be with email orphan.test20364@example.com, first_name 'Orphan', last_name 'Test20364'. (3) ✅ Verified orphan trace exists in GET /api/admin/traces with user_id=null. (4) ✅ Verified guest entry (type='guest') appears in GET /api/admin/registered-users endpoint with 1 guest entry found. (5) ✅ Guest entry contains all required fields: type='guest', first_name='Orphan', last_name='Test20364', email='orphan.test20364@example.com', and trace object with trace_id, status='started', and located_amount=281753.04. CONCLUSION: Bug fix is working correctly. The /api/admin/registered-users endpoint now correctly returns orphan traces as guest entries (type='guest'), making them visible in the admin Users tab. Implementation in server.py lines 1468-1497 queries for traces with user_id=null or user_id not existing, and creates ghost entries with type='guest'. All test criteria passed. No critical issues found."
   - agent: "testing"
     message: "✅ PASSWORD COLUMN BUG FIX VERIFIED - PLAINTEXT PASSWORDS NOW SHOWING (NOT BCRYPT HASHES). Comprehensive testing completed on Users tab at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin. TEST RESULTS: (1) ✅ Logged in successfully with admin@traccia-fondi.com / admin123. (2) ✅ Navigated to Utenti/Users tab. (3) ✅ Password column header found at index 2 (3rd column). (4) ✅ ALL 5 USER ROWS show PLAINTEXT password 'ChangeMe123' - NO bcrypt hashes detected. (5) ✅ NONE of the password cells start with '$2b$' or show hash format. (6) ✅ All passwords show readable plaintext values. ORIGINAL BUG: Password column was showing bcrypt hashes like '$2b$12$u39JR00e9oIw8eVKf5TatuF…' instead of plaintext passwords. FIX CONFIRMED: Password column now correctly displays plaintext passwords ('ChangeMe123') for all users. Screenshot evidence shows Password column (3rd column) with yellow/orange text displaying 'ChangeMe123' for all 5 users. Test passed with 100% success rate (5/5 users showing plaintext). BUG IS FIXED. NOTE: Previous test on line 411 was INCORRECT - it marked the task as 'working: true' while reporting bcrypt hashes were showing, which was the bug itself. This new test correctly verifies that plaintext passwords are now displayed."
 
