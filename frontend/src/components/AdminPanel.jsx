@@ -549,50 +549,37 @@ function TracesTab({ isIt }) {
         </div>
       ) : (
       <div className="aif-card overflow-hidden">
-        <div className="w-full">
-          <table className="w-full text-sm" style={{tableLayout:"fixed"}}>
-            <colgroup>
-              <col style={{width:"140px"}}/>
-              <col style={{width:"190px"}}/>
-              <col style={{width:"70px"}}/>
-              <col style={{width:"120px"}}/>
-              <col style={{width:"120px"}}/>
-              <col style={{width:"100px"}}/>
-              <col style={{width:"50px"}}/>
-              <col style={{width:"130px"}}/>
-              <col style={{width:"90px"}}/>
-              <col/>
-              <col style={{width:"44px"}}/>
-            </colgroup>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" style={{minWidth:"1100px"}}>
             <thead>
               <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Nome" : "Name"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">Email</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Cod." : "Code"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Dest." : "Dest."}</th>
-                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Importo" : "Amount"}</th>
+                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap">{isIt ? "Importo" : "Amount"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">Elapsed</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Doc" : "Doc"}</th>
-                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Data" : "Date"}</th>
+                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap">{isIt ? "Data" : "Date"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Stato" : "Status"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Azioni" : "Actions"}</th>
-                <th className="px-3 py-3 font-medium text-[12px]"></th>
+                <th className="px-3 py-3 font-medium text-[12px] w-10"></th>
               </tr>
             </thead>
             <tbody>
               {paginated.map(trace => (
                 <React.Fragment key={trace.id}>
                   <tr className="border-b border-[var(--aif-line)] hover:bg-white/[0.02]">
-                    <td className="px-3 py-3">
-                      <div className="font-semibold text-white text-[12px] truncate">{trace.first_name} {trace.last_name}</div>
-                      <div className="text-[10px] text-[var(--aif-text-dim)] truncate">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
+                    <td className="px-3 py-3 min-w-[140px]">
+                      <div className="font-semibold text-white text-[12px]">{trace.first_name} {trace.last_name}</div>
+                      <div className="text-[10px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
                     </td>
-                    <td className="px-3 py-3 text-[var(--aif-text-dim)] text-[11px] truncate">{trace.email}</td>
+                    <td className="px-3 py-3 text-[var(--aif-text-dim)] text-[11px] min-w-[180px]">{trace.email}</td>
                     <td className="px-3 py-3">
                       <span className="font-mono text-[#5FE3C9] text-[11px] font-bold">{trace.code_used || "—"}</span>
                     </td>
-                    <td className="px-3 py-3">
-                      <span className="text-white text-[12px] truncate block">{trace.destination_name || "—"}</span>
+                    <td className="px-3 py-3 min-w-[100px]">
+                      <span className="text-white text-[12px]">{trace.destination_name || "—"}</span>
                     </td>
                     <td className="px-3 py-3">
                       <span className="font-bold text-[#5FE3C9] text-[12px] whitespace-nowrap">{formatAmount(trace.located_amount)}</span>
@@ -1102,6 +1089,23 @@ function RegisteredUsersTab({ isIt }) {
     setEditingUser(null);
   };
 
+  const deleteUser = async (u) => {
+    const label = `${u.first_name} ${u.last_name} (${u.email})`;
+    if (!window.confirm(isIt ? `Eliminare l'utente ${label}?` : `Delete user ${label}?`)) return;
+    try {
+      if (u.type === "guest") {
+        // Guest = orphan trace, delete the trace
+        await axios.delete(`${API}/admin/traces/${u.trace?.id}`, { headers: getAuthHeader() });
+      } else {
+        await axios.delete(`${API}/admin/users/${u.id}`, { headers: getAuthHeader() });
+      }
+      setUsers(prev => prev.filter(x => x.id !== u.id));
+      toast.success(isIt ? "Utente eliminato" : "User deleted");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore eliminazione" : "Delete failed"));
+    }
+  };
+
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
   }
@@ -1250,16 +1254,34 @@ function RegisteredUsersTab({ isIt }) {
                     </td>
                     <td className="p-3">
                       {u.type !== "guest" ? (
-                        <button
-                          onClick={() => setEditingUser(u)}
-                          className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
-                          title={isIt ? "Modifica" : "Edit"}
-                          data-testid={`edit-user-btn-${u.id}`}
-                        >
-                          <Edit2 size={15}/>
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            className="p-2 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                            title={isIt ? "Modifica" : "Edit"}
+                            data-testid={`edit-user-btn-${u.id}`}
+                          >
+                            <Edit2 size={15}/>
+                          </button>
+                          <button
+                            onClick={() => deleteUser(u)}
+                            className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
+                            title={isIt ? "Elimina utente" : "Delete user"}
+                          >
+                            <Trash2 size={15}/>
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-[var(--aif-text-dim)] text-[10px]">—</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[var(--aif-text-dim)] text-[10px] px-2">—</span>
+                          <button
+                            onClick={() => deleteUser(u)}
+                            className="p-2 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition"
+                            title={isIt ? "Elimina tracciamento guest" : "Delete guest trace"}
+                          >
+                            <Trash2 size={15}/>
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

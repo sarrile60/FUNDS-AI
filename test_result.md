@@ -762,3 +762,31 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ USER DASHBOARD CASE STATUS AND PROCEDURE DETAILS TESTS COMPLETED - ALL 2 TESTS PASSED. Tested Traccia Fondi user dashboard at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/app with credentials mario.rossi.test@example.com / ChangeMe123. User has active trace with email_50h_sent=true (Phase 3 - Funds Located). RESULTS: TEST 1 - PASS ✅: Case status card shows Phase 3 card (teal color, data-testid='case-status-located') with title 'I tuoi fondi sono stati localizzati', located amount € 250.000,00, and 'Pay €100' button. NOT showing generic 'Investigation in progress' card. TEST 2 - PASS ✅: Procedure Details section shows Status field as 'Fondi localizzati' (Phase 3), NOT generic 'Analisi in corso'. Implementation correctly uses email_24h_sent, email_50h_sent, and fee_paid flags to determine and display appropriate phase content in both the status card and procedure details. All requirements met."
+
+  - task: "Admin Panel - Traces Tab: Full Name and Email Display Without Truncation"
+    implemented: true
+    working: true
+    file: "frontend/src/components/AdminPanel.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TEST PASSED - Full names and emails display without truncation in Traces tab. Comprehensive testing completed at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin/dashboard. TEST RESULTS: Tested 3 trace rows in the Tracciamenti/Traces tab. (1) ✅ Row 1 - Name: 'Orphan Test20364' displayed in full, NO ellipsis, NO truncate class. Email: 'orphan.test20364@example.com' displayed in full, NO ellipsis, NO truncate class. (2) ✅ Row 2 - Name: 'Laura Bianchi' displayed in full, NO ellipsis, NO truncate class. Email: 'laura.bianchi.test1791561124@example.com' displayed in full, NO ellipsis, NO truncate class. (3) ✅ Row 3 - Name: 'Mario Rossi' displayed in full, NO ellipsis, NO truncate class. Email: 'mario.rossi.test@example.com' displayed in full, NO ellipsis, NO truncate class. IMPLEMENTATION VERIFIED: AdminPanel.jsx lines 573-577 show name column (line 574) displays '{trace.first_name} {trace.last_name}' with min-w-[140px] and NO truncate class. Email column (line 577) displays '{trace.email}' with min-w-[180px] and NO truncate class. Screenshot evidence (test1_traces_table.png) confirms full text visibility. All 3 rows tested show complete names and email addresses without any truncation. Test PASS."
+
+  - task: "Admin Panel - Users Tab: Delete Button Present"
+    implemented: true
+    working: true
+    file: "frontend/src/components/AdminPanel.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TEST PASSED - Delete button (trash icon) is present for all users in Users tab. Comprehensive testing completed at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin/dashboard. TEST RESULTS: Tested 3 user rows in the Utenti/Users tab. (1) ✅ Row 1 (Orphan Test20364): Delete button FOUND and visible. (2) ✅ Row 2 (Test User): Delete button FOUND and visible. (3) ✅ Row 3 (qweqwe qweeqw): Delete button FOUND and visible. All 3 tested rows show the red trash icon (Trash2) in the last column. IMPLEMENTATION VERIFIED: AdminPanel.jsx lines 1266-1272 show delete button for regular users with Edit2 and Trash2 icons. Lines 1277-1283 show delete button for guest users with Trash2 icon only. Both implementations include the delete button with proper hover states (hover:text-[#FF6B7A]). Screenshot evidence (test2_users_table.png and test2_users_table_hover.png) confirms delete button presence in action column. All tested users have visible delete buttons. Test PASS."
+
+  - agent: "testing"
+    message: "✅ USER REVIEW REQUEST TESTING COMPLETED - BOTH TESTS PASS. Tested admin panel at https://ba6608eb-6e97-459e-a2cf-7ed6913f7c68.preview.emergentagent.com/admin/dashboard with credentials admin@traccia-fondi.com / admin123. TEST 1 (Traces tab - Full name and email without truncation): ✅ PASS - Tested 3 trace rows. All names displayed in full: 'Orphan Test20364', 'Laura Bianchi', 'Mario Rossi'. All emails displayed in full: 'orphan.test20364@example.com', 'laura.bianchi.test1791561124@example.com', 'mario.rossi.test@example.com'. NO ellipsis (...) detected. NO truncate CSS classes applied. Name column has min-w-[140px], email column has min-w-[180px], both without truncation. TEST 2 (Users tab - Delete button present): ✅ PASS - Tested 3 user rows. All rows show delete button (red trash icon) in last column. Delete buttons are visible and properly styled with hover effects. Both regular users and guest users have delete buttons present. Screenshots captured: test1_traces_table.png (Traces tab), test2_users_table.png (Users tab), test2_users_table_hover.png (Users tab with hover). Both tests meet success criteria specified in review request. No issues found."
+
