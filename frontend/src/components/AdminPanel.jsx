@@ -1,5 +1,5 @@
 // AdminPanel — admin dashboard with Access Codes management and Traces auditing
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -7,7 +7,7 @@ import {
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
   Calendar, DollarSign, Link2, Key, Copy, Eye, Image as ImageIcon, FileType,
   Loader2, ZoomIn, ZoomOut, AlertCircle, Users, Search, ChevronLeft, ChevronRight,
-  Phone, CheckCircle2, Clock, Mail, Globe
+  Phone, CheckCircle2, Clock, Mail, Globe, Bell, BellRing, Filter
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -37,7 +37,56 @@ export default function AdminPanel() {
   const isIt = lang === "it";
   const [tab, setTab] = useState("traces");
 
-  if (!user) return <Navigate to="/admin" replace/>;
+  // ── Notification bell state ──
+  const [notifications, setNotifications] = useState([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const notifiedRef = useRef(new Set()); // trace IDs already notified for 50h
+
+  // Poll traces every 60s for newly crossed 50h threshold
+  const checkFor50h = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("aif_token");
+      const { data: traces } = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/api/admin/traces`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const now = Date.now();
+      traces.forEach(trace => {
+        if (notifiedRef.current.has(trace.id)) return;
+        if (trace.email_50h_sent) { notifiedRef.current.add(trace.id); return; }
+        const created = new Date(trace.created_at).getTime();
+        const elapsed = (now - created) / 1000 / 3600; // hours
+        if (elapsed >= 50) {
+          notifiedRef.current.add(trace.id);
+          const label = `${trace.first_name} ${trace.last_name}`;
+          const msg = isIt
+            ? `${label} ha superato le 50 ore — pronto per l'email fondi localizzati`
+            : `${label} has passed 50 hours — ready for funds located email`;
+          setNotifications(prev => [{ id: trace.id, msg, time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
+          setUnread(u => u + 1);
+          // Browser notification (if permission granted)
+          if (Notification.permission === "granted") {
+            new Notification("Traccia Fondi Admin", { body: msg, icon: "/favicon.ico" });
+          }
+        }
+      });
+    } catch (e) { /* silent fail — polling */ }
+  }, [isIt]);
+
+  useEffect(() => {
+    // Request browser notification permission once
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    checkFor50h();
+    const id = setInterval(checkFor50h, 60000);
+    return () => clearInterval(id);
+  }, [checkFor50h]);
+
+  const markAllRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); setUnread(0); setBellOpen(false); };
+
+  if (!user) return <Navigate to="/login" replace/>;
   if (user.role !== "admin") return <Navigate to="/app" replace/>;
 
   return (
@@ -56,10 +105,49 @@ export default function AdminPanel() {
                 onClick={() => setLang(lang === "it" ? "en" : "it")}
                 className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--aif-text-dim)] hover:text-white transition px-2.5 py-1.5 rounded-lg border border-[var(--aif-line)]"
                 data-testid="adm-lang-toggle"
-                title={isIt ? "Cambia lingua" : "Switch language"}
               >
                 <Globe size={13}/> {lang.toUpperCase()}
               </button>
+
+              {/* Notification bell */}
+              <div className="relative">
+                <button
+                  onClick={() => { setBellOpen(!bellOpen); if (!bellOpen) { setUnread(0); setNotifications(prev => prev.map(n=>({...n,read:true}))); } }}
+                  className="relative p-2 text-[var(--aif-text-dim)] hover:text-white transition"
+                  title={isIt ? "Notifiche" : "Notifications"}
+                >
+                  {unread > 0 ? <BellRing size={18} className="text-[#FFB454]"/> : <Bell size={18}/>}
+                  {unread > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#FFB454] text-[#06122A] text-[9px] font-black flex items-center justify-center">{unread > 9 ? "9+" : unread}</span>
+                  )}
+                </button>
+                {bellOpen && (
+                  <div className="absolute right-0 top-10 w-80 aif-card !rounded-xl shadow-2xl z-50 border border-[var(--aif-line)] overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aif-line)]">
+                      <span className="text-[13px] font-semibold text-white">{isIt ? "Notifiche 50h" : "50h Notifications"}</span>
+                      <button onClick={markAllRead} className="text-[11px] text-[#5FE3C9] hover:underline">{isIt ? "Segna tutte lette" : "Mark all read"}</button>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-[12px] text-[var(--aif-text-dim)]">
+                          {isIt ? "Nessuna notifica" : "No notifications"}
+                        </div>
+                      ) : notifications.map(n => (
+                        <div key={n.id + n.time} className={`px-4 py-3 border-b border-[var(--aif-line)] ${n.read ? "opacity-60" : "bg-[#FFB454]/5"}`}>
+                          <div className="flex items-start gap-2">
+                            <BellRing size={13} className="text-[#FFB454] mt-0.5 shrink-0"/>
+                            <div>
+                              <p className="text-[12px] text-white leading-snug">{n.msg}</p>
+                              <p className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">{n.time}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button onClick={() => { logout(); nav("/login"); }} className="aif-btn-ghost !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" data-testid="adm-logout">
                 <LogOut size={14}/> <span className="hidden sm:inline">{isIt ? "Esci" : "Sign out"}</span>
               </button>
@@ -394,6 +482,7 @@ function TracesTab({ isIt }) {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(0);
+  const [filter, setFilter] = useState("all"); // "all" | "24h" | "50h"
 
   const load = async () => {
     try {
@@ -474,22 +563,32 @@ function TracesTab({ isIt }) {
 
   // Client-side filter
   const filtered = traces.filter(t => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (t.first_name || "").toLowerCase().includes(q) ||
-      (t.last_name || "").toLowerCase().includes(q) ||
-      (t.email || "").toLowerCase().includes(q) ||
-      (t.code_used || "").toLowerCase().includes(q) ||
-      (t.destination_name || "").toLowerCase().includes(q)
-    );
+    // Text search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchText = (
+        (t.first_name || "").toLowerCase().includes(q) ||
+        (t.last_name || "").toLowerCase().includes(q) ||
+        (t.email || "").toLowerCase().includes(q) ||
+        (t.code_used || "").toLowerCase().includes(q) ||
+        (t.destination_name || "").toLowerCase().includes(q)
+      );
+      if (!matchText) return false;
+    }
+    // Elapsed filter
+    if (filter !== "all" && t.created_at) {
+      const hours = (Date.now() - new Date(t.created_at).getTime()) / 1000 / 3600;
+      if (filter === "24h" && hours < 24) return false;
+      if (filter === "50h" && hours < 50) return false;
+    }
+    return true;
   });
+
+  // Reset page when search/filter changes
+  useEffect(() => { setPage(0); }, [search, filter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
-
-  // Reset page when search changes
-  useEffect(() => { setPage(0); }, [search]);
 
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
@@ -506,9 +605,9 @@ function TracesTab({ isIt }) {
 
   return (
     <div className="space-y-4">
-      {/* Header with search + page size */}
+      {/* Header with search + filters + page size */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
             <input
@@ -519,6 +618,26 @@ function TracesTab({ isIt }) {
               onChange={e => setSearch(e.target.value)}
               data-testid="traces-search"
             />
+          </div>
+          {/* Elapsed filters */}
+          <div className="flex items-center gap-1.5 border border-[var(--aif-line)] rounded-xl p-1">
+            {[
+              { key: "all",  label: isIt ? "Tutti" : "All" },
+              { key: "24h",  label: "24h+" },
+              { key: "50h",  label: "50h+" },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition ${
+                  filter === f.key
+                    ? f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]" : f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]" : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
+                    : "text-[var(--aif-text-dim)] hover:text-white"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
           <select
             className="aif-input !py-2 text-[13px] w-28"
