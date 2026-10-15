@@ -594,6 +594,26 @@ function ElapsedCell({ createdAt, email50hSent, feePaid }) {
   );
 }
 
+// ============================================================
+//   SORT HEADER — reusable clickable column header with ASC/DESC arrows
+// ============================================================
+function SortHeader({ label, col, sortCol, sortDir, onSort }) {
+  const active = sortCol === col;
+  return (
+    <button
+      onClick={() => onSort(col)}
+      className={`flex items-center gap-1 group whitespace-nowrap transition ${active ? "text-white" : "text-[var(--aif-text-dim)] hover:text-white"}`}
+    >
+      {label}
+      <span className="flex flex-col leading-none ml-0.5">
+        <span className={`text-[8px] leading-none ${active && sortDir === "asc" ? "text-[#5FE3C9]" : "opacity-30"}`}>▲</span>
+        <span className={`text-[8px] leading-none ${active && sortDir === "desc" ? "text-[#5FE3C9]" : "opacity-30"}`}>▼</span>
+      </span>
+    </button>
+  );
+}
+
+
 function TracesTab({ isIt }) {
   const [traces, setTraces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -609,6 +629,8 @@ function TracesTab({ isIt }) {
   const [dateFrom, setDateFrom] = useState("");  // YYYY-MM-DD
   const [dateTo, setDateTo] = useState("");
   const [destFilter, setDestFilter] = useState("all"); // "all" | dest name
+  const [sortCol, setSortCol] = useState("created_at");
+  const [sortDir, setSortDir] = useState("desc");
 
   const load = async () => {
     try {
@@ -727,10 +749,29 @@ function TracesTab({ isIt }) {
   const destinations = [...new Set(traces.map(t => t.destination_name).filter(Boolean))].sort();
 
   // Reset page when any filter changes
-  useEffect(() => { setPage(0); }, [search, filter, dateFrom, dateTo, destFilter]);
+  useEffect(() => { setPage(0); }, [search, filter, dateFrom, dateTo, destFilter, sortCol, sortDir]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  // Sort helpers
+  const toggleSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    let av, bv;
+    if (sortCol === "name") { av = `${a.first_name} ${a.last_name}`.toLowerCase(); bv = `${b.first_name} ${b.last_name}`.toLowerCase(); }
+    else if (sortCol === "email") { av = (a.email || "").toLowerCase(); bv = (b.email || "").toLowerCase(); }
+    else if (sortCol === "amount") { av = a.located_amount || 0; bv = b.located_amount || 0; }
+    else if (sortCol === "created_at") { av = new Date(a.created_at || 0).getTime(); bv = new Date(b.created_at || 0).getTime(); }
+    else if (sortCol === "elapsed") { av = new Date(a.created_at || 0).getTime(); bv = new Date(b.created_at || 0).getTime(); }
+    else { av = a[sortCol] || ""; bv = b[sortCol] || ""; }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
@@ -800,7 +841,7 @@ function TracesTab({ isIt }) {
           </select>
         </div>
         <div className="text-[12px] text-[var(--aif-text-dim)]">
-          {filtered.length} {isIt ? "risultati" : "results"}
+          {sorted.length} {isIt ? "risultati" : "results"}
         </div>
       </div>
 
@@ -813,7 +854,7 @@ function TracesTab({ isIt }) {
       </div>
 
       {/* Traces list */}
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="aif-card p-8 text-center">
           <Search size={36} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
           <p className="text-[var(--aif-text-dim)]">{search ? (isIt ? "Nessun risultato." : "No results found.") : (isIt ? "Nessun tracciamento ancora." : "No traces yet.")}</p>
@@ -824,14 +865,14 @@ function TracesTab({ isIt }) {
           <table className="w-full text-sm" style={{minWidth:"1100px"}}>
             <thead>
               <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
-                <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Nome" : "Name"}</th>
-                <th className="px-3 py-3 font-medium text-[12px]">Email</th>
+                <th className="px-3 py-3 font-medium text-[12px]"><SortHeader label={isIt ? "Nome" : "Name"} col="name" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                <th className="px-3 py-3 font-medium text-[12px]"><SortHeader label="Email" col="email" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Cod." : "Code"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Dest." : "Dest."}</th>
-                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap">{isIt ? "Importo" : "Amount"}</th>
-                <th className="px-3 py-3 font-medium text-[12px]">Elapsed</th>
+                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap"><SortHeader label={isIt ? "Importo" : "Amount"} col="amount" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                <th className="px-3 py-3 font-medium text-[12px]"><SortHeader label="Elapsed" col="elapsed" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Doc" : "Doc"}</th>
-                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap">{isIt ? "Data" : "Date"}</th>
+                <th className="px-3 py-3 font-medium text-[12px] whitespace-nowrap"><SortHeader label={isIt ? "Data" : "Date"} col="created_at" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Stato" : "Status"}</th>
                 <th className="px-3 py-3 font-medium text-[12px]">{isIt ? "Azioni" : "Actions"}</th>
                 <th className="px-3 py-3 font-medium text-[12px] w-10"></th>
@@ -1007,8 +1048,8 @@ function TracesTab({ isIt }) {
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--aif-line)]">
             <div className="text-[12px] text-[var(--aif-text-dim)]">
               {isIt
-                ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} di ${filtered.length}`
-                : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} of ${filtered.length}`}
+                ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, sorted.length)} di ${sorted.length}`
+                : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, sorted.length)} of ${sorted.length}`}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -1331,11 +1372,13 @@ function RegisteredUsersTab({ isIt }) {
   const [page, setPage] = useState(0);
   const [editingUser, setEditingUser] = useState(null);
   const [feeFilter, setFeeFilter] = useState("all");
-  const [uniswapFilter, setUniswapFilter] = useState("all"); // "all" | "registered" | "not_registered"
+  const [uniswapFilter, setUniswapFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [sortCol, setSortCol] = useState("created_at");
+  const [sortDir, setSortDir] = useState("desc");
   // Uniswap modal state
-  const [uniswapTarget, setUniswapTarget] = useState(null); // user row to create account for
+  const [uniswapTarget, setUniswapTarget] = useState(null);
   const [agents, setAgents] = useState([]);
 
   const load = async () => {
@@ -1397,10 +1440,29 @@ function RegisteredUsersTab({ isIt }) {
     return true;
   });
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  // Sort helpers
+  const toggleSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  };
 
-  useEffect(() => { setPage(0); }, [search, feeFilter, uniswapFilter, dateFrom, dateTo]);
+  const sorted = [...filtered].sort((a, b) => {
+    let av, bv;
+    if (sortCol === "name") { av = `${a.first_name} ${a.last_name}`.toLowerCase(); bv = `${b.first_name} ${b.last_name}`.toLowerCase(); }
+    else if (sortCol === "email") { av = (a.email || "").toLowerCase(); bv = (b.email || "").toLowerCase(); }
+    else if (sortCol === "dob") { av = a.date_of_birth || ""; bv = b.date_of_birth || ""; }
+    else if (sortCol === "created_at") { av = new Date(a.created_at || 0).getTime(); bv = new Date(b.created_at || 0).getTime(); }
+    else if (sortCol === "amount") { av = a.trace?.located_amount || 0; bv = b.trace?.located_amount || 0; }
+    else { av = a[sortCol] || ""; bv = b[sortCol] || ""; }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
+
+  useEffect(() => { setPage(0); }, [search, feeFilter, uniswapFilter, dateFrom, dateTo, sortCol, sortDir]);
 
   const fmtDate = (iso) => {
     if (!iso) return "—";
@@ -1556,7 +1618,7 @@ function RegisteredUsersTab({ isIt }) {
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="aif-card p-8 text-center">
           <Users size={40} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
           <p className="text-[var(--aif-text-dim)]">{search ? (isIt ? "Nessun risultato." : "No results found.") : (isIt ? "Nessun utente registrato." : "No registered users yet.")}</p>
@@ -1567,12 +1629,12 @@ function RegisteredUsersTab({ isIt }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
-                  <th className="p-3 font-medium">{isIt ? "Nome" : "Name"}</th>
-                  <th className="p-3 font-medium">Email</th>
+                  <th className="p-3 font-medium"><SortHeader label={isIt ? "Nome" : "Name"} col="name" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium"><SortHeader label="Email" col="email" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Password" : "Password"}</th>
-                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Nascita" : "DOB"}</th>
-                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Registrato" : "Registered"}</th>
-                  <th className="p-3 font-medium">{isIt ? "Tracciamento" : "Trace"}</th>
+                  <th className="p-3 font-medium hidden lg:table-cell"><SortHeader label={isIt ? "Nascita" : "DOB"} col="dob" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium hidden lg:table-cell"><SortHeader label={isIt ? "Registrato" : "Registered"} col="created_at" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium"><SortHeader label={isIt ? "Importo" : "Amount"} col="amount" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
                   <th className="p-3 font-medium text-center">Uniswap V4</th>
@@ -1741,8 +1803,8 @@ function RegisteredUsersTab({ isIt }) {
             <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--aif-line)]">
               <div className="text-[12px] text-[var(--aif-text-dim)]">
                 {isIt
-                  ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} di ${filtered.length}`
-                  : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filtered.length)} of ${filtered.length}`}
+                  ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, sorted.length)} di ${sorted.length}`
+                  : `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, sorted.length)} of ${sorted.length}`}
               </div>
               <div className="flex items-center gap-1">
                 <button
