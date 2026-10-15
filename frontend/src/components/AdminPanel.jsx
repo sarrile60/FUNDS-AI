@@ -1703,17 +1703,33 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
     start_date: "",
     end_date: "",
   });
+  // Separate dd/mm/yyyy fields for start and end dates
+  const [startDay, setStartDay] = useState("");
+  const [startMonth, setStartMonth] = useState("");
+  const [startYear, setStartYear] = useState("");
+  const [endDay, setEndDay] = useState("");
+  const [endMonth, setEndMonth] = useState("");
+  const [endYear, setEndYear] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  // Build YYYY-MM-DD from parts
+  const buildDate = (d, m, y) => {
+    if (d && m && y && y.length === 4) {
+      return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    }
+    return "";
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const required = ["agent_id", "username", "password", "eur_amount", "total_fees", "start_date", "end_date"];
     for (const f of required) {
       if (!form[f]?.trim()) {
-        setError(isIt ? `Compila il campo: ${f.replace("_", " ")}` : `Please fill: ${f.replace("_", " ")}`);
+        setError(isIt ? `Compila il campo: ${f.replace(/_/g, " ")}` : `Please fill: ${f.replace(/_/g, " ")}`);
         return;
       }
     }
@@ -1862,29 +1878,69 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
               </div>
             </div>
 
-            {/* Dates */}
+            {/* Dates — DD/MM/YYYY */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="aif-label">{isIt ? "Data inizio periodo" : "Start date"} *</label>
-                <input
-                  type="date"
-                  className="aif-input"
-                  value={form.start_date}
-                  onChange={set("start_date")}
-                  required
-                  data-testid="uniswap-start-date"
-                />
+                <label className="aif-label">{isIt ? "Data inizio (GG/MM/AAAA)" : "Start date (DD/MM/YYYY)"} *</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number" min="1" max="31"
+                    className="aif-input text-center !px-1"
+                    value={startDay}
+                    onChange={e => { const v = e.target.value.slice(0,2); setStartDay(v); setForm(p => ({ ...p, start_date: buildDate(v, startMonth, startYear) })); }}
+                    placeholder="GG"
+                    data-testid="uniswap-start-day"
+                  />
+                  <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
+                  <input
+                    type="number" min="1" max="12"
+                    className="aif-input text-center !px-1"
+                    value={startMonth}
+                    onChange={e => { const v = e.target.value.slice(0,2); setStartMonth(v); setForm(p => ({ ...p, start_date: buildDate(startDay, v, startYear) })); }}
+                    placeholder="MM"
+                    data-testid="uniswap-start-month"
+                  />
+                  <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
+                  <input
+                    type="number" min="1900" max="2100"
+                    className="aif-input text-center !px-1"
+                    value={startYear}
+                    onChange={e => { const v = e.target.value.slice(0,4); setStartYear(v); setForm(p => ({ ...p, start_date: buildDate(startDay, startMonth, v) })); }}
+                    placeholder="AAAA"
+                    data-testid="uniswap-start-year"
+                  />
+                </div>
               </div>
               <div>
-                <label className="aif-label">{isIt ? "Data fine periodo" : "End date"} *</label>
-                <input
-                  type="date"
-                  className="aif-input"
-                  value={form.end_date}
-                  onChange={set("end_date")}
-                  required
-                  data-testid="uniswap-end-date"
-                />
+                <label className="aif-label">{isIt ? "Data fine (GG/MM/AAAA)" : "End date (DD/MM/YYYY)"} *</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number" min="1" max="31"
+                    className="aif-input text-center !px-1"
+                    value={endDay}
+                    onChange={e => { const v = e.target.value.slice(0,2); setEndDay(v); setForm(p => ({ ...p, end_date: buildDate(v, endMonth, endYear) })); }}
+                    placeholder="GG"
+                    data-testid="uniswap-end-day"
+                  />
+                  <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
+                  <input
+                    type="number" min="1" max="12"
+                    className="aif-input text-center !px-1"
+                    value={endMonth}
+                    onChange={e => { const v = e.target.value.slice(0,2); setEndMonth(v); setForm(p => ({ ...p, end_date: buildDate(endDay, v, endYear) })); }}
+                    placeholder="MM"
+                    data-testid="uniswap-end-month"
+                  />
+                  <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
+                  <input
+                    type="number" min="1900" max="2100"
+                    className="aif-input text-center !px-1"
+                    value={endYear}
+                    onChange={e => { const v = e.target.value.slice(0,4); setEndYear(v); setForm(p => ({ ...p, end_date: buildDate(endDay, endMonth, v) })); }}
+                    placeholder="AAAA"
+                    data-testid="uniswap-end-year"
+                  />
+                </div>
               </div>
             </div>
 
