@@ -813,6 +813,7 @@ class GlobalSettingsUpdate(BaseModel):
     access_code: Optional[str] = None
     destination_name: Optional[str] = None
     destination_url: Optional[str] = None
+    agent_portal_slug: Optional[str] = None  # configurable agent portal URL slug
 
 
 # --- Agent schemas ---
@@ -1869,6 +1870,14 @@ async def admin_list_contact_messages(_=Depends(require_admin)):
 # ============================================================
 #   Agent: Auth + Search
 # ============================================================
+
+@api.get("/agent/portal-slug")
+async def get_agent_portal_slug():
+    """Public endpoint — returns the configured agent portal URL slug."""
+    settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
+    slug = (settings or {}).get("agent_portal_slug", "createaccount")
+    return {"slug": slug or "createaccount"}
+
 
 @api.post("/agent/login")
 async def agent_login(body: AgentLoginIn, request: Request):

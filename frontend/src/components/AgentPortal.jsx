@@ -1,14 +1,14 @@
 // AgentPortal — private portal for Traccia Fondi agents
-// Route: /createaccount
+// Route: configured via admin (default: /createaccount)
 // Flow: PIN gate (8971, once per browser) → Agent login → Client search
 
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import {
-  Search, LogOut, User, Clock, Mail, CheckCircle2, XCircle,
+  Search, LogOut, User, Mail, CheckCircle2, XCircle,
   DollarSign, Shield, Eye, EyeOff, Loader2, AlertTriangle,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Globe
 } from "lucide-react";
 import Logo from "./Logo";
 
@@ -16,6 +16,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const PIN_KEY = "agent_pin_verified";
 const TOKEN_KEY = "agent_token";
+const LANG_KEY = "agent_lang";
 const CORRECT_PIN = "8971";
 
 const TIER_LABEL = {
@@ -247,7 +248,7 @@ function StatusBadge({ ok, label }) {
   );
 }
 
-function ClientCard({ result }) {
+function ClientCard({ result, isIt }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -274,9 +275,9 @@ function ClientCard({ result }) {
 
         {/* Quick status row */}
         <div className="flex items-center gap-2 flex-wrap mt-3">
-          <StatusBadge ok={result.email_24h_sent} label="Email 24h"/>
-          <StatusBadge ok={result.email_50h_sent} label="Email 50h"/>
-          <StatusBadge ok={result.fee_paid} label="€100 Pagato"/>
+          <StatusBadge ok={result.email_24h_sent} label={isIt ? "Email 24h" : "24h Email"}/>
+          <StatusBadge ok={result.email_50h_sent} label={isIt ? "Email 50h" : "50h Email"}/>
+          <StatusBadge ok={result.fee_paid} label={isIt ? "€100 Pagato" : "€100 Paid"}/>
           {result.has_account && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#6E8BFF]/15 text-[#6E8BFF]">
               <Shield size={10}/> Account
@@ -291,22 +292,32 @@ function ClientCard({ result }) {
 
           {/* Trace timing */}
           <div>
-            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">Tracciamento</p>
+            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">
+              {isIt ? "Tracciamento" : "Trace"}
+            </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="aif-card !rounded-lg !p-3">
-                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">Avviato il</p>
+                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">
+                  {isIt ? "Avviato il" : "Started on"}
+                </p>
                 <p className="text-white text-sm">{fmtDate(result.trace_created_at)}</p>
               </div>
               <div className="aif-card !rounded-lg !p-3">
-                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">Tempo trascorso</p>
+                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">
+                  {isIt ? "Tempo trascorso" : "Elapsed time"}
+                </p>
                 <ElapsedTimer startIso={result.trace_created_at}/>
               </div>
               <div className="aif-card !rounded-lg !p-3">
-                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">Fascia importo</p>
+                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">
+                  {isIt ? "Fascia importo" : "Amount tier"}
+                </p>
                 <p className="text-white text-sm">{TIER_LABEL[result.amount_tier] || result.amount_tier || "—"}</p>
               </div>
               <div className="aif-card !rounded-lg !p-3">
-                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">Importo localizzato</p>
+                <p className="text-[10px] text-[var(--aif-text-dim)] uppercase tracking-wide mb-1">
+                  {isIt ? "Importo localizzato" : "Located amount"}
+                </p>
                 <p className="text-[#5FE3C9] text-sm font-mono font-semibold">{fmtAmount(result.located_amount)}</p>
               </div>
             </div>
@@ -314,31 +325,33 @@ function ClientCard({ result }) {
 
           {/* Email timeline */}
           <div>
-            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">Email inviate</p>
+            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">
+              {isIt ? "Email inviate" : "Sent emails"}
+            </p>
             <div className="space-y-2">
               <div className="flex items-center justify-between aif-card !rounded-lg !p-3">
                 <div className="flex items-center gap-2">
                   <Mail size={13} className={result.email_24h_sent ? "text-[#4ADE80]" : "text-[var(--aif-text-dim)]"}/>
-                  <span className="text-sm text-white">Email 24 ore</span>
+                  <span className="text-sm text-white">{isIt ? "Email 24 ore" : "24-hour email"}</span>
                 </div>
                 <div className="text-right">
                   {result.email_24h_sent ? (
                     <span className="text-[#4ADE80] text-xs">✓ {fmtDate(result.email_24h_sent_at)}</span>
                   ) : (
-                    <span className="text-[#FF6B7A] text-xs">Non inviata</span>
+                    <span className="text-[#FF6B7A] text-xs">{isIt ? "Non inviata" : "Not sent"}</span>
                   )}
                 </div>
               </div>
               <div className="flex items-center justify-between aif-card !rounded-lg !p-3">
                 <div className="flex items-center gap-2">
                   <Mail size={13} className={result.email_50h_sent ? "text-[#4ADE80]" : "text-[var(--aif-text-dim)]"}/>
-                  <span className="text-sm text-white">Email 50 ore (fondi localizzati)</span>
+                  <span className="text-sm text-white">{isIt ? "Email 50 ore (fondi localizzati)" : "50-hour email (funds located)"}</span>
                 </div>
                 <div className="text-right">
                   {result.email_50h_sent ? (
                     <span className="text-[#4ADE80] text-xs">✓ {fmtDate(result.email_50h_sent_at)}</span>
                   ) : (
-                    <span className="text-[#FF6B7A] text-xs">Non inviata</span>
+                    <span className="text-[#FF6B7A] text-xs">{isIt ? "Non inviata" : "Not sent"}</span>
                   )}
                 </div>
               </div>
@@ -347,17 +360,19 @@ function ClientCard({ result }) {
 
           {/* Payment */}
           <div>
-            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">Quota €100</p>
+            <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">
+              {isIt ? "Quota €100" : "€100 Fee"}
+            </p>
             <div className="aif-card !rounded-lg !p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <DollarSign size={13} className={result.fee_paid ? "text-[#4ADE80]" : "text-[var(--aif-text-dim)]"}/>
-                <span className="text-sm text-white">Pagamento €100</span>
+                <span className="text-sm text-white">{isIt ? "Pagamento €100" : "€100 payment"}</span>
               </div>
               <div>
                 {result.fee_paid ? (
-                  <span className="text-[#4ADE80] text-xs">✓ Pagato — {fmtDate(result.fee_paid_at)}</span>
+                  <span className="text-[#4ADE80] text-xs">✓ {isIt ? "Pagato" : "Paid"} — {fmtDate(result.fee_paid_at)}</span>
                 ) : (
-                  <span className="text-[#FFB454] text-xs">In attesa</span>
+                  <span className="text-[#FFB454] text-xs">{isIt ? "In attesa" : "Pending"}</span>
                 )}
               </div>
             </div>
@@ -366,7 +381,9 @@ function ClientCard({ result }) {
           {/* Destination */}
           {result.destination_name && (
             <div>
-              <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">Destinazione fondi</p>
+              <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">
+                {isIt ? "Destinazione fondi" : "Fund destination"}
+              </p>
               <div className="aif-card !rounded-lg !p-3">
                 <p className="text-white text-sm font-semibold">{result.destination_name}</p>
               </div>
@@ -376,14 +393,16 @@ function ClientCard({ result }) {
           {/* Account info */}
           {result.date_of_birth && (
             <div>
-              <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">Dati account</p>
+              <p className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider mb-2">
+                {isIt ? "Dati account" : "Account info"}
+              </p>
               <div className="aif-card !rounded-lg !p-3 grid sm:grid-cols-2 gap-2">
                 <div>
-                  <p className="text-[10px] text-[var(--aif-text-dim)]">Data di nascita</p>
+                  <p className="text-[10px] text-[var(--aif-text-dim)]">{isIt ? "Data di nascita" : "Date of birth"}</p>
                   <p className="text-white text-sm">{result.date_of_birth}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-[var(--aif-text-dim)]">Lingua</p>
+                  <p className="text-[10px] text-[var(--aif-text-dim)]">{isIt ? "Lingua" : "Language"}</p>
                   <p className="text-white text-sm">{result.lang === "it" ? "🇮🇹 Italiano" : "🇬🇧 English"}</p>
                 </div>
               </div>
@@ -403,7 +422,8 @@ function ClientCard({ result }) {
 // ============================================================
 //   Agent Dashboard (search)
 // ============================================================
-function AgentDashboard({ agent, onLogout }) {
+function AgentDashboard({ agent, onLogout, lang, setLang }) {
+  const isIt = lang === "it";
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -423,10 +443,10 @@ function AgentDashboard({ agent, onLogout }) {
       setSearched(true);
     } catch (err) {
       if (err?.response?.status === 401 || err?.response?.status === 403) {
-        toast.error("Sessione scaduta. Effettua di nuovo l'accesso.");
+        toast.error(isIt ? "Sessione scaduta. Effettua di nuovo l'accesso." : "Session expired. Please log in again.");
         onLogout();
       } else {
-        toast.error("Errore nella ricerca.");
+        toast.error(isIt ? "Errore nella ricerca." : "Search error.");
       }
     } finally {
       setLoading(false);
@@ -451,6 +471,12 @@ function AgentDashboard({ agent, onLogout }) {
     doSearch(query);
   };
 
+  const toggleLang = () => {
+    const next = isIt ? "en" : "it";
+    setLang(next);
+    localStorage.setItem(LANG_KEY, next);
+  };
+
   return (
     <div className="aif-app-bg min-h-screen relative">
       <div className="aif-grid-overlay absolute inset-0 pointer-events-none"/>
@@ -460,18 +486,29 @@ function AgentDashboard({ agent, onLogout }) {
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Logo/>
-              <span className="aif-chip text-[10px] hidden sm:inline-flex">Portale Agenti</span>
+              <span className="aif-chip text-[10px] hidden sm:inline-flex">
+                {isIt ? "Portale Agenti" : "Agent Portal"}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[var(--aif-text-dim)] text-xs hidden sm:block">
-                <User size={12} className="inline mr-1"/>{agent?.username}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Language toggle */}
+              <button
+                onClick={toggleLang}
+                className="flex items-center gap-1.5 text-xs text-[var(--aif-text-dim)] hover:text-white transition px-2.5 py-1.5 rounded-lg border border-[var(--aif-line)]"
+                title={isIt ? "Switch to English" : "Passa all'italiano"}
+                data-testid="agent-lang-toggle"
+              >
+                <Globe size={12}/> {lang.toUpperCase()}
+              </button>
+              <span className="text-[var(--aif-text-dim)] text-xs hidden sm:flex items-center gap-1">
+                <User size={12}/>{agent?.username}
               </span>
               <button
                 onClick={onLogout}
                 className="aif-btn-ghost !py-1.5 !px-3 !text-sm inline-flex items-center gap-1.5"
                 data-testid="agent-logout"
               >
-                <LogOut size={13}/> <span className="hidden sm:inline">Esci</span>
+                <LogOut size={13}/> <span className="hidden sm:inline">{isIt ? "Esci" : "Sign out"}</span>
               </button>
             </div>
           </div>
@@ -480,9 +517,13 @@ function AgentDashboard({ agent, onLogout }) {
         <main className="max-w-4xl mx-auto px-4 py-8">
           {/* Search */}
           <div className="mb-8">
-            <h1 className="text-xl font-bold text-white mb-1">Ricerca Cliente</h1>
+            <h1 className="text-xl font-bold text-white mb-1">
+              {isIt ? "Ricerca Cliente" : "Client Search"}
+            </h1>
             <p className="text-[var(--aif-text-dim)] text-sm mb-5">
-              Cerca per nome + cognome oppure per indirizzo email
+              {isIt
+                ? "Cerca per nome + cognome oppure per indirizzo email"
+                : "Search by first + last name or email address"}
             </p>
 
             <form onSubmit={handleSearch} className="flex gap-2">
@@ -493,7 +534,7 @@ function AgentDashboard({ agent, onLogout }) {
                   className="aif-input pl-9 pr-4"
                   value={query}
                   onChange={handleQueryChange}
-                  placeholder="Mario Rossi oppure mario@email.com"
+                  placeholder={isIt ? "Mario Rossi oppure mario@email.com" : "Mario Rossi or mario@email.com"}
                   autoFocus
                   data-testid="agent-search-input"
                 />
@@ -505,7 +546,7 @@ function AgentDashboard({ agent, onLogout }) {
                 data-testid="agent-search-btn"
               >
                 {loading ? <Loader2 size={14} className="animate-spin"/> : <Search size={14}/>}
-                Cerca
+                {isIt ? "Cerca" : "Search"}
               </button>
             </form>
           </div>
@@ -514,7 +555,7 @@ function AgentDashboard({ agent, onLogout }) {
           {loading && (
             <div className="flex items-center justify-center py-16 gap-3 text-[var(--aif-text-dim)]">
               <Loader2 size={20} className="animate-spin"/>
-              <span>Ricerca in corso...</span>
+              <span>{isIt ? "Ricerca in corso..." : "Searching..."}</span>
             </div>
           )}
 
@@ -523,19 +564,25 @@ function AgentDashboard({ agent, onLogout }) {
               {results.length === 0 ? (
                 <div className="text-center py-16">
                   <Search size={32} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
-                  <p className="text-white font-medium">Nessun risultato trovato</p>
+                  <p className="text-white font-medium">
+                    {isIt ? "Nessun risultato trovato" : "No results found"}
+                  </p>
                   <p className="text-[var(--aif-text-dim)] text-sm mt-1">
-                    Prova con un nome diverso o con l&apos;email completa
+                    {isIt
+                      ? "Prova con un nome diverso o con l'email completa"
+                      : "Try a different name or the full email address"}
                   </p>
                 </div>
               ) : (
                 <div>
                   <p className="text-[var(--aif-text-dim)] text-sm mb-4">
-                    {results.length} risultat{results.length === 1 ? "o" : "i"} trovati
+                    {isIt
+                      ? `${results.length} risultat${results.length === 1 ? "o" : "i"} trovati`
+                      : `${results.length} result${results.length === 1 ? "" : "s"} found`}
                   </p>
                   <div className="space-y-3">
                     {results.map(r => (
-                      <ClientCard key={r.trace_id} result={r}/>
+                      <ClientCard key={r.trace_id} result={r} isIt={isIt}/>
                     ))}
                   </div>
                 </div>
@@ -548,9 +595,13 @@ function AgentDashboard({ agent, onLogout }) {
               <div className="w-14 h-14 rounded-full bg-[#5FE3C9]/10 flex items-center justify-center mx-auto mb-4">
                 <Search size={24} className="text-[#5FE3C9]"/>
               </div>
-              <p className="text-white font-medium text-base">Inizia la ricerca</p>
+              <p className="text-white font-medium text-base">
+                {isIt ? "Inizia la ricerca" : "Start searching"}
+              </p>
               <p className="text-[var(--aif-text-dim)] text-sm mt-1 max-w-xs mx-auto">
-                Inserisci il nome, cognome o email del cliente nel campo di ricerca
+                {isIt
+                  ? "Inserisci il nome, cognome o email del cliente nel campo di ricerca"
+                  : "Enter the client's name or email in the search field above"}
               </p>
             </div>
           )}
@@ -569,6 +620,9 @@ export default function AgentPortal() {
   );
   const [agent, setAgent] = useState(null);
   const [tokenChecked, setTokenChecked] = useState(false);
+  const [lang, setLang] = useState(
+    () => localStorage.getItem(LANG_KEY) || "it"
+  );
 
   // On mount, check if we have a valid stored token
   useEffect(() => {
@@ -579,8 +633,8 @@ export default function AgentPortal() {
     axios.get(`${API}/agent/search`, {
       params: { q: "__ping__" },
       headers: { Authorization: `Bearer ${token}` },
-    }).then(res => {
-      // Token is valid — try to parse agent from token payload
+    }).then(() => {
+      // Token is valid — try to parse agent username from token payload
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setAgent({ id: payload.sub, username: "agente" });
@@ -612,5 +666,5 @@ export default function AgentPortal() {
     return <LoginForm onLoggedIn={(agentData) => setAgent(agentData)}/>;
   }
 
-  return <AgentDashboard agent={agent} onLogout={handleLogout}/>;
+  return <AgentDashboard agent={agent} onLogout={handleLogout} lang={lang} setLang={setLang}/>;
 }

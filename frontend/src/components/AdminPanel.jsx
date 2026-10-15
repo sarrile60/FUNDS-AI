@@ -1768,6 +1768,21 @@ function AgentsTab({ isIt }) {
   const [passwords, setPasswords] = useState({});  // { agentId: plaintext }
   const [saving, setSaving] = useState(false);
 
+  // Portal URL config
+  const [portalSlug, setPortalSlug] = useState("");
+  const [slugInput, setSlugInput] = useState("");
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [slugEditing, setSlugEditing] = useState(false);
+
+  const loadSlug = async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
+      const s = data.agent_portal_slug || "createaccount";
+      setPortalSlug(s);
+      setSlugInput(s);
+    } catch { /* silent */ }
+  };
+
   const load = async () => {
     try {
       const { data } = await axios.get(`${API}/admin/agents`, { headers: getAuthHeader() });
@@ -1779,7 +1794,27 @@ function AgentsTab({ isIt }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadSlug(); }, []);
+
+  const saveSlug = async () => {
+    const cleaned = slugInput.trim().replace(/^\//, "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!cleaned) {
+      toast.error(isIt ? "Slug non valido" : "Invalid slug");
+      return;
+    }
+    setSlugSaving(true);
+    try {
+      await axios.put(`${API}/admin/settings`, { agent_portal_slug: cleaned }, { headers: getAuthHeader() });
+      setPortalSlug(cleaned);
+      setSlugInput(cleaned);
+      setSlugEditing(false);
+      toast.success(isIt ? `URL portale aggiornato: /${cleaned}` : `Portal URL updated: /${cleaned}`);
+    } catch {
+      toast.error(isIt ? "Errore aggiornamento URL" : "Failed to update URL");
+    } finally {
+      setSlugSaving(false);
+    }
+  };
 
   const revealPassword = async (agentId) => {
     if (passwords[agentId]) {
@@ -1829,6 +1864,75 @@ function AgentsTab({ isIt }) {
 
   return (
     <div className="space-y-4">
+
+      {/* Portal URL Config */}
+      <div className="aif-card !rounded-xl !p-5 border border-[#6E8BFF]/30 bg-[#6E8BFF]/5">
+        <div className="flex items-center gap-2 mb-3">
+          <Globe size={15} className="text-[#6E8BFF]"/>
+          <h3 className="text-white font-semibold text-sm">
+            {isIt ? "URL Portale Agenti" : "Agent Portal URL"}
+          </h3>
+        </div>
+        {slugEditing ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-0 flex-1 min-w-0">
+              <span className="text-[var(--aif-text-dim)] text-sm px-3 py-2 border border-r-0 border-[var(--aif-line)] rounded-l-lg bg-[rgba(6,11,24,0.5)] whitespace-nowrap">
+                traccia-fondi.com/
+              </span>
+              <input
+                type="text"
+                className="aif-input !rounded-l-none flex-1"
+                value={slugInput}
+                onChange={e => setSlugInput(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+                placeholder="createaccount"
+                data-testid="portal-slug-input"
+                autoFocus
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setSlugInput(portalSlug); setSlugEditing(false); }}
+                className="aif-btn-ghost !py-2 !px-3 !text-sm"
+              >
+                <X size={13}/>
+              </button>
+              <button
+                onClick={saveSlug}
+                disabled={slugSaving}
+                className="aif-btn-primary !py-2 !px-4 !text-sm inline-flex items-center gap-1.5"
+                data-testid="portal-slug-save"
+              >
+                {slugSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
+                {isIt ? "Salva" : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-[var(--aif-text-dim)] text-xs mb-1">
+                {isIt ? "URL attuale del portale agenti:" : "Current agent portal URL:"}
+              </p>
+              <p className="text-white font-mono text-sm">
+                traccia-fondi.com/<span className="text-[#5FE3C9]">{portalSlug || "createaccount"}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setSlugEditing(true)}
+              className="aif-btn-ghost !py-1.5 !px-3 !text-sm inline-flex items-center gap-1.5"
+              data-testid="portal-slug-edit"
+            >
+              <Edit2 size={13}/> {isIt ? "Modifica URL" : "Change URL"}
+            </button>
+          </div>
+        )}
+        <p className="text-[10px] text-[var(--aif-text-dim)] mt-2">
+          {isIt
+            ? "Solo lettere, numeri, - e _ sono consentiti. Il cambio URL invalida subito il vecchio link."
+            : "Only letters, numbers, - and _ allowed. Changing URL immediately invalidates the old link."}
+        </p>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1837,8 +1941,8 @@ function AgentsTab({ isIt }) {
           </h2>
           <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
             {isIt
-              ? "Gli agenti possono accedere al portale /createaccount per cercare i clienti (sola lettura)"
-              : "Agents can access /createaccount portal to search clients (read-only)"}
+              ? `Gli agenti possono accedere al portale /${portalSlug || "createaccount"} per cercare i clienti (sola lettura)`
+              : `Agents can access /${portalSlug || "createaccount"} portal to search clients (read-only)`}
           </p>
         </div>
         <button
@@ -1983,7 +2087,7 @@ function AgentsTab({ isIt }) {
               {isIt ? "Come funziona il portale agenti" : "How the agent portal works"}
             </p>
             <ul className="text-[var(--aif-text-dim)] text-xs space-y-1">
-              <li>• {isIt ? "URL portale: /createaccount" : "Portal URL: /createaccount"}</li>
+              <li>• {isIt ? `URL portale: /${portalSlug || "createaccount"}` : `Portal URL: /${portalSlug || "createaccount"}`}</li>
               <li>• {isIt ? "PIN di accesso (richiesto una volta per browser): condividilo con i tuoi agenti" : "Access PIN (required once per browser): share it with your agents"}</li>
               <li>• {isIt ? "Gli agenti vedono informazioni sui clienti in sola lettura" : "Agents see client information in read-only mode"}</li>
               <li>• {isIt ? "Nessun agente può modificare dati — solo l'admin può farlo" : "No agent can modify data — only the admin can do that"}</li>
