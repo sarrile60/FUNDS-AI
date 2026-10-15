@@ -539,23 +539,49 @@ function fmtStopwatch(seconds) {
 }
 
 // Live elapsed stopwatch for admin — ticks every second
-// Uses increment-based approach to avoid server/client clock skew issues
-function ElapsedCell({ createdAt }) {
+// Stops when 50h email has been sent (procedure complete)
+function ElapsedCell({ createdAt, email50hSent, feePaid }) {
   const [elapsed, setElapsed] = useState(() => {
     const ms = Date.now() - new Date(createdAt).getTime();
     return ms > 0 ? Math.floor(ms / 1000) : 0;
   });
   useEffect(() => {
-    // Recalculate once from createdAt to sync
+    // If 50h email already sent, no need to tick
+    if (email50hSent) return;
     const ms = Date.now() - new Date(createdAt).getTime();
     const initial = ms > 0 ? Math.floor(ms / 1000) : 0;
     setElapsed(initial);
-    // Then just increment by 1 every second — immune to clock skew
     const id = setInterval(() => {
       setElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(id);
-  }, [createdAt]);
+  }, [createdAt, email50hSent]);
+
+  // Once 50h email sent → show static "Done" state, stop timer
+  if (email50hSent) {
+    // Still show how long it took (frozen)
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+    const frozen = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    return (
+      <div>
+        <span className="font-mono text-[12px] font-bold tabular-nums text-[var(--aif-text-dim)]">{frozen}</span>
+        <div className="mt-0.5">
+          {feePaid ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30">
+              ✓ Pagato
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#6E8BFF]/15 text-[#6E8BFF] border border-[#6E8BFF]/30">
+              ✓ Done
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const h = Math.floor(elapsed / 3600);
   const color = h >= 50 ? "#FF6B7A" : h >= 24 ? "#FFB454" : "#5FE3C9";
   return (
@@ -847,7 +873,7 @@ function TracesTab({ isIt }) {
                     </td>
                     <td className="px-3 py-3">
                       {trace.created_at
-                        ? <ElapsedCell createdAt={trace.created_at}/>
+                        ? <ElapsedCell createdAt={trace.created_at} email50hSent={trace.email_50h_sent} feePaid={trace.fee_paid}/>
                         : <span className="text-[var(--aif-text-dim)]">—</span>
                       }
                     </td>
