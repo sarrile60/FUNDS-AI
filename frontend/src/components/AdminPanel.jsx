@@ -1453,6 +1453,11 @@ function RegisteredUsersTab({ isIt }) {
     else if (sortCol === "dob") { av = a.date_of_birth || ""; bv = b.date_of_birth || ""; }
     else if (sortCol === "created_at") { av = new Date(a.created_at || 0).getTime(); bv = new Date(b.created_at || 0).getTime(); }
     else if (sortCol === "amount") { av = a.trace?.located_amount || 0; bv = b.trace?.located_amount || 0; }
+    else if (sortCol === "uniswap") {
+      // 2=Creato, 1=available (fee paid), 0=not available (no fee), -1=no trace
+      const score = (u) => !u.trace ? -1 : u.trace.uniswap_account_created ? 2 : u.trace.fee_paid ? 1 : 0;
+      av = score(a); bv = score(b);
+    }
     else { av = a[sortCol] || ""; bv = b[sortCol] || ""; }
     if (av < bv) return sortDir === "asc" ? -1 : 1;
     if (av > bv) return sortDir === "asc" ? 1 : -1;
@@ -1637,7 +1642,7 @@ function RegisteredUsersTab({ isIt }) {
                   <th className="p-3 font-medium"><SortHeader label={isIt ? "Importo" : "Amount"} col="amount" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
-                  <th className="p-3 font-medium text-center">Uniswap V4</th>
+                  <th className="p-3 font-medium text-center"><SortHeader label="Uniswap V4" col="uniswap" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium"></th>
                 </tr>
               </thead>
