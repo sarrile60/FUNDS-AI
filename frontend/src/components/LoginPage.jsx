@@ -78,7 +78,16 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="aif-label">Password *</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="aif-label">Password *</label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-[11px] text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                    data-testid="login-forgot-link"
+                  >
+                    {isIt ? "Password dimenticata?" : "Forgot password?"}
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                   <input

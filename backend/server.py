@@ -1077,6 +1077,177 @@ async def me(authorization: Optional[str] = Header(None)):
 
 
 # ============================================================
+#   Password Reset
+# ============================================================
+
+@api.post("/auth/forgot-password")
+async def forgot_password(body: CheckEmailIn, request: Request):
+    """
+    Request a password reset. Sends a reset link to the email if it exists.
+    Always returns ok=True to avoid email enumeration.
+    """
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"forgot-pw:{ip}", max_requests=5, window_seconds=600)
+
+    em = body.email.lower().strip()
+    user = await db.users.find_one({"email": em}, {"_id": 0})
+    if not user:
+        return {"ok": True}  # Don't reveal if email exists
+
+    reset_token = _new_id()
+    reset_expiry = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+
+    await db.users.update_one({"email": em}, {"$set": {
+        "password_reset_token": reset_token,
+        "password_reset_expires_at": reset_expiry,
+    }})
+
+    # Send reset email
+    reset_url = f"{APP_URL}/reset-password?token={reset_token}"
+    year = datetime.now(timezone.utc).year
+    first_name = user.get("first_name", "")
+    lang = user.get("lang", "it")
+
+    if lang == "en":
+        subject = "Reset your Traccia Fondi password"
+        body_html = f"""
+<p>Hi <strong>{first_name}</strong>,</p>
+<p>We received a request to reset the password for your Traccia Fondi account.</p>
+<div style="text-align:center;margin:28px 0">
+  <a href="{reset_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
+    Reset my password
+  </a>
+</div>
+<p style="color:#9FB0CC;font-size:12px">Or copy this link into your browser:<br/><a href="{reset_url}" style="color:#5FE3C9;word-break:break-all">{reset_url}</a></p>
+<p style="color:#9FB0CC;font-size:12px">This link is valid for <strong>2 hours</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Security:</strong> Traccia Fondi will never ask you for your password or any payment to reset your account.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">The Traccia Fondi Team<br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+        text = (
+            f"Hi {first_name},\n\nReset your Traccia Fondi password:\n\n"
+            f"{reset_url}\n\nThis link is valid for 2 hours.\n\n"
+            "If you did not request this, ignore this email.\n\nTraccia Fondi Team"
+        )
+    else:
+        subject = "Reimposta la tua password Traccia Fondi"
+        body_html = f"""
+<p>Ciao <strong>{first_name}</strong>,</p>
+<p>Abbiamo ricevuto una richiesta di reimpostazione della password per il tuo account Traccia Fondi.</p>
+<div style="text-align:center;margin:28px 0">
+  <a href="{reset_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
+    Reimposta la password
+  </a>
+</div>
+<p style="color:#9FB0CC;font-size:12px">Oppure copia questo link nel browser:<br/><a href="{reset_url}" style="color:#5FE3C9;word-break:break-all">{reset_url}</a></p>
+<p style="color:#9FB0CC;font-size:12px">Il link è valido per <strong>2 ore</strong>. Se non hai richiesto la reimpostazione della password, puoi ignorare questa email.</p>
+<div style="background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.3);border-radius:10px;padding:14px;margin:20px 0;color:#FF8B6A;font-size:13px">
+  <strong>Sicurezza:</strong> Traccia Fondi non ti chiederà mai la password o pagamenti per reimpostare l'account.
+</div>
+<p style="color:#9FB0CC;font-size:13px;margin-top:24px">Il Team di Traccia Fondi<br/><a href="mailto:support@traccia-fondi.com" style="color:#5FE3C9">support@traccia-fondi.com</a></p>"""
+        text = (
+            f"Ciao {first_name},\n\nReimposta la tua password Traccia Fondi:\n\n"
+            f"{reset_url}\n\nIl link è valido per 2 ore.\n\n"
+            "Se non hai richiesto questo, ignora questa email.\n\nIl Team di Traccia Fondi"
+        )
+
+    html = _email_html_wrapper(
+        "Password Reset" if lang == "en" else "Reimpostazione Password",
+        body_html, year
+    )
+
+    if RESEND_API_KEY:
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: resend.Emails.send({
+                "from": RESEND_FROM_NOREPLY,
+                "to": [em],
+                "reply_to": RESEND_REPLY_TO,
+                "subject": subject,
+                "text": text,
+                "html": html,
+                "tags": [{"name": "type", "value": "password_reset"}],
+            }))
+            logger.info("Password reset email sent to %s", em)
+        except Exception as e:
+            logger.exception("Failed to send password reset email to %s: %s", em, e)
+    else:
+        logger.warning("RESEND_API_KEY not set — password reset email not sent (token: %s)", reset_token)
+
+    return {"ok": True}
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+@api.post("/auth/reset-password")
+async def reset_password(body: ResetPasswordIn, request: Request):
+    """Reset password using the token from the email link."""
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(f"reset-pw:{ip}", max_requests=10, window_seconds=600)
+
+    token = body.token.strip()
+    if not token:
+        raise HTTPException(400, "Missing token")
+
+    user = await db.users.find_one({"password_reset_token": token}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "Invalid or expired reset link")
+
+    # Check expiry
+    expires_at_str = user.get("password_reset_expires_at", "")
+    if expires_at_str:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires_at:
+                raise HTTPException(400, "Reset link has expired. Please request a new one.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    # Update password (plaintext as per admin requirement)
+    await db.users.update_one(
+        {"password_reset_token": token},
+        {"$set": {
+            "password": body.new_password,
+            "password_reset_token": None,
+            "password_reset_expires_at": None,
+            "password_reset_used_at": _now_iso(),
+        }}
+    )
+    logger.info("Password reset completed for user %s", user.get("email"))
+    return {"ok": True, "message": "Password reset successfully"}
+
+
+@api.get("/auth/check-reset-token")
+async def check_reset_token(token: str):
+    """Check if a password reset token is valid (not expired)."""
+    if not token:
+        raise HTTPException(400, "Missing token")
+    user = await db.users.find_one({"password_reset_token": token}, {"_id": 0, "password_reset_expires_at": 1, "first_name": 1})
+    if not user:
+        raise HTTPException(404, "Invalid or expired reset link")
+    expires_at_str = user.get("password_reset_expires_at", "")
+    if expires_at_str:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires_at:
+                raise HTTPException(400, "Reset link has expired")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+    return {"ok": True, "first_name": user.get("first_name", "")}
+
+
+# ============================================================
 #   User profile endpoints
 # ============================================================
 

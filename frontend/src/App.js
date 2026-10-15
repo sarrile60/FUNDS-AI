@@ -12,6 +12,8 @@ import RegisterPage from "./components/RegisterPage";
 import VerifyEmailPage from "./components/VerifyEmailPage";
 import AdminPanel from "./components/AdminPanel";
 import AgentPortal from "./components/AgentPortal";
+import ForgotPasswordPage from "./components/ForgotPasswordPage";
+import ResetPasswordPage from "./components/ResetPasswordPage";
 import LegalPage from "./components/LegalPage";
 import AboutPage from "./components/AboutPage";
 import ContactPage from "./components/ContactPage";
@@ -67,6 +69,8 @@ function App() {
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/register" element={<RegisterPage/>}/>
             <Route path="/verify-email" element={<VerifyEmailPage/>}/>
+            <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
+            <Route path="/reset-password" element={<ResetPasswordPage/>}/>
             <Route path="/app" element={<UserApp/>}/>
             <Route path="/start" element={<UserApp/>}/>
             <Route path="/trace" element={<UserApp/>}/>
