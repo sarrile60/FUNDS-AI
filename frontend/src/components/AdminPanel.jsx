@@ -42,20 +42,30 @@ export default function AdminPanel() {
   const [bellOpen, setBellOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [notifyPrefs, setNotifyPrefs] = useState({ h24: true, h50: true });
-  // Persist notified keys across sessions so old traces don't re-notify on refresh
+
+  // Ref mirror of notifyPrefs so checkThresholds has EMPTY deps (no loop)
+  const notifyPrefsRef = useRef({ h24: true, h50: true });
+  useEffect(() => { notifyPrefsRef.current = notifyPrefs; }, [notifyPrefs]);
+
+  // Tracks which trace/threshold combos have already been shown
+  // Persisted in localStorage so they survive page refreshes
   const notifiedRef = useRef(new Set(
     JSON.parse(localStorage.getItem("tf_admin_notified") || "[]")
   ));
 
-  const persistNotified = (key) => {
+  // TRUE on the very first poll — used to suppress browser OS notifications
+  // for events that already happened before admin opened the page
+  const isFirstPollRef = useRef(true);
+
+  const persistNotified = useCallback((key) => {
     notifiedRef.current.add(key);
     try {
       localStorage.setItem("tf_admin_notified", JSON.stringify([...notifiedRef.current]));
-    } catch { /* storage full — ignore */ }
-  };
+    } catch { /* quota full */ }
+  }, []);
 
-  // Poll traces every 60s for newly crossed 24h / 50h thresholds
-  // Fires when email_24h_sent / email_50h_sent becomes true (set by scheduler)
+  // Stable callback — EMPTY deps so it's created once and never recreated
+  // Uses refs for all dynamic values (notifyPrefsRef, notifiedRef, isFirstPollRef)
   const checkThresholds = useCallback(async () => {
     try {
       const token = localStorage.getItem("aif_token");
@@ -64,54 +74,83 @@ export default function AdminPanel() {
         `${process.env.REACT_APP_BACKEND_URL}/api/admin/traces`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const now = Date.now();
+
+      const firstPoll = isFirstPollRef.current;
+      // Mark first poll as done BEFORE processing so concurrent calls don't double-fire
+      isFirstPollRef.current = false;
+
       traces.forEach(trace => {
-        const created = new Date(trace.created_at).getTime();
-        const elapsed = (now - created) / 1000 / 3600; // hours
         const label = `${trace.first_name} ${trace.last_name}`;
 
-        // 24h notification: fire when elapsed >= 24h (email sent or not)
+        // ── 24h: trigger when the backend has sent the 24h email ──
         const key24 = `${trace.id}_24h`;
-        if (notifyPrefs.h24 && !notifiedRef.current.has(key24) && elapsed >= 24) {
+        if (
+          notifyPrefsRef.current.h24 &&
+          trace.email_24h_sent &&
+          !notifiedRef.current.has(key24)
+        ) {
           persistNotified(key24);
           const msg = isIt
-            ? `${label} ha superato 24h — controlla il tracciamento`
-            : `${label} passed 24h — check the trace`;
-          setNotifications(prev => [{ id: key24, msg, type: "24h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
-          setUnread(u => u + 1);
-          if (Notification.permission === "granted") {
-            try { new Notification("Traccia Fondi — 24h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+            ? `${label} — email 24h inviata al cliente`
+            : `${label} — 24h email sent to client`;
+          // On first load: add to bell but as already-read (no spam, no OS notification)
+          // On subsequent polls: add as unread + fire OS notification
+          setNotifications(prev => [{
+            id: key24, msg, type: "24h",
+            time: trace.email_24h_sent_at
+              ? new Date(trace.email_24h_sent_at).toLocaleTimeString()
+              : new Date().toLocaleTimeString(),
+            read: firstPoll, // read=true if historical, read=false if live
+          }, ...prev.slice(0, 49)]);
+          if (!firstPoll) {
+            setUnread(u => u + 1);
+            // OS notification only for live events
+            if (Notification.permission === "granted") {
+              try { new Notification("Traccia Fondi — 24h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+            }
           }
         }
 
-        // 50h notification: fire when elapsed >= 50h
+        // ── 50h: trigger when the backend has sent the 50h email ──
         const key50 = `${trace.id}_50h`;
-        if (notifyPrefs.h50 && !notifiedRef.current.has(key50) && elapsed >= 50) {
+        if (
+          notifyPrefsRef.current.h50 &&
+          trace.email_50h_sent &&
+          !notifiedRef.current.has(key50)
+        ) {
           persistNotified(key50);
           const msg = isIt
-            ? `${label} ha superato 50h — fondi localizzati pronti`
-            : `${label} passed 50h — funds located ready`;
-          setNotifications(prev => [{ id: key50, msg, type: "50h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
-          setUnread(u => u + 1);
-          if (Notification.permission === "granted") {
-            try { new Notification("Traccia Fondi — 50h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+            ? `${label} — email 50h inviata (fondi localizzati)`
+            : `${label} — 50h email sent (funds located)`;
+          setNotifications(prev => [{
+            id: key50, msg, type: "50h",
+            time: trace.email_50h_sent_at
+              ? new Date(trace.email_50h_sent_at).toLocaleTimeString()
+              : new Date().toLocaleTimeString(),
+            read: firstPoll,
+          }, ...prev.slice(0, 49)]);
+          if (!firstPoll) {
+            setUnread(u => u + 1);
+            if (Notification.permission === "granted") {
+              try { new Notification("Traccia Fondi — 50h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+            }
           }
         }
       });
-    } catch (e) { /* silent fail — polling */ }
-  }, [isIt, notifyPrefs]);
+    } catch { /* silent fail — polling */ }
+  }, []); // ← EMPTY: never recreated, no loop possible
 
   useEffect(() => {
-    // Request browser notification permission
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-    checkThresholds();
-    const id = setInterval(checkThresholds, 60000);
+    if (Notification.permission === "default") Notification.requestPermission();
+    checkThresholds(); // immediate first poll (historical, no OS notifications)
+    const id = setInterval(checkThresholds, 60000); // live polling every 60s
     return () => clearInterval(id);
-  }, [checkThresholds]);
+  }, [checkThresholds]); // checkThresholds never changes → runs once only
 
-  const markAllRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); setUnread(0); };
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnread(0);
+  };
   const togglePref = (key) => setNotifyPrefs(prev => ({ ...prev, [key]: !prev[key] }));
 
   if (!user) return <Navigate to="/login" replace/>;
