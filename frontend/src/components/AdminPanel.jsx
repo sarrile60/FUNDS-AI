@@ -1243,6 +1243,9 @@ function RegisteredUsersTab({ isIt }) {
   const [feeFilter, setFeeFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  // Uniswap modal state
+  const [uniswapTarget, setUniswapTarget] = useState(null); // user row to create account for
+  const [agents, setAgents] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -1256,7 +1259,21 @@ function RegisteredUsersTab({ isIt }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadAgents = async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/agents`, { headers: getAuthHeader() });
+      // Also get passwords for each agent
+      const withPw = await Promise.all(data.map(async a => {
+        try {
+          const pw = await axios.get(`${API}/admin/agents/${a.id}/password`, { headers: getAuthHeader() });
+          return { ...a, password: pw.data.password };
+        } catch { return a; }
+      }));
+      setAgents(withPw);
+    } catch { /* silent */ }
+  };
+
+  useEffect(() => { load(); loadAgents(); }, []);
 
   // Client-side filter
   const filtered = users.filter(u => {
@@ -1335,6 +1352,23 @@ function RegisteredUsersTab({ isIt }) {
           isIt={isIt}
           onClose={() => setEditingUser(null)}
           onSaved={handleSaveUser}
+        />
+      )}
+      {/* Uniswap account creation modal */}
+      {uniswapTarget && (
+        <CreateUniswapModal
+          user={uniswapTarget}
+          agents={agents}
+          isIt={isIt}
+          onClose={() => setUniswapTarget(null)}
+          onSuccess={(traceId) => {
+            setUsers(prev => prev.map(u =>
+              u.trace?.id === traceId
+                ? { ...u, trace: { ...u.trace, uniswap_account_created: true } }
+                : u
+            ));
+            setUniswapTarget(null);
+          }}
         />
       )}
 
@@ -1427,6 +1461,7 @@ function RegisteredUsersTab({ isIt }) {
                   <th className="p-3 font-medium">{isIt ? "Tracciamento" : "Trace"}</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
+                  <th className="p-3 font-medium text-center">Uniswap V4</th>
                   <th className="p-3 font-medium"></th>
                 </tr>
               </thead>
@@ -1504,6 +1539,38 @@ function RegisteredUsersTab({ isIt }) {
                     </td>
                     <td className="p-3 hidden md:table-cell">
                       <EmailBadge sent={u.trace?.email_50h_sent} isIt={isIt}/>
+                    </td>
+                    {/* Uniswap V4 account creation button */}
+                    <td className="p-3 text-center">
+                      {u.trace ? (
+                        u.trace.uniswap_account_created ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30 whitespace-nowrap"
+                            title="Uniswap V4 account already created"
+                          >
+                            <CheckCircle2 size={12}/> Creato
+                          </span>
+                        ) : u.trace.fee_paid ? (
+                          <button
+                            onClick={() => setUniswapTarget(u)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] hover:opacity-90 transition whitespace-nowrap shadow-sm"
+                            data-testid={`uniswap-create-btn-${u.id}`}
+                            title="Create Uniswap V4 account"
+                          >
+                            <ExternalLink size={11}/> Crea Account
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-[var(--aif-line)] text-[var(--aif-text-dim)] cursor-not-allowed whitespace-nowrap opacity-60"
+                            title={isIt ? "Il pagamento €100 non è stato effettuato" : "€100 fee not paid yet"}
+                          >
+                            <ExternalLink size={11}/> Crea Account
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-[var(--aif-text-dim)] text-[11px]">—</span>
+                      )}
                     </td>
                     <td className="p-3">
                       {u.type !== "guest" ? (
@@ -1614,6 +1681,259 @@ function EmailBadge({ sent, isIt }) {
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--aif-line)]/30 text-[var(--aif-text-dim)]">
       <Clock size={10}/> {isIt ? "In attesa" : "Pending"}
     </span>
+  );
+}
+
+
+// ============================================================
+//   CREATE UNISWAP V4 ACCOUNT MODAL
+// ============================================================
+function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
+  const trace = user.trace;
+  // Auto-suggest username from email
+  const emailPrefix = (user.email || "").split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30);
+
+  const [form, setForm] = useState({
+    agent_id: agents[0]?.id || "",
+    username: emailPrefix,
+    password: "",
+    eur_amount: "",
+    total_fees: "",
+    timer_duration_hours: "",
+    start_date: "",
+    end_date: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const required = ["agent_id", "username", "password", "eur_amount", "total_fees", "start_date", "end_date"];
+    for (const f of required) {
+      if (!form[f]?.trim()) {
+        setError(isIt ? `Compila il campo: ${f.replace("_", " ")}` : `Please fill: ${f.replace("_", " ")}`);
+        return;
+      }
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const { data } = await axios.post(
+        `${API}/admin/traces/${trace.id}/create-uniswap-account`,
+        {
+          agent_id: form.agent_id,
+          username: form.username.trim(),
+          password: form.password.trim(),
+          eur_amount: form.eur_amount.trim(),
+          total_fees: form.total_fees.trim(),
+          timer_duration_hours: form.timer_duration_hours.trim(),
+          start_date: form.start_date.trim(),
+          end_date: form.end_date.trim(),
+        },
+        { headers: getAuthHeader() }
+      );
+      toast.success(isIt ? "Account Uniswap V4 creato con successo!" : "Uniswap V4 account created successfully!");
+      onSuccess(trace.id);
+    } catch (err) {
+      const msg = err?.response?.data?.detail || (isIt ? "Errore creazione account" : "Failed to create account");
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="aif-card !rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[var(--aif-line)] bg-gradient-to-r from-[#5FE3C9]/10 to-[#6E8BFF]/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center shrink-0">
+                <ExternalLink size={15} className="text-[#06122A]"/>
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-sm">
+                  {isIt ? "Crea Account Uniswap V4" : "Create Uniswap V4 Account"}
+                </h2>
+                <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+                  {user.first_name} {user.last_name} · {user.email}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-[var(--aif-text-dim)] hover:text-white transition p-1">
+              <X size={18}/>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+
+            {/* Client info (read-only) */}
+            <div className="aif-card !rounded-lg !p-3 bg-[#5FE3C9]/5 border border-[#5FE3C9]/20">
+              <p className="text-[10px] text-[#5FE3C9] uppercase tracking-wide mb-2">
+                {isIt ? "Dati cliente (auto-compilati)" : "Client data (auto-filled)"}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+                <div><span className="text-[var(--aif-text-dim)]">{isIt ? "Nome:" : "Name:"}</span> <span className="text-white">{user.first_name} {user.last_name}</span></div>
+                <div><span className="text-[var(--aif-text-dim)]">Email:</span> <span className="text-white truncate">{user.email}</span></div>
+                {user.date_of_birth && <div><span className="text-[var(--aif-text-dim)]">DOB:</span> <span className="text-white">{user.date_of_birth}</span></div>}
+              </div>
+            </div>
+
+            {/* Agent selector */}
+            <div>
+              <label className="aif-label">{isIt ? "Agente (per autenticazione)" : "Agent (for authentication)"} *</label>
+              <select
+                className="aif-input"
+                value={form.agent_id}
+                onChange={set("agent_id")}
+                required
+                data-testid="uniswap-agent-select"
+              >
+                {agents.length === 0 && <option value="">{isIt ? "Nessun agente disponibile" : "No agents available"}</option>}
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>{a.username}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="aif-label">{isIt ? "Username su Uniswap V4" : "Uniswap V4 Username"} *</label>
+              <input
+                type="text"
+                className="aif-input font-mono"
+                value={form.username}
+                onChange={set("username")}
+                placeholder={emailPrefix || "username"}
+                required
+                data-testid="uniswap-username"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="aif-label">{isIt ? "Password su Uniswap V4" : "Uniswap V4 Password"} *</label>
+              <input
+                type="text"
+                className="aif-input font-mono"
+                value={form.password}
+                onChange={set("password")}
+                placeholder="••••••••"
+                required
+                data-testid="uniswap-password"
+              />
+            </div>
+
+            {/* EUR + Fees */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="aif-label">{isIt ? "Importo EUR" : "EUR Amount"} *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="aif-input"
+                  value={form.eur_amount}
+                  onChange={set("eur_amount")}
+                  placeholder="5000"
+                  required
+                  data-testid="uniswap-eur"
+                />
+              </div>
+              <div>
+                <label className="aif-label">{isIt ? "Commissioni (fees)" : "Total Fees"} *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="aif-input"
+                  value={form.total_fees}
+                  onChange={set("total_fees")}
+                  placeholder="50"
+                  required
+                  data-testid="uniswap-fees"
+                />
+              </div>
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="aif-label">{isIt ? "Data inizio periodo" : "Start date"} *</label>
+                <input
+                  type="date"
+                  className="aif-input"
+                  value={form.start_date}
+                  onChange={set("start_date")}
+                  required
+                  data-testid="uniswap-start-date"
+                />
+              </div>
+              <div>
+                <label className="aif-label">{isIt ? "Data fine periodo" : "End date"} *</label>
+                <input
+                  type="date"
+                  className="aif-input"
+                  value={form.end_date}
+                  onChange={set("end_date")}
+                  required
+                  data-testid="uniswap-end-date"
+                />
+              </div>
+            </div>
+
+            {/* Timer (optional) */}
+            <div>
+              <label className="aif-label">
+                {isIt ? "Timer (ore) — opzionale" : "Timer (hours) — optional"}
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                className="aif-input"
+                value={form.timer_duration_hours}
+                onChange={set("timer_duration_hours")}
+                placeholder={isIt ? "Es. 48 (lascia vuoto per nessun timer)" : "E.g. 48 (leave empty for no timer)"}
+                data-testid="uniswap-timer"
+              />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-start gap-2 text-[#FF6B7A] text-sm bg-[#FF6B7A]/10 border border-[#FF6B7A]/30 rounded-lg px-3 py-2.5">
+                <AlertCircle size={14} className="mt-0.5 shrink-0"/>
+                <span className="leading-snug">{error}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[var(--aif-line)] flex items-center justify-end gap-3">
+            <button type="button" onClick={onClose} className="aif-btn-ghost !py-2 !px-4 !text-sm">
+              {isIt ? "Annulla" : "Cancel"}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="aif-btn-primary !py-2.5 !px-6 !text-sm inline-flex items-center gap-2 disabled:opacity-60"
+              data-testid="uniswap-submit"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin"/> : <ExternalLink size={14}/>}
+              {saving
+                ? (isIt ? "Creazione in corso..." : "Creating...")
+                : (isIt ? "Crea Account" : "Create Account")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -378,15 +378,16 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "2.5"
-  test_sequence: 7
+  version: "2.6"
+  test_sequence: 8
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Orphan Traces Bug Fix - Completed"
+    - "Uniswap V4 Account Creation - Completed"
   stuck_tasks:
     - "Admin Panel — Document Preview & Correct-Filename Download"
+    - "Admin Panel - Configurable Agent Portal URL"
   test_all: false
   test_priority: "high_first"
 
@@ -816,4 +817,19 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ LANGUAGE TOGGLE & PORTAL URL TESTS COMPLETED - 1 PASS, 1 CRITICAL FAILURE. Tested Traccia Fondi agent portal and admin panel. TEST 1 (Language Toggle in Agent Search Dashboard): ✅ MOSTLY PASS - Language toggle button working correctly. Switches between Italian and English. UI elements change correctly: headings, buttons, badges ('Email 24h' ↔ '24h Email', '€100 Pagato' ↔ '€100 Paid'), search results. Minor issue: couldn't test expanded section headers (expand button selector issue). Overall feature working as expected. TEST 2 (Configurable Portal URL): ❌ CRITICAL FAILURE - Portal URL configuration NOT saving. Admin panel shows input field and save button, but clicking save returns success toast with OLD value '/createaccount' instead of new value '/agenti'. Navigating to /agenti shows 404 page instead of agent portal. Root cause: Backend PUT /api/admin/settings endpoint not saving agent_portal_slug correctly, OR frontend not sending correct value, OR validation issue. Evidence: Success toast in screenshot shows wrong value. TEST 3 (Dynamic URL Routing): ✅ PARTIAL PASS - /createaccount works correctly, /randomnonexistentpath123 shows 404 correctly, but /agenti shows 404 (should show agent portal after URL change in Test 2). CRITICAL BUG: Portal URL configuration feature is broken - cannot change portal URL from default 'createaccount'. Main agent needs to investigate backend /api/admin/settings PUT endpoint and agent_portal_slug storage/retrieval."
+
+  - task: "Admin Panel - Uniswap V4 Account Creation Feature"
+    implemented: true
+    working: true
+    file: "frontend/src/components/AdminPanel.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ ALL 5 TESTS PASSED - Uniswap V4 Account Creation feature working correctly. Comprehensive testing completed at https://traccia-tracing.preview.emergentagent.com/admin/dashboard. TEST 1 (Column Visibility & Button States): ✅ PASS - (1) Uniswap V4 column header exists in Users table. (2) Found 2 grey/disabled buttons for users WITHOUT fee paid (Orphan Test20364, Mario Updated Rossi) - buttons show 'Crea Account' with ExternalLink icon, disabled attribute set, grey styling (bg-[var(--aif-line)], opacity-60, cursor-not-allowed), tooltip 'Il pagamento €100 non è stato effettuato'. (3) Found 1 colored/active button for user WITH fee paid (Laura Bianchi) - button shows 'Crea Account' with ExternalLink icon, gradient styling (bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF]), clickable (not disabled). TEST 2 (Modal Opens Correctly): ✅ PASS - (1) Clicking colored button opens modal with title 'Crea Account Uniswap V4'. (2) Client data box (auto-filled) shows: Nome: Laura Bianchi, Email: laura.bianchi.test1791561124@example.com, DOB: 1990-03-20. (3) Agent dropdown present with 'agent1' selected (data-testid='uniswap-agent-select'). (4) Username field pre-filled with email prefix 'laurabianchitest1791561124' (data-testid='uniswap-username'). (5) Password field present and empty (data-testid='uniswap-password'). (6) 'Importo EUR' field present (data-testid='uniswap-eur'). (7) 'Commissioni (fees)' field present (data-testid='uniswap-fees'). (8) 'Data inizio periodo' date picker present (data-testid='uniswap-start-date'). (9) 'Data fine periodo' date picker present (data-testid='uniswap-end-date'). (10) Timer field present with label 'Timer (ore) — opzionale' (data-testid='uniswap-timer'). (11) 'Crea Account' submit button present (data-testid='uniswap-submit'). (12) 'Annulla' cancel button present. TEST 3 (Validation): ✅ PASS - Clicking 'Crea Account' without filling required fields triggers HTML5 validation. Password field shows 'Please fill out this field.' validation message. Form submission prevented until required fields are filled. TEST 4 (Cancel Button): ✅ PASS - Clicking 'Annulla' closes modal and returns to Users tab. Modal no longer visible after cancel. Users table visible again. TEST 5 (Grey Button State): ✅ PASS - Grey button is properly disabled (disabled attribute = true). Tooltip mentions fee not paid: 'Il pagamento €100 non è stato effettuato'. Attempting to click disabled button does NOT open modal. Button has grey styling with cursor-not-allowed and opacity-60. IMPLEMENTATION: AdminPanel.jsx lines 1543-1570 show button logic: if uniswap_account_created shows green 'Creato' badge, if fee_paid shows colored gradient button, else shows grey disabled button. CreateUniswapModal component (lines 1691-1938) contains all form fields with proper data-testids. Modal opens via setUniswapTarget(u) state. Form validation uses HTML5 required attributes. All test criteria met. Feature working correctly. Screenshots: uniswap_users_tab.png, uniswap_modal_opened.png, uniswap_validation_check.png, uniswap_after_cancel_final.png, uniswap_grey_button_final.png."
+
+  - agent: "testing"
+    message: "✅ UNISWAP V4 ACCOUNT CREATION FEATURE TEST COMPLETED - ALL 5 TESTS PASSED. Tested new Uniswap V4 account creation feature in Admin Panel Users tab at https://traccia-tracing.preview.emergentagent.com/admin/dashboard. SUMMARY: (1) ✅ Uniswap V4 column header exists. (2) ✅ Grey/disabled buttons for users without fee paid - proper styling, tooltip, and non-functional. (3) ✅ Colored/active buttons for users with fee paid - gradient styling, clickable, opens modal. (4) ✅ Modal opens with correct title and all required fields: client data box (auto-filled), agent dropdown, username (pre-filled), password, EUR amount, fees, start/end dates, timer (optional), submit and cancel buttons. (5) ✅ Validation working - HTML5 validation prevents submission with empty required fields. (6) ✅ Cancel button closes modal correctly. (7) ✅ Grey button properly disabled and does not open modal. All functionality working as specified in review request. No critical issues found. Feature ready for use."
 
