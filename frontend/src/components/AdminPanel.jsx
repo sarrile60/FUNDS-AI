@@ -1572,6 +1572,18 @@ function RegisteredUsersTab({ isIt }) {
                           {u.trace.located_amount && (
                             <div className="text-[10px] text-[#5FE3C9] mt-0.5">{fmtAmount(u.trace.located_amount)}</div>
                           )}
+                          {/* €100 fee badge — always visible */}
+                          <div className="mt-1">
+                            {u.trace.fee_paid ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30">
+                                <CheckCircle2 size={9}/> €100 ✓
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FFB454]/10 text-[#FFB454] border border-[#FFB454]/20">
+                                <Clock size={9}/> €100
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-[var(--aif-text-dim)] text-[11px]">{isIt ? "Nessuno" : "None"}</span>
