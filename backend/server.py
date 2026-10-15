@@ -2352,6 +2352,109 @@ async def admin_reset_uniswap_account(trace_id: str, _=Depends(require_admin)):
     return {"ok": True}
 
 
+async def _sync_uniswap_accounts():
+    """
+    Background job: for every trace marked uniswap_account_created=True,
+    check if the user still exists on uniswapv4.com via the public check-user API.
+    If not found → auto-reset the flag so the admin can re-create the account.
+    """
+    try:
+        created_traces = await db.traces.find(
+            {"uniswap_account_created": True},
+            {"_id": 0, "id": 1, "email": 1, "first_name": 1, "last_name": 1}
+        ).to_list(1000)
+
+        if not created_traces:
+            return
+
+        loop = asyncio.get_event_loop()
+        reset_count = 0
+
+        for trace in created_traces:
+            email = trace.get("email", "")
+            trace_id = trace.get("id", "")
+            if not email or not trace_id:
+                continue
+            try:
+                resp = await loop.run_in_executor(None, lambda: http_requests.get(
+                    f"{UNISWAP_BASE}/api/public/check-user",
+                    params={"q": email},
+                    headers={"User-Agent": UNISWAP_UA, "Origin": UNISWAP_BASE},
+                    timeout=10,
+                ))
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if not data.get("found", True):
+                        # User no longer exists on uniswapv4.com → reset
+                        await db.traces.update_one({"id": trace_id}, {"$set": {
+                            "uniswap_account_created": False,
+                            "uniswap_username": "",
+                            "uniswap_account_data": {},
+                        }})
+                        reset_count += 1
+                        logger.info(
+                            "Auto-reset Uniswap flag for trace %s (%s) — user not found on uniswapv4.com",
+                            trace_id, email
+                        )
+            except Exception as e:
+                logger.warning("Uniswap check failed for trace %s: %s", trace_id, e)
+
+        if reset_count:
+            logger.info("Uniswap sync: auto-reset %d trace(s)", reset_count)
+
+    except Exception as e:
+        logger.exception("Uniswap sync job failed: %s", e)
+
+
+@api.post("/admin/sync-uniswap-accounts")
+async def admin_sync_uniswap_accounts(_=Depends(require_admin)):
+    """
+    On-demand sync: check all Uniswap-created accounts and auto-reset any that
+    no longer exist on uniswapv4.com. Called when admin opens the Users tab.
+    Returns a list of trace IDs that were reset.
+    """
+    try:
+        created_traces = await db.traces.find(
+            {"uniswap_account_created": True},
+            {"_id": 0, "id": 1, "email": 1}
+        ).to_list(1000)
+
+        if not created_traces:
+            return {"ok": True, "checked": 0, "reset": []}
+
+        loop = asyncio.get_event_loop()
+        reset_ids = []
+
+        for trace in created_traces:
+            email = trace.get("email", "")
+            trace_id = trace.get("id", "")
+            if not email or not trace_id:
+                continue
+            try:
+                resp = await loop.run_in_executor(None, lambda: http_requests.get(
+                    f"{UNISWAP_BASE}/api/public/check-user",
+                    params={"q": email},
+                    headers={"User-Agent": UNISWAP_UA, "Origin": UNISWAP_BASE},
+                    timeout=10,
+                ))
+                if resp.status_code == 200 and not resp.json().get("found", True):
+                    await db.traces.update_one({"id": trace_id}, {"$set": {
+                        "uniswap_account_created": False,
+                        "uniswap_username": "",
+                        "uniswap_account_data": {},
+                    }})
+                    reset_ids.append(trace_id)
+                    logger.info("On-demand sync: reset trace %s (%s)", trace_id, email)
+            except Exception as e:
+                logger.warning("Uniswap on-demand check failed for %s: %s", trace_id, e)
+
+        return {"ok": True, "checked": len(created_traces), "reset": reset_ids}
+
+    except Exception as e:
+        logger.exception("On-demand Uniswap sync failed: %s", e)
+        raise HTTPException(500, f"Sync failed: {e}")
+
+
 @api.get("/admin/scheduler-status")
 async def scheduler_status(_=Depends(require_admin)):
     jobs = scheduler.get_jobs()
@@ -2401,6 +2504,17 @@ async def startup_event():
     """Start scheduler and re-queue any pending email jobs."""
     scheduler.start()
     logger.info("APScheduler started")
+
+    # Schedule Uniswap account sync every 5 minutes
+    from apscheduler.triggers.interval import IntervalTrigger
+    scheduler.add_job(
+        _sync_uniswap_accounts,
+        trigger=IntervalTrigger(minutes=5),
+        id="uniswap_account_sync",
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+    logger.info("Scheduled Uniswap account sync every 5 minutes")
 
     # Load all traces that need emails scheduled
     try:

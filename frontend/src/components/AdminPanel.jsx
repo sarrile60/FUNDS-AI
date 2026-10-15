@@ -1253,6 +1253,20 @@ function RegisteredUsersTab({ isIt }) {
     try {
       const { data } = await axios.get(`${API}/admin/registered-users`, { headers: getAuthHeader() });
       setUsers(data);
+      // After loading, trigger async Uniswap sync (don't block the UI)
+      axios.post(`${API}/admin/sync-uniswap-accounts`, {}, { headers: getAuthHeader() })
+        .then(({ data: syncData }) => {
+          if (syncData.reset && syncData.reset.length > 0) {
+            // Auto-update rows that were reset
+            setUsers(prev => prev.map(u =>
+              syncData.reset.includes(u.trace?.id)
+                ? { ...u, trace: { ...u.trace, uniswap_account_created: false, uniswap_username: "" } }
+                : u
+            ));
+            toast.info(`${syncData.reset.length} account Uniswap rimosso/i automaticamente`);
+          }
+        })
+        .catch(() => { /* silent — sync failure doesn't block UI */ });
     } catch (e) {
       toast.error(isIt ? "Errore caricamento utenti" : "Failed to load users");
     } finally {
