@@ -2335,6 +2335,25 @@ async def admin_create_uniswap_account(
         "message": "Uniswap V4 account created successfully",
         "data": create_data.get("data", {}),
     }
+
+
+@api.post("/admin/traces/{trace_id}/reset-uniswap-account")
+async def admin_reset_uniswap_account(trace_id: str, _=Depends(require_admin)):
+    """Reset the Uniswap account created flag — use when account was deleted on uniswapv4.com."""
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    await db.traces.update_one({"id": trace_id}, {"$set": {
+        "uniswap_account_created": False,
+        "uniswap_username": "",
+        "uniswap_account_data": {},
+    }})
+    logger.info("Uniswap account flag reset for trace %s", trace_id)
+    return {"ok": True}
+
+
+@api.get("/admin/scheduler-status")
+async def scheduler_status(_=Depends(require_admin)):
     jobs = scheduler.get_jobs()
     return {
         "running": scheduler.running,
