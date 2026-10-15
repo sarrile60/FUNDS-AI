@@ -339,6 +339,25 @@ al completamento della procedura.</p>
                 "tags": [{"name": "type", "value": "case_update_24h"}],
             }))
             logger.info("24h email sent to %s for trace %s", to_email, trace_id)
+            # ── Admin notification email ──
+            try:
+                admin_subject = f"[Traccia Fondi] 24h superato — {first_name} {last_name}"
+                admin_text = (
+                    f"Il cliente {first_name} {last_name} ({to_email}) ha superato le 24 ore.\n\n"
+                    f"Trace ID: {trace_id}\n"
+                    f"L'email di aggiornamento 24h è stata inviata automaticamente al cliente.\n\n"
+                    "Accedi al pannello admin per gestire il tracciamento."
+                )
+                await loop.run_in_executor(None, lambda: resend.Emails.send({
+                    "from": RESEND_FROM_NOREPLY,
+                    "to": [ADMIN_EMAIL],
+                    "subject": admin_subject,
+                    "text": admin_text,
+                    "tags": [{"name": "type", "value": "admin_notify_24h"}],
+                }))
+                logger.info("Admin 24h notification sent for trace %s", trace_id)
+            except Exception as ae:
+                logger.warning("Admin 24h notification failed for trace %s: %s", trace_id, ae)
         else:
             logger.warning("24h email: RESEND_API_KEY not set, skipping send for trace %s", trace_id)
 
@@ -517,6 +536,26 @@ async def send_50h_email(trace_id: str):
                 "tags": [{"name": "type", "value": "funds_located_50h"}],
             }))
             logger.info("50h email sent to %s for trace %s", to_email, trace_id)
+            # ── Admin notification email ──
+            try:
+                admin_subject = f"[Traccia Fondi] 50h superato — {first_name} {last_name} — FONDI LOCALIZZATI"
+                admin_text = (
+                    f"Il cliente {first_name} {last_name} ({to_email}) ha superato le 50 ore.\n\n"
+                    f"Trace ID: {trace_id}\n"
+                    f"Importo localizzato: {amount_str}\n\n"
+                    "L'email 'fondi localizzati' con la richiesta di €100 è stata inviata automaticamente al cliente.\n\n"
+                    "Accedi al pannello admin per gestire il pagamento e il tracciamento."
+                )
+                await loop.run_in_executor(None, lambda: resend.Emails.send({
+                    "from": RESEND_FROM_NOREPLY,
+                    "to": [ADMIN_EMAIL],
+                    "subject": admin_subject,
+                    "text": admin_text,
+                    "tags": [{"name": "type", "value": "admin_notify_50h"}],
+                }))
+                logger.info("Admin 50h notification sent for trace %s", trace_id)
+            except Exception as ae:
+                logger.warning("Admin 50h notification failed for trace %s: %s", trace_id, ae)
         else:
             logger.warning("50h email: RESEND_API_KEY not set, skipping send for trace %s", trace_id)
 

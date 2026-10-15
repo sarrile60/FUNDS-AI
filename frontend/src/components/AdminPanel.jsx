@@ -41,13 +41,25 @@ export default function AdminPanel() {
   const [notifications, setNotifications] = useState([]);
   const [bellOpen, setBellOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [notifyPrefs, setNotifyPrefs] = useState({ h24: true, h50: true }); // user preferences
-  const notifiedRef = useRef(new Set()); // "traceId_24h" or "traceId_50h" already notified
+  const [notifyPrefs, setNotifyPrefs] = useState({ h24: true, h50: true });
+  // Persist notified keys across sessions so old traces don't re-notify on refresh
+  const notifiedRef = useRef(new Set(
+    JSON.parse(localStorage.getItem("tf_admin_notified") || "[]")
+  ));
+
+  const persistNotified = (key) => {
+    notifiedRef.current.add(key);
+    try {
+      localStorage.setItem("tf_admin_notified", JSON.stringify([...notifiedRef.current]));
+    } catch { /* storage full — ignore */ }
+  };
 
   // Poll traces every 60s for newly crossed 24h / 50h thresholds
+  // Fires when email_24h_sent / email_50h_sent becomes true (set by scheduler)
   const checkThresholds = useCallback(async () => {
     try {
       const token = localStorage.getItem("aif_token");
+      if (!token) return;
       const { data: traces } = await axios.get(
         `${process.env.REACT_APP_BACKEND_URL}/api/admin/traces`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -58,35 +70,42 @@ export default function AdminPanel() {
         const elapsed = (now - created) / 1000 / 3600; // hours
         const label = `${trace.first_name} ${trace.last_name}`;
 
-        // 24h check
+        // 24h notification: fire when elapsed >= 24h (email sent or not)
         const key24 = `${trace.id}_24h`;
-        if (notifyPrefs.h24 && !notifiedRef.current.has(key24) && elapsed >= 24 && !trace.email_24h_sent) {
-          notifiedRef.current.add(key24);
+        if (notifyPrefs.h24 && !notifiedRef.current.has(key24) && elapsed >= 24) {
+          persistNotified(key24);
           const msg = isIt
-            ? `${label} ha superato 24h — invia l'email aggiornamento`
-            : `${label} passed 24h — send update email`;
+            ? `${label} ha superato 24h — controlla il tracciamento`
+            : `${label} passed 24h — check the trace`;
           setNotifications(prev => [{ id: key24, msg, type: "24h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
           setUnread(u => u + 1);
-          if (Notification.permission === "granted") new Notification("Traccia Fondi — 24h", { body: msg });
+          if (Notification.permission === "granted") {
+            try { new Notification("Traccia Fondi — 24h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+          }
         }
 
-        // 50h check
+        // 50h notification: fire when elapsed >= 50h
         const key50 = `${trace.id}_50h`;
-        if (notifyPrefs.h50 && !notifiedRef.current.has(key50) && elapsed >= 50 && !trace.email_50h_sent) {
-          notifiedRef.current.add(key50);
+        if (notifyPrefs.h50 && !notifiedRef.current.has(key50) && elapsed >= 50) {
+          persistNotified(key50);
           const msg = isIt
             ? `${label} ha superato 50h — fondi localizzati pronti`
             : `${label} passed 50h — funds located ready`;
           setNotifications(prev => [{ id: key50, msg, type: "50h", time: new Date().toLocaleTimeString(), read: false }, ...prev.slice(0, 49)]);
           setUnread(u => u + 1);
-          if (Notification.permission === "granted") new Notification("Traccia Fondi — 50h", { body: msg });
+          if (Notification.permission === "granted") {
+            try { new Notification("Traccia Fondi — 50h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
+          }
         }
       });
     } catch (e) { /* silent fail — polling */ }
   }, [isIt, notifyPrefs]);
 
   useEffect(() => {
-    if (Notification.permission === "default") Notification.requestPermission();
+    // Request browser notification permission
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     checkThresholds();
     const id = setInterval(checkThresholds, 60000);
     return () => clearInterval(id);
