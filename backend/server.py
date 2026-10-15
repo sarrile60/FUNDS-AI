@@ -176,6 +176,16 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> Dict[str
     return payload
 
 
+async def require_agent(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    payload = _decode_token(_bearer(authorization))
+    if payload.get("role") != "agent":
+        raise HTTPException(403, "Agent only")
+    agent = await db.agents.find_one({"id": payload["sub"]}, {"_id": 0})
+    if not agent:
+        raise HTTPException(401, "Agent not found")
+    return agent
+
+
 # Located amount ranges — auto-generated for all tiers including 100k+
 # Admin can override any individual trace's located_amount via the edit modal before the 50h email fires
 TIER_HIGH_END = {
@@ -803,6 +813,17 @@ class GlobalSettingsUpdate(BaseModel):
     access_code: Optional[str] = None
     destination_name: Optional[str] = None
     destination_url: Optional[str] = None
+
+
+# --- Agent schemas ---
+class AgentLoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class AgentCreateIn(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=4, max_length=128)
 
 
 class AccessCodeIn(BaseModel):
@@ -1844,6 +1865,143 @@ async def admin_list_contact_messages(_=Depends(require_admin)):
 # ============================================================
 #   Admin: Scheduler status
 # ============================================================
+
+# ============================================================
+#   Agent: Auth + Search
+# ============================================================
+
+@api.post("/agent/login")
+async def agent_login(body: AgentLoginIn, request: Request):
+    """Agent login — returns JWT with role='agent'."""
+    username = body.username.strip().lower()
+    agent = await db.agents.find_one({"username": username}, {"_id": 0})
+    if not agent:
+        raise HTTPException(401, "Invalid credentials")
+    if agent.get("password") != body.password:
+        raise HTTPException(401, "Invalid credentials")
+    token = _make_token(agent["id"], "agent")
+    safe = {k: v for k, v in agent.items() if k != "password"}
+    return {"token": token, "agent": safe}
+
+
+@api.get("/agent/search")
+async def agent_search(q: str = "", agent=Depends(require_agent)):
+    """Search clients by full name or email. Returns matching traces + linked user info."""
+    if not q or len(q.strip()) < 2:
+        return []
+
+    q = q.strip()
+    regex = {"$regex": q, "$options": "i"}
+
+    # Search traces by email or full name
+    traces = await db.traces.find({
+        "$or": [
+            {"email": regex},
+            {"first_name": regex},
+            {"last_name": regex},
+            # We'll also filter by combined name in Python below
+        ]
+    }, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+    # Also do a combined name search in Python
+    q_lower = q.lower()
+    matched = []
+    for t in traces:
+        full_name = f"{t.get('first_name','')} {t.get('last_name','')}".lower()
+        if (q_lower in full_name or
+            q_lower in t.get("email", "").lower() or
+            q_lower in t.get("first_name", "").lower() or
+            q_lower in t.get("last_name", "").lower()):
+            matched.append(t)
+
+    # For each trace, look up linked user account (if any)
+    results = []
+    seen_trace_ids = set()
+    for t in matched:
+        if t["id"] in seen_trace_ids:
+            continue
+        seen_trace_ids.add(t["id"])
+
+        entry = {
+            "trace_id": t.get("id"),
+            "first_name": t.get("first_name", ""),
+            "last_name": t.get("last_name", ""),
+            "email": t.get("email", ""),
+            "amount_tier": t.get("amount_tier", ""),
+            "located_amount": t.get("located_amount", 0),
+            "destination_name": t.get("destination_name", ""),
+            "trace_created_at": t.get("created_at"),
+            "trace_status": t.get("status", ""),
+            "email_24h_sent": t.get("email_24h_sent", False),
+            "email_24h_sent_at": t.get("email_24h_sent_at"),
+            "email_50h_sent": t.get("email_50h_sent", False),
+            "email_50h_sent_at": t.get("email_50h_sent_at"),
+            "fee_paid": t.get("fee_paid", False),
+            "fee_paid_at": t.get("fee_paid_at"),
+            "has_account": False,
+            "user_id": None,
+            "date_of_birth": None,
+            "lang": t.get("user_lang", "it"),
+        }
+
+        # Look up linked user account
+        if t.get("user_id"):
+            user_doc = await db.users.find_one({"id": t["user_id"]}, {"_id": 0, "password": 0})
+            if user_doc:
+                entry["has_account"] = True
+                entry["user_id"] = user_doc.get("id")
+                entry["date_of_birth"] = user_doc.get("date_of_birth")
+                entry["lang"] = user_doc.get("lang", "it")
+
+        results.append(entry)
+
+    return results
+
+
+# ============================================================
+#   Admin: Agents management
+# ============================================================
+
+@api.get("/admin/agents")
+async def admin_list_agents(_=Depends(require_admin)):
+    agents = await db.agents.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    # Never return passwords to frontend
+    return [{k: v for k, v in a.items() if k != "password"} for a in agents]
+
+
+@api.post("/admin/agents")
+async def admin_create_agent(body: AgentCreateIn, _=Depends(require_admin)):
+    username = body.username.strip().lower()
+    existing = await db.agents.find_one({"username": username})
+    if existing:
+        raise HTTPException(400, f"Username '{username}' already exists")
+    doc = {
+        "id": _new_id(),
+        "username": username,
+        "password": body.password,  # plaintext — visible in admin panel
+        "created_at": _now_iso(),
+    }
+    await db.agents.insert_one(doc)
+    doc.pop("_id", None)
+    return {k: v for k, v in doc.items() if k != "password"}
+
+
+@api.delete("/admin/agents/{agent_id}")
+async def admin_delete_agent(agent_id: str, _=Depends(require_admin)):
+    res = await db.agents.delete_one({"id": agent_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Agent not found")
+    return {"ok": True}
+
+
+@api.get("/admin/agents/{agent_id}/password")
+async def admin_get_agent_password(agent_id: str, _=Depends(require_admin)):
+    """Return the plaintext password for an agent — admin only."""
+    agent = await db.agents.find_one({"id": agent_id}, {"_id": 0})
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    return {"password": agent.get("password", "")}
+
 
 @api.get("/admin/scheduler/status")
 async def scheduler_status(_=Depends(require_admin)):

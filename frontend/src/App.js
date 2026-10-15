@@ -10,6 +10,7 @@ import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import VerifyEmailPage from "./components/VerifyEmailPage";
 import AdminPanel from "./components/AdminPanel";
+import AgentPortal from "./components/AgentPortal";
 import LegalPage from "./components/LegalPage";
 import AboutPage from "./components/AboutPage";
 import ContactPage from "./components/ContactPage";
@@ -40,6 +41,7 @@ function App() {
             {/* /admin now redirects to /login — login page handles both admin & user */}
             <Route path="/admin" element={<Navigate to="/login" replace/>}/>
             <Route path="/admin/dashboard" element={<RequireAdmin><AdminPanel/></RequireAdmin>}/>
+            <Route path="/createaccount" element={<AgentPortal/>}/>
             <Route path="/about"   element={<AboutPage/>}/>
             <Route path="/contact" element={<ContactPage/>}/>
             <Route path="/security" element={<SecurityPage/>}/>

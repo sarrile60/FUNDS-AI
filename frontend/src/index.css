@@ -255,6 +255,18 @@ html, body {
 /* Print-friendly */
 @media print { .no-print { display: none !important; } body { background: white; color: black; } }
 
+/* PIN shake animation */
+@keyframes aif-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+.animate-shake {
+  animation: aif-shake 0.5s ease-in-out;
+}
+
 /* Hide any externally-injected badges */
 #emergent-badge,
 [id*="emergent-badge"],

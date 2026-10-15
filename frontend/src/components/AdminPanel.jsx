@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import {
   Settings, BarChart3, Plus, Edit2, Trash2, Save, X,
   Mail as MailIcon, ExternalLink, Wallet, Check, LogOut, FileText, Download,
-  Calendar, DollarSign, Link2, Key, Copy, Eye, Image as ImageIcon, FileType,
+  Calendar, DollarSign, Link2, Key, Copy, Eye, EyeOff, Image as ImageIcon, FileType,
   Loader2, ZoomIn, ZoomOut, AlertCircle, Users, Search, ChevronLeft, ChevronRight,
-  Phone, CheckCircle2, Clock, Mail, Globe, Bell, BellRing, Filter
+  Phone, CheckCircle2, Clock, Mail, Globe, Bell, BellRing, Filter, UserPlus, Lock
 } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../auth";
@@ -192,11 +192,13 @@ export default function AdminPanel() {
             <TabBtn active={tab === "traces"}   onClick={() => setTab("traces")}   icon={BarChart3} label={isIt ? "Tracciamenti" : "Traces"} testid="tab-traces"/>
             <TabBtn active={tab === "codes"}    onClick={() => setTab("codes")}    icon={Key}       label={isIt ? "Codici Accesso" : "Access Codes"} testid="tab-codes"/>
             <TabBtn active={tab === "users"}    onClick={() => setTab("users")}    icon={Users}     label={isIt ? "Utenti" : "Users"} testid="tab-users"/>
+            <TabBtn active={tab === "agents"}   onClick={() => setTab("agents")}   icon={UserPlus}  label={isIt ? "Agenti" : "Agents"} testid="tab-agents"/>
           </div>
 
           {tab === "traces" && <TracesTab isIt={isIt}/>}
           {tab === "codes" && <AccessCodesTab isIt={isIt}/>}
           {tab === "users" && <RegisteredUsersTab isIt={isIt}/>}
+          {tab === "agents" && <AgentsTab isIt={isIt}/>}
         </main>
       </div>
     </div>
@@ -1746,6 +1748,247 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
           <button onClick={save} disabled={saving} className="aif-btn-primary !py-2 !px-5 !text-sm inline-flex items-center gap-2 disabled:opacity-60" data-testid="edit-save">
             <Save size={14}/> {saving ? "…" : (isIt ? "Salva" : "Save")}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+//   AGENTS TAB
+// ============================================================
+function AgentsTab({ isIt }) {
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formUsername, setFormUsername] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  const [showPw, setShowPw] = useState({});
+  const [passwords, setPasswords] = useState({});  // { agentId: plaintext }
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/agents`, { headers: getAuthHeader() });
+      setAgents(data);
+    } catch (e) {
+      toast.error(isIt ? "Errore caricamento agenti" : "Failed to load agents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const revealPassword = async (agentId) => {
+    if (passwords[agentId]) {
+      setShowPw(prev => ({ ...prev, [agentId]: !prev[agentId] }));
+      return;
+    }
+    try {
+      const { data } = await axios.get(`${API}/admin/agents/${agentId}/password`, { headers: getAuthHeader() });
+      setPasswords(prev => ({ ...prev, [agentId]: data.password }));
+      setShowPw(prev => ({ ...prev, [agentId]: true }));
+    } catch {
+      toast.error(isIt ? "Errore recupero password" : "Failed to get password");
+    }
+  };
+
+  const createAgent = async () => {
+    if (!formUsername.trim() || !formPassword.trim()) {
+      toast.error(isIt ? "Inserisci username e password" : "Enter username and password");
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/admin/agents`, {
+        username: formUsername.trim(),
+        password: formPassword.trim(),
+      }, { headers: getAuthHeader() });
+      toast.success(isIt ? "Agente creato" : "Agent created");
+      setFormUsername(""); setFormPassword(""); setShowForm(false);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore creazione agente" : "Failed to create agent"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteAgent = async (id) => {
+    if (!window.confirm(isIt ? "Eliminare questo agente?" : "Delete this agent?")) return;
+    try {
+      await axios.delete(`${API}/admin/agents/${id}`, { headers: getAuthHeader() });
+      toast.success(isIt ? "Agente eliminato" : "Agent deleted");
+      setAgents(prev => prev.filter(a => a.id !== id));
+    } catch {
+      toast.error(isIt ? "Errore eliminazione agente" : "Failed to delete agent");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-white font-semibold text-base">
+            {isIt ? "Gestione Agenti" : "Agent Management"}
+          </h2>
+          <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+            {isIt
+              ? "Gli agenti possono accedere al portale /createaccount per cercare i clienti (sola lettura)"
+              : "Agents can access /createaccount portal to search clients (read-only)"}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="aif-btn-primary !py-2 !px-4 !text-sm inline-flex items-center gap-2"
+          data-testid="add-agent-btn"
+        >
+          <Plus size={14}/> {isIt ? "Nuovo agente" : "New agent"}
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div className="aif-card !rounded-xl p-5 border border-[#5FE3C9]/30">
+          <h3 className="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+            <UserPlus size={15} className="text-[#5FE3C9]"/>
+            {isIt ? "Crea nuovo agente" : "Create new agent"}
+          </h3>
+          <div className="grid sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="aif-label">Username</label>
+              <input
+                type="text"
+                className="aif-input"
+                value={formUsername}
+                onChange={e => setFormUsername(e.target.value)}
+                placeholder="agent1"
+                autoFocus
+                data-testid="new-agent-username"
+              />
+            </div>
+            <div>
+              <label className="aif-label">{isIt ? "Password" : "Password"}</label>
+              <input
+                type="text"
+                className="aif-input font-mono"
+                value={formPassword}
+                onChange={e => setFormPassword(e.target.value)}
+                placeholder="••••••••"
+                data-testid="new-agent-password"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 justify-end">
+            <button onClick={() => { setShowForm(false); setFormUsername(""); setFormPassword(""); }} className="aif-btn-ghost !py-2 !px-4 !text-sm">
+              {isIt ? "Annulla" : "Cancel"}
+            </button>
+            <button onClick={createAgent} disabled={saving} className="aif-btn-primary !py-2 !px-5 !text-sm inline-flex items-center gap-2" data-testid="create-agent-submit">
+              {saving ? <Loader2 size={13} className="animate-spin"/> : <Plus size={13}/>}
+              {saving ? "..." : (isIt ? "Crea agente" : "Create agent")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Agents list */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12 gap-2 text-[var(--aif-text-dim)]">
+          <Loader2 size={16} className="animate-spin"/> {isIt ? "Caricamento..." : "Loading..."}
+        </div>
+      ) : agents.length === 0 ? (
+        <div className="text-center py-16">
+          <UserPlus size={32} className="mx-auto text-[var(--aif-text-dim)] mb-3"/>
+          <p className="text-white font-medium">{isIt ? "Nessun agente" : "No agents yet"}</p>
+          <p className="text-[var(--aif-text-dim)] text-sm mt-1">
+            {isIt ? "Crea il primo agente con il pulsante sopra" : "Create the first agent using the button above"}
+          </p>
+        </div>
+      ) : (
+        <div className="aif-card !rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--aif-line)]">
+                  <th className="px-4 py-3 text-left text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">Username</th>
+                  <th className="px-4 py-3 text-left text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">Password</th>
+                  <th className="px-4 py-3 text-left text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Creato" : "Created"}</th>
+                  <th className="px-4 py-3 text-right text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">{isIt ? "Azioni" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agents.map((agent, idx) => (
+                  <tr key={agent.id} className={`border-b border-[var(--aif-line)] last:border-0 ${idx % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#5FE3C9]/15 flex items-center justify-center shrink-0">
+                          <UserPlus size={12} className="text-[#5FE3C9]"/>
+                        </div>
+                        <span className="text-white font-mono text-sm">{agent.username}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {showPw[agent.id] ? (
+                          <span className="text-white font-mono text-xs">{passwords[agent.id]}</span>
+                        ) : (
+                          <span className="text-[var(--aif-text-dim)] font-mono text-xs">••••••••</span>
+                        )}
+                        <button
+                          onClick={() => revealPassword(agent.id)}
+                          className="text-[var(--aif-text-dim)] hover:text-white transition"
+                          title={showPw[agent.id] ? (isIt ? "Nascondi" : "Hide") : (isIt ? "Mostra" : "Show")}
+                        >
+                          {showPw[agent.id] ? <EyeOff size={13}/> : <Eye size={13}/>}
+                        </button>
+                        {showPw[agent.id] && passwords[agent.id] && (
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(passwords[agent.id]); toast.success("Copied!"); }}
+                            className="text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                          >
+                            <Copy size={12}/>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--aif-text-dim)] text-xs">
+                      {agent.created_at ? new Date(agent.created_at).toLocaleDateString("it-IT") : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => deleteAgent(agent.id)}
+                        className="p-1.5 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition rounded-lg hover:bg-[#FF6B7A]/10"
+                        title={isIt ? "Elimina agente" : "Delete agent"}
+                      >
+                        <Trash2 size={14}/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Info box */}
+      <div className="aif-card !rounded-xl !p-4 border border-[#6E8BFF]/20 bg-[#6E8BFF]/5">
+        <div className="flex items-start gap-3">
+          <Lock size={16} className="text-[#6E8BFF] mt-0.5 shrink-0"/>
+          <div>
+            <p className="text-white text-sm font-medium mb-1">
+              {isIt ? "Come funziona il portale agenti" : "How the agent portal works"}
+            </p>
+            <ul className="text-[var(--aif-text-dim)] text-xs space-y-1">
+              <li>• {isIt ? "URL portale: /createaccount" : "Portal URL: /createaccount"}</li>
+              <li>• {isIt ? "PIN di accesso (richiesto una volta per browser): condividilo con i tuoi agenti" : "Access PIN (required once per browser): share it with your agents"}</li>
+              <li>• {isIt ? "Gli agenti vedono informazioni sui clienti in sola lettura" : "Agents see client information in read-only mode"}</li>
+              <li>• {isIt ? "Nessun agente può modificare dati — solo l'admin può farlo" : "No agent can modify data — only the admin can do that"}</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
