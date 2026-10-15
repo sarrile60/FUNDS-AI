@@ -22,6 +22,10 @@ export default function RegisterPage() {
     first_name: "", last_name: "", email: "",
     password: "", date_of_birth: ""
   });
+  // Separate day/month/year fields for dd/mm/yyyy display
+  const [dobDay, setDobDay] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobYear, setDobYear] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false); // show "check email" state
@@ -29,10 +33,29 @@ export default function RegisterPage() {
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
+  // Update date_of_birth in YYYY-MM-DD format whenever day/month/year changes
+  const updateDob = (day, month, year) => {
+    if (day && month && year && year.length === 4) {
+      const d = String(day).padStart(2, "0");
+      const m = String(month).padStart(2, "0");
+      setForm(prev => ({ ...prev, date_of_birth: `${year}-${m}-${d}` }));
+    } else {
+      setForm(prev => ({ ...prev, date_of_birth: "" }));
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.first_name || !form.last_name || !form.email || !form.password || !form.date_of_birth) {
+    if (!form.first_name || !form.last_name || !form.email || !form.password) {
       toast.error(isIt ? "Compila tutti i campi" : "Fill all fields");
+      return;
+    }
+    if (!dobDay || !dobMonth || !dobYear || dobYear.length < 4) {
+      toast.error(isIt ? "Inserisci la data di nascita completa (GG/MM/AAAA)" : "Enter complete date of birth (DD/MM/YYYY)");
+      return;
+    }
+    if (!form.date_of_birth) {
+      toast.error(isIt ? "Data di nascita non valida" : "Invalid date of birth");
       return;
     }
     if (form.password.length < 6) {
@@ -221,19 +244,67 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Date of birth */}
+              {/* Date of birth — dd/mm/yyyy */}
               <div>
                 <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"} *</label>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
-                  <input
-                    type="date"
-                    className="aif-input pl-10"
-                    data-testid="reg-dob"
-                    value={form.date_of_birth}
-                    onChange={set("date_of_birth")}
-                    required
-                  />
+                <div className="flex items-center gap-2">
+                  {/* Day */}
+                  <div className="relative flex-1">
+                    <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
+                    <input
+                      type="number"
+                      className="aif-input pl-9 text-center"
+                      data-testid="reg-dob-day"
+                      value={dobDay}
+                      onChange={e => {
+                        const v = e.target.value.slice(0, 2);
+                        setDobDay(v);
+                        updateDob(v, dobMonth, dobYear);
+                      }}
+                      placeholder="GG"
+                      min="1"
+                      max="31"
+                      required
+                    />
+                  </div>
+                  <span className="text-[var(--aif-text-dim)] font-bold text-lg select-none">/</span>
+                  {/* Month */}
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      className="aif-input text-center"
+                      data-testid="reg-dob-month"
+                      value={dobMonth}
+                      onChange={e => {
+                        const v = e.target.value.slice(0, 2);
+                        setDobMonth(v);
+                        updateDob(dobDay, v, dobYear);
+                      }}
+                      placeholder="MM"
+                      min="1"
+                      max="12"
+                      required
+                    />
+                  </div>
+                  <span className="text-[var(--aif-text-dim)] font-bold text-lg select-none">/</span>
+                  {/* Year */}
+                  <div className="relative flex-[2]">
+                    <input
+                      type="number"
+                      className="aif-input text-center"
+                      data-testid="reg-dob-year"
+                      value={dobYear}
+                      onChange={e => {
+                        const v = e.target.value.slice(0, 4);
+                        setDobYear(v);
+                        updateDob(dobDay, dobMonth, v);
+                      }}
+                      placeholder="AAAA"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
