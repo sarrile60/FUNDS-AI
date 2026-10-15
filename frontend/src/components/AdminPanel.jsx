@@ -100,14 +100,17 @@ export default function AdminPanel() {
             time: trace.email_24h_sent_at
               ? new Date(trace.email_24h_sent_at).toLocaleTimeString()
               : new Date().toLocaleTimeString(),
-            read: firstPoll, // read=true if historical, read=false if live
+            read: false, // always unread so bell count reflects what happened while away
           }, ...prev.slice(0, 49)]);
           if (!firstPoll) {
             setUnread(u => u + 1);
-            // OS notification only for live events
+            // OS notification only for live events (not historical spam)
             if (Notification.permission === "granted") {
               try { new Notification("Traccia Fondi — 24h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
             }
+          } else {
+            // Historical: increment unread count so admin sees badge on return
+            setUnread(u => u + 1);
           }
         }
 
@@ -127,13 +130,16 @@ export default function AdminPanel() {
             time: trace.email_50h_sent_at
               ? new Date(trace.email_50h_sent_at).toLocaleTimeString()
               : new Date().toLocaleTimeString(),
-            read: firstPoll,
+            read: false, // always unread
           }, ...prev.slice(0, 49)]);
           if (!firstPoll) {
             setUnread(u => u + 1);
             if (Notification.permission === "granted") {
               try { new Notification("Traccia Fondi — 50h", { body: msg, icon: "/favicon.ico" }); } catch (err) { /* unsupported */ }
             }
+          } else {
+            // Historical: still increment unread count
+            setUnread(u => u + 1);
           }
         }
       });
