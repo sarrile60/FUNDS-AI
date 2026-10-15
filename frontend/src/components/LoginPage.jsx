@@ -13,9 +13,10 @@ export default function LoginPage() {
   const nav = useNavigate();
   const isIt = lang === "it";
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(() => localStorage.getItem("tf_remember_email") || "");
+  const [password, setPassword] = useState(() => localStorage.getItem("tf_remember_pw") || "");
   const [showPw, setShowPw] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem("tf_remember_email"));
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
@@ -23,6 +24,14 @@ export default function LoginPage() {
     if (!email || !password) {
       toast.error(isIt ? "Inserisci email e password" : "Enter email and password");
       return;
+    }
+    // Save or clear credentials
+    if (rememberMe) {
+      localStorage.setItem("tf_remember_email", email);
+      localStorage.setItem("tf_remember_pw", password);
+    } else {
+      localStorage.removeItem("tf_remember_email");
+      localStorage.removeItem("tf_remember_pw");
     }
     setBusy(true);
     const result = await login(email, password);
@@ -108,6 +117,19 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Remember Me */}
+              <label className="flex items-center gap-2.5 cursor-pointer select-none" data-testid="remember-me-label">
+                <div
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-9 h-5 rounded-full relative transition-colors duration-200 ${rememberMe ? "bg-[#5FE3C9]" : "bg-[var(--aif-line)]"}`}
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all duration-200 ${rememberMe ? "left-[18px]" : "left-0.5"}`}/>
+                </div>
+                <span className="text-[13px] text-[var(--aif-text-dim)]">
+                  {isIt ? "Ricordami" : "Remember me"}
+                </span>
+              </label>
 
               <button
                 type="submit"

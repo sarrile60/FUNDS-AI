@@ -1241,6 +1241,7 @@ function RegisteredUsersTab({ isIt }) {
   const [page, setPage] = useState(0);
   const [editingUser, setEditingUser] = useState(null);
   const [feeFilter, setFeeFilter] = useState("all");
+  const [uniswapFilter, setUniswapFilter] = useState("all"); // "all" | "registered" | "not_registered"
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   // Uniswap modal state
@@ -1291,6 +1292,9 @@ function RegisteredUsersTab({ isIt }) {
     // Fee filter
     if (feeFilter === "paid" && !u.trace?.fee_paid) return false;
     if (feeFilter === "unpaid" && u.trace?.fee_paid) return false;
+    // Uniswap filter
+    if (uniswapFilter === "registered" && !u.trace?.uniswap_account_created) return false;
+    if (uniswapFilter === "not_registered" && u.trace?.uniswap_account_created) return false;
     // Date range filter (by registration date)
     if (dateFrom && u.created_at) {
       if (new Date(u.created_at) < new Date(dateFrom)) return false;
@@ -1306,7 +1310,7 @@ function RegisteredUsersTab({ isIt }) {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  useEffect(() => { setPage(0); }, [search, feeFilter, dateFrom, dateTo]);
+  useEffect(() => { setPage(0); }, [search, feeFilter, uniswapFilter, dateFrom, dateTo]);
 
   const fmtDate = (iso) => {
     if (!iso) return "—";
@@ -1405,6 +1409,26 @@ function RegisteredUsersTab({ isIt }) {
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition whitespace-nowrap ${
                   feeFilter === f.key
                     ? f.key === "paid" ? "bg-[#4ADE80]/20 text-[#4ADE80]" : f.key === "unpaid" ? "bg-[#FFB454]/20 text-[#FFB454]" : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
+                    : "text-[var(--aif-text-dim)] hover:text-white"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {/* Uniswap filter */}
+          <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
+            {[
+              { key: "all",           label: isIt ? "Uniswap: tutti" : "Uniswap: all" },
+              { key: "registered",    label: isIt ? "✓ Registrati" : "✓ Registered" },
+              { key: "not_registered",label: isIt ? "✗ Non registrati" : "✗ Not registered" },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setUniswapFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition whitespace-nowrap ${
+                  uniswapFilter === f.key
+                    ? f.key === "registered" ? "bg-[#5FE3C9]/20 text-[#5FE3C9]" : f.key === "not_registered" ? "bg-[#FF6B7A]/15 text-[#FF6B7A]" : "bg-white/10 text-white"
                     : "text-[var(--aif-text-dim)] hover:text-white"
                 }`}
               >

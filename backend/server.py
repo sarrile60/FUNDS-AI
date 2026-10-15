@@ -1655,6 +1655,8 @@ async def admin_list_registered_users(_=Depends(require_admin)):
                 "email_50h_sent": trace.get("email_50h_sent", False),
                 "fee_paid": trace.get("fee_paid", False),
                 "destination_name": trace.get("destination_name"),
+                "uniswap_account_created": trace.get("uniswap_account_created", False),
+                "uniswap_username": trace.get("uniswap_username", ""),
             }
         else:
             u_out["trace"] = None
@@ -1687,6 +1689,8 @@ async def admin_list_registered_users(_=Depends(require_admin)):
                 "email_50h_sent": trace.get("email_50h_sent", False),
                 "fee_paid": trace.get("fee_paid", False),
                 "destination_name": trace.get("destination_name"),
+                "uniswap_account_created": trace.get("uniswap_account_created", False),
+                "uniswap_username": trace.get("uniswap_username", ""),
             }
         }
         result.append(ghost)
