@@ -1582,34 +1582,12 @@ function RegisteredUsersTab({ isIt }) {
                     <td className="p-3 text-center">
                       {u.trace ? (
                         u.trace.uniswap_account_created ? (
-                          <div className="flex items-center gap-1">
-                            <span
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30 whitespace-nowrap"
-                              title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : "Uniswap V4 account created"}
-                            >
-                              <CheckCircle2 size={12}/> Creato
-                            </span>
-                            <button
-                              onClick={async () => {
-                                if (!window.confirm(isIt ? "Resettare lo stato Uniswap? Usare dopo aver eliminato l'account su uniswapv4.com." : "Reset Uniswap status? Use this after deleting the account on uniswapv4.com.")) return;
-                                try {
-                                  await axios.post(`${API}/admin/traces/${u.trace.id}/reset-uniswap-account`, {}, { headers: getAuthHeader() });
-                                  setUsers(prev => prev.map(x =>
-                                    x.trace?.id === u.trace.id
-                                      ? { ...x, trace: { ...x.trace, uniswap_account_created: false, uniswap_username: "" } }
-                                      : x
-                                  ));
-                                  toast.success(isIt ? "Stato Uniswap reimpostato" : "Uniswap status reset");
-                                } catch {
-                                  toast.error(isIt ? "Errore reset" : "Reset failed");
-                                }
-                              }}
-                              className="p-1 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition rounded"
-                              title={isIt ? "Reimposta (account eliminato su uniswapv4.com)" : "Reset (account deleted on uniswapv4.com)"}
-                            >
-                              <X size={12}/>
-                            </button>
-                          </div>
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30 whitespace-nowrap"
+                            title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : "Uniswap V4 account created"}
+                          >
+                            <CheckCircle2 size={12}/> Creato
+                          </span>
                         ) : u.trace.fee_paid ? (
                           <button
                             onClick={() => setUniswapTarget(u)}
