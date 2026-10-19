@@ -1453,6 +1453,7 @@ function RegisteredUsersTab({ isIt }) {
     else if (sortCol === "dob") { av = a.date_of_birth || ""; bv = b.date_of_birth || ""; }
     else if (sortCol === "created_at") { av = new Date(a.created_at || 0).getTime(); bv = new Date(b.created_at || 0).getTime(); }
     else if (sortCol === "amount") { av = a.trace?.located_amount || 0; bv = b.trace?.located_amount || 0; }
+    else if (sortCol === "agent") { av = (a.assigned_agent_username || "").toLowerCase(); bv = (b.assigned_agent_username || "").toLowerCase(); }
     else if (sortCol === "uniswap") {
       // 2=Creato, 1=available (fee paid), 0=not available (no fee), -1=no trace
       const score = (u) => !u.trace ? -1 : u.trace.uniswap_account_created ? 2 : u.trace.fee_paid ? 1 : 0;
@@ -1635,7 +1636,7 @@ function RegisteredUsersTab({ isIt }) {
               <thead>
                 <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
                   <th className="p-3 font-medium"><SortHeader label={isIt ? "Nome" : "Name"} col="name" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
-                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Agente" : "Agent"}</th>
+                  <th className="p-3 font-medium hidden lg:table-cell"><SortHeader label={isIt ? "Agente" : "Agent"} col="agent" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium"><SortHeader label="Email" col="email" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Password" : "Password"}</th>
                   <th className="p-3 font-medium hidden lg:table-cell"><SortHeader label={isIt ? "Nascita" : "DOB"} col="dob" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
