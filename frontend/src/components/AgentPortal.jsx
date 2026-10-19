@@ -8,7 +8,7 @@ import axios from "axios";
 import {
   LogOut, User, Mail, CheckCircle2, XCircle,
   DollarSign, Shield, Eye, EyeOff, Loader2, AlertTriangle,
-  ChevronDown, ChevronUp, Globe, RefreshCw, Users
+  ChevronDown, ChevronUp, Globe, RefreshCw, Users, Search
 } from "lucide-react";
 import Logo from "./Logo";
 
@@ -393,6 +393,8 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all"); // "all" | "24h" | "50h" | "newest" | "oldest"
 
   const loadClients = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -415,6 +417,25 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
   }, [isIt, onLogout]);
 
   useEffect(() => { loadClients(); }, [loadClients]);
+
+  // Client-side filter + sort
+  const displayed = clients
+    .filter(c => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const full = `${c.first_name} ${c.last_name}`.toLowerCase();
+        if (!full.includes(q) && !c.email.toLowerCase().includes(q)) return false;
+      }
+      if (filter === "24h" && !c.email_24h_sent) return false;
+      if (filter === "50h" && !c.email_50h_sent) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const ta = new Date(a.trace_created_at || 0).getTime();
+      const tb = new Date(b.trace_created_at || 0).getTime();
+      if (filter === "oldest") return ta - tb;
+      return tb - ta; // newest first (default)
+    });
 
   const toggleLang = () => {
     const next = isIt ? "en" : "it";
@@ -459,7 +480,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
 
         <main className="max-w-4xl mx-auto px-4 py-8">
           {/* Title row */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <div>
               <h1 className="text-xl font-bold text-white flex items-center gap-2">
                 <Users size={20} className="text-[#5FE3C9]"/>
@@ -467,11 +488,13 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
               </h1>
               {!loading && (
                 <p className="text-[var(--aif-text-dim)] text-sm mt-0.5">
-                  {clients.length === 0
-                    ? (isIt ? "Nessun cliente assegnato" : "No clients assigned yet")
-                    : isIt
-                      ? `${clients.length} client${clients.length === 1 ? "e" : "i"} assegnat${clients.length === 1 ? "o" : "i"}`
-                      : `${clients.length} client${clients.length === 1 ? "" : "s"} assigned`}
+                  {displayed.length !== clients.length
+                    ? `${displayed.length} / ${clients.length}`
+                    : clients.length === 0
+                      ? (isIt ? "Nessun cliente assegnato" : "No clients assigned yet")
+                      : isIt
+                        ? `${clients.length} client${clients.length === 1 ? "e" : "i"} assegnat${clients.length === 1 ? "o" : "i"}`
+                        : `${clients.length} client${clients.length === 1 ? "" : "s"} assigned`}
                 </p>
               )}
             </div>
@@ -485,6 +508,48 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
               <span className="hidden sm:inline">{isIt ? "Aggiorna" : "Refresh"}</span>
             </button>
           </div>
+
+          {/* Search + Filters */}
+          {!loading && clients.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-5">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)]"/>
+                <input
+                  type="text"
+                  className="aif-input pl-9 !py-2 text-[13px] w-full"
+                  placeholder={isIt ? "Cerca nome, cognome, email…" : "Search name, email…"}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  data-testid="agent-client-search"
+                />
+              </div>
+              {/* Filter buttons */}
+              <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1 flex-wrap">
+                {[
+                  { key: "all",    label: isIt ? "Tutti" : "All" },
+                  { key: "24h",    label: "24h ✓" },
+                  { key: "50h",    label: "50h ✓" },
+                  { key: "newest", label: isIt ? "↓ Recenti" : "↓ Newest" },
+                  { key: "oldest", label: isIt ? "↑ Vecchi" : "↑ Oldest" },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition whitespace-nowrap ${
+                      filter === f.key
+                        ? f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]"
+                        : f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]"
+                        : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
+                        : "text-[var(--aif-text-dim)] hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Content */}
           {loading ? (
@@ -506,9 +571,16 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                   : "The admin needs to assign clients to you from the admin panel."}
               </p>
             </div>
+          ) : displayed.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-white font-medium">{isIt ? "Nessun risultato" : "No results"}</p>
+              <p className="text-[var(--aif-text-dim)] text-sm mt-1">
+                {isIt ? "Prova con un'altra ricerca o filtro." : "Try a different search or filter."}
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {clients.map((c, idx) => (
+              {displayed.map((c, idx) => (
                 <ClientCard key={c.trace_id || c.email || idx} result={c} isIt={isIt}/>
               ))}
             </div>
