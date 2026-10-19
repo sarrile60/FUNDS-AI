@@ -1600,16 +1600,29 @@ class TraceEmailUpdateIn(BaseModel):
 @api.put("/admin/traces/{trace_id}/update-email")
 async def admin_update_trace_email(trace_id: str, body: TraceEmailUpdateIn, _=Depends(require_admin)):
     """
-    Update the email address on a trace.
-    Use when a client provided a wrong email — fix it then re-send missed emails
-    using the existing /send-24h-email or /send-50h-email endpoints.
+    Update the email address on a trace — and sync to the linked user account if one exists.
+    Use when a client provided a wrong email — fix it then re-send missed emails.
     """
     trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
     if not trace:
         raise HTTPException(404, "Trace not found")
     new_email = body.email.lower().strip()
+
+    # Check new email not already used by a different user
+    existing = await db.users.find_one({"email": new_email})
+    if existing and existing.get("id") != trace.get("user_id"):
+        raise HTTPException(400, "Email already in use by another account")
+
+    # Update trace email
     await db.traces.update_one({"id": trace_id}, {"$set": {"email": new_email}})
-    logger.info("Trace %s email updated to %s", trace_id, new_email)
+
+    # Sync: also update the linked user account email
+    if trace.get("user_id"):
+        await db.users.update_one({"id": trace["user_id"]}, {"$set": {"email": new_email}})
+        logger.info("Trace %s email updated to %s — synced to user %s", trace_id, new_email, trace["user_id"])
+    else:
+        logger.info("Trace %s email updated to %s (no linked user)", trace_id, new_email)
+
     return await db.traces.find_one({"id": trace_id}, {"_id": 0})
 
 
@@ -1819,6 +1832,11 @@ async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _
 
     if update:
         await db.users.update_one({"id": user_id}, {"$set": update})
+
+    # Sync email change to linked trace
+    if "email" in update:
+        await db.traces.update_one({"user_id": user_id}, {"$set": {"email": update["email"]}})
+        logger.info("User %s email changed to %s — synced to linked trace", user_id, update["email"])
 
     # Update located_amount on linked trace
     if body.located_amount is not None:
