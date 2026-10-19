@@ -1635,6 +1635,7 @@ function RegisteredUsersTab({ isIt }) {
               <thead>
                 <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)] text-left">
                   <th className="p-3 font-medium"><SortHeader label={isIt ? "Nome" : "Name"} col="name" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium hidden lg:table-cell">{isIt ? "Agente" : "Agent"}</th>
                   <th className="p-3 font-medium"><SortHeader label="Email" col="email" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">{isIt ? "Password" : "Password"}</th>
                   <th className="p-3 font-medium hidden lg:table-cell"><SortHeader label={isIt ? "Nascita" : "DOB"} col="dob" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
@@ -1666,6 +1667,12 @@ function RegisteredUsersTab({ isIt }) {
                           </span>
                         )}
                       </div>
+                    </td>
+                    {/* Agent assignment cell */}
+                    <td className="p-3 hidden lg:table-cell min-w-[130px]">
+                      <AgentAssignCell user={u} agents={agents} isIt={isIt} onAssigned={(agentId, agentUsername) => {
+                        setUsers(prev => prev.map(x => x.id === u.id ? { ...x, assigned_agent_id: agentId, assigned_agent_username: agentUsername } : x));
+                      }}/>
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-1.5">
@@ -1846,6 +1853,50 @@ function RegisteredUsersTab({ isIt }) {
     </div>
   );
 }
+
+// ============================================================
+//   AGENT ASSIGN CELL — inline dropdown to assign an agent to a user
+// ============================================================
+function AgentAssignCell({ user, agents, isIt, onAssigned }) {
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (e) => {
+    const agentId = e.target.value || null;
+    setSaving(true);
+    try {
+      await axios.put(`${API}/admin/users/${user.id}/assign-agent`, { agent_id: agentId }, { headers: getAuthHeader() });
+      const agentUsername = agents.find(a => a.id === agentId)?.username || "";
+      onAssigned(agentId, agentUsername);
+      toast.success(agentId
+        ? (isIt ? `Assegnato a ${agentUsername}` : `Assigned to ${agentUsername}`)
+        : (isIt ? "Agente rimosso" : "Agent removed"));
+    } catch {
+      toast.error(isIt ? "Errore assegnazione" : "Assignment failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {saving && <Loader2 size={10} className="animate-spin text-[#5FE3C9] shrink-0"/>}
+      <select
+        value={user.assigned_agent_id || ""}
+        onChange={handleChange}
+        disabled={saving}
+        className="aif-input !py-1 !px-2 text-[11px] !h-auto min-w-0 w-full"
+        style={{fontSize:"11px"}}
+        title={isIt ? "Assegna agente" : "Assign agent"}
+      >
+        <option value="">{isIt ? "— nessuno —" : "— none —"}</option>
+        {agents.map(a => (
+          <option key={a.id} value={a.id}>{a.username}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 
 function LangBadge({ lang }) {
   const isEn = lang === "en";

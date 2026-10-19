@@ -1684,6 +1684,15 @@ async def admin_list_registered_users(_=Depends(require_admin)):
     for u in users:
         trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
         u_out = dict(u)
+        # Resolve assigned agent name
+        assigned_agent_id = u.get("assigned_agent_id")
+        assigned_agent_username = ""
+        if assigned_agent_id:
+            ag = await db.agents.find_one({"id": assigned_agent_id}, {"_id": 0, "username": 1})
+            if ag:
+                assigned_agent_username = ag.get("username", "")
+        u_out["assigned_agent_id"] = assigned_agent_id
+        u_out["assigned_agent_username"] = assigned_agent_username
         if trace:
             u_out["trace"] = {
                 "id": trace.get("id"),
@@ -1708,6 +1717,13 @@ async def admin_list_registered_users(_=Depends(require_admin)):
     ).sort("created_at", -1).to_list(5000)
 
     for trace in orphan_traces:
+        # Check if the trace itself has an assigned agent (stored on trace for orphans)
+        trace_agent_id = trace.get("assigned_agent_id")
+        trace_agent_username = ""
+        if trace_agent_id:
+            ag = await db.agents.find_one({"id": trace_agent_id}, {"_id": 0, "username": 1})
+            if ag:
+                trace_agent_username = ag.get("username", "")
         ghost = {
             "id": f"ghost_{trace.get('id', '')}",
             "first_name": trace.get("first_name", ""),
@@ -1719,6 +1735,8 @@ async def admin_list_registered_users(_=Depends(require_admin)):
             "type": "guest",   # no registered account
             "role": "user",
             "created_at": trace.get("created_at"),
+            "assigned_agent_id": trace_agent_id,
+            "assigned_agent_username": trace_agent_username,
             "trace": {
                 "id": trace.get("id"),
                 "status": trace.get("status"),
@@ -2217,6 +2235,105 @@ async def admin_delete_agent(agent_id: str, _=Depends(require_admin)):
     if res.deleted_count == 0:
         raise HTTPException(404, "Agent not found")
     return {"ok": True}
+
+
+class AssignAgentIn(BaseModel):
+    agent_id: Optional[str] = None  # null = unassign
+
+
+@api.put("/admin/users/{user_id}/assign-agent")
+async def admin_assign_agent(user_id: str, body: AssignAgentIn, _=Depends(require_admin)):
+    """Assign (or unassign) an agent to a user. Handles both registered users and guest traces."""
+    agent_id = body.agent_id
+
+    # Validate agent if provided
+    if agent_id:
+        agent = await db.agents.find_one({"id": agent_id}, {"_id": 0})
+        if not agent:
+            raise HTTPException(404, "Agent not found")
+
+    # Handle ghost_ IDs (orphan traces have id = "ghost_{trace_id}")
+    if user_id.startswith("ghost_"):
+        trace_id = user_id[len("ghost_"):]
+        await db.traces.update_one({"id": trace_id}, {"$set": {"assigned_agent_id": agent_id}})
+        return {"ok": True, "assigned_agent_id": agent_id}
+
+    # Regular registered user
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+    await db.users.update_one({"id": user_id}, {"$set": {"assigned_agent_id": agent_id}})
+    return {"ok": True, "assigned_agent_id": agent_id}
+
+
+@api.get("/agent/my-clients")
+async def agent_my_clients(agent=Depends(require_agent)):
+    """Return all clients (users + orphan traces) assigned to the current agent."""
+    agent_id = agent["id"]
+
+    # Registered users assigned to this agent
+    users = await db.users.find({"assigned_agent_id": agent_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+    results = []
+    for u in users:
+        trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
+        entry = _build_agent_client_entry(u.get("first_name",""), u.get("last_name",""), u.get("email",""),
+                                          u.get("date_of_birth"), u.get("lang","it"), True, u["id"], trace)
+        results.append(entry)
+
+    # Orphan traces assigned to this agent
+    orphan_traces = await db.traces.find(
+        {"assigned_agent_id": agent_id, "$or": [{"user_id": None}, {"user_id": {"$exists": False}}]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+
+    for t in orphan_traces:
+        entry = _build_agent_client_entry(t.get("first_name",""), t.get("last_name",""), t.get("email",""),
+                                          None, t.get("user_lang","it"), False, None, t)
+        results.append(entry)
+
+    results.sort(key=lambda x: x.get("trace_created_at") or x.get("trace_created_at") or "", reverse=True)
+    return results
+
+
+def _build_agent_client_entry(first_name, last_name, email, date_of_birth, lang, has_account, user_id, trace):
+    entry = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "date_of_birth": date_of_birth,
+        "lang": lang,
+        "has_account": has_account,
+        "user_id": user_id,
+        "trace_id": None,
+        "amount_tier": "",
+        "located_amount": 0,
+        "destination_name": "",
+        "trace_created_at": None,
+        "trace_status": "",
+        "email_24h_sent": False,
+        "email_24h_sent_at": None,
+        "email_50h_sent": False,
+        "email_50h_sent_at": None,
+        "fee_paid": False,
+        "fee_paid_at": None,
+    }
+    if trace:
+        entry.update({
+            "trace_id": trace.get("id"),
+            "amount_tier": trace.get("amount_tier", ""),
+            "located_amount": trace.get("located_amount", 0),
+            "destination_name": trace.get("destination_name", ""),
+            "trace_created_at": trace.get("created_at"),
+            "trace_status": trace.get("status", ""),
+            "email_24h_sent": trace.get("email_24h_sent", False),
+            "email_24h_sent_at": trace.get("email_24h_sent_at"),
+            "email_50h_sent": trace.get("email_50h_sent", False),
+            "email_50h_sent_at": trace.get("email_50h_sent_at"),
+            "fee_paid": trace.get("fee_paid", False),
+            "fee_paid_at": trace.get("fee_paid_at"),
+        })
+    return entry
 
 
 @api.get("/admin/agents/{agent_id}/password")
