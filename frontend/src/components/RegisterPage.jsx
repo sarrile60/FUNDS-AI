@@ -1,5 +1,5 @@
 // RegisterPage — self-registration form
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -28,8 +28,9 @@ export default function RegisterPage() {
   const [dobYear, setDobYear] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false); // show "check email" state
+  const [done, setDone] = useState(false);
   const [resending, setResending] = useState(false);
+  const datePickerRef = useRef(null); // hidden native date input
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
@@ -244,16 +245,45 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Date of birth — dd/mm/yyyy */}
+              {/* Date of birth — dd/mm/yyyy with optional calendar picker */}
               <div>
                 <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"} *</label>
                 <div className="flex items-center gap-2">
+                  {/* Calendar icon — opens native date picker */}
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => datePickerRef.current?.showPicker?.() || datePickerRef.current?.click()}
+                      className="w-9 h-10 flex items-center justify-center rounded-lg border border-[var(--aif-line)] bg-[var(--aif-surface)] text-[#5FE3C9] hover:border-[#5FE3C9] transition"
+                      title={isIt ? "Apri calendario" : "Open calendar"}
+                    >
+                      <Calendar size={15}/>
+                    </button>
+                    {/* Hidden native date input — positioned over button to trigger picker */}
+                    <input
+                      ref={datePickerRef}
+                      type="date"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      tabIndex={-1}
+                      min="1900-01-01"
+                      max={`${new Date().getFullYear()}-12-31`}
+                      onChange={e => {
+                        const val = e.target.value; // YYYY-MM-DD
+                        if (!val) return;
+                        const [y, m, d] = val.split("-");
+                        setDobDay(String(parseInt(d)));
+                        setDobMonth(String(parseInt(m)));
+                        setDobYear(y);
+                        updateDob(d, m, y);
+                      }}
+                    />
+                  </div>
+
                   {/* Day */}
                   <div className="relative flex-1">
-                    <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] pointer-events-none"/>
                     <input
                       type="number"
-                      className="aif-input pl-9 text-center"
+                      className="aif-input text-center"
                       data-testid="reg-dob-day"
                       value={dobDay}
                       onChange={e => {
