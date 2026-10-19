@@ -1593,6 +1593,26 @@ async def admin_delete_trace(trace_id: str, _=Depends(require_admin)):
     return {"ok": True}
 
 
+class TraceEmailUpdateIn(BaseModel):
+    email: EmailStr
+
+
+@api.put("/admin/traces/{trace_id}/update-email")
+async def admin_update_trace_email(trace_id: str, body: TraceEmailUpdateIn, _=Depends(require_admin)):
+    """
+    Update the email address on a trace.
+    Use when a client provided a wrong email — fix it then re-send missed emails
+    using the existing /send-24h-email or /send-50h-email endpoints.
+    """
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    new_email = body.email.lower().strip()
+    await db.traces.update_one({"id": trace_id}, {"$set": {"email": new_email}})
+    logger.info("Trace %s email updated to %s", trace_id, new_email)
+    return await db.traces.find_one({"id": trace_id}, {"_id": 0})
+
+
 @api.post("/admin/traces/{trace_id}/mark-fee-paid")
 async def admin_mark_fee_paid(trace_id: str, _=Depends(require_admin)):
     """

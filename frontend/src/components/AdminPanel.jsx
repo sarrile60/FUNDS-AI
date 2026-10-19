@@ -631,6 +631,9 @@ function TracesTab({ isIt }) {
   const [destFilter, setDestFilter] = useState("all"); // "all" | dest name
   const [sortCol, setSortCol] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
+  const [editingEmailId, setEditingEmailId] = useState(null);
+  const [editingEmailVal, setEditingEmailVal] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
 
   const load = async () => {
     try {
@@ -894,14 +897,76 @@ function TracesTab({ isIt }) {
                       <div className="text-[10px] text-[var(--aif-text-dim)]">{TIER_LABEL[trace.amount_tier] || trace.amount_tier}</div>
                     </td>
                     <td className="px-3 py-3 min-w-[180px]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[var(--aif-text-dim)] text-[11px]">{trace.email}</span>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(trace.email); toast.success("Email copied"); }}
-                          className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
-                          title="Copy email"
-                        ><Copy size={11}/></button>
-                      </div>
+                      {editingEmailId === trace.id ? (
+                        // Inline email editor
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="email"
+                            className="aif-input !py-1 !px-2 text-[11px] flex-1 min-w-0"
+                            value={editingEmailVal}
+                            onChange={e => setEditingEmailVal(e.target.value)}
+                            onKeyDown={async e => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (!editingEmailVal.trim()) return;
+                                setSavingEmail(true);
+                                try {
+                                  const { data } = await axios.put(`${API}/admin/traces/${trace.id}/update-email`, { email: editingEmailVal.trim() }, { headers: getAuthHeader() });
+                                  setTraces(prev => prev.map(t => t.id === trace.id ? { ...t, email: data.email } : t));
+                                  toast.success(isIt ? "Email aggiornata" : "Email updated");
+                                  setEditingEmailId(null);
+                                } catch (err) {
+                                  toast.error(err?.response?.data?.detail || (isIt ? "Errore aggiornamento email" : "Failed to update email"));
+                                } finally { setSavingEmail(false); }
+                              }
+                              if (e.key === "Escape") setEditingEmailId(null);
+                            }}
+                            autoFocus
+                            data-testid={`edit-email-input-${trace.id}`}
+                          />
+                          <button
+                            disabled={savingEmail}
+                            onClick={async () => {
+                              if (!editingEmailVal.trim()) return;
+                              setSavingEmail(true);
+                              try {
+                                const { data } = await axios.put(`${API}/admin/traces/${trace.id}/update-email`, { email: editingEmailVal.trim() }, { headers: getAuthHeader() });
+                                setTraces(prev => prev.map(t => t.id === trace.id ? { ...t, email: data.email } : t));
+                                toast.success(isIt ? "Email aggiornata — ora puoi re-inviare le email mancanti" : "Email updated — you can now resend missed emails");
+                                setEditingEmailId(null);
+                              } catch (err) {
+                                toast.error(err?.response?.data?.detail || (isIt ? "Errore" : "Error"));
+                              } finally { setSavingEmail(false); }
+                            }}
+                            className="p-1 text-[#4ADE80] hover:text-white transition shrink-0"
+                            title={isIt ? "Salva" : "Save"}
+                          >
+                            {savingEmail ? <Loader2 size={12} className="animate-spin"/> : <Check size={12}/>}
+                          </button>
+                          <button
+                            onClick={() => setEditingEmailId(null)}
+                            className="p-1 text-[var(--aif-text-dim)] hover:text-[#FF6B7A] transition shrink-0"
+                            title={isIt ? "Annulla" : "Cancel"}
+                          >
+                            <X size={12}/>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[var(--aif-text-dim)] text-[11px]">{trace.email}</span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(trace.email); toast.success("Email copied"); }}
+                            className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition shrink-0"
+                            title="Copy email"
+                          ><Copy size={11}/></button>
+                          <button
+                            onClick={() => { setEditingEmailId(trace.id); setEditingEmailVal(trace.email); }}
+                            className="p-0.5 text-[var(--aif-text-dim)] hover:text-[#FFB454] transition shrink-0"
+                            title={isIt ? "Modifica email" : "Edit email"}
+                            data-testid={`edit-email-btn-${trace.id}`}
+                          ><Edit2 size={11}/></button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3">
                       <span className="font-mono text-[#5FE3C9] text-[11px] font-bold">{trace.code_used || "—"}</span>
