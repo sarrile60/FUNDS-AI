@@ -96,6 +96,36 @@ def _rate_limit(key: str, max_requests: int, window_seconds: int):
     pass
 
 
+async def _resend_with_retry(payload: dict, max_attempts: int = 3, delay_s: float = 3.0) -> dict:
+    """
+    Send an email via Resend with up to `max_attempts` retries on transient failure.
+    Returns the Resend response dict on success. Raises the last exception on total failure.
+    This prevents transient API/network errors from silently dropping emails.
+    """
+    last_exc = None
+    loop = asyncio.get_event_loop()
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = await loop.run_in_executor(None, lambda: resend.Emails.send(payload))
+            if attempt > 1:
+                logger.info("Resend succeeded on attempt %d for '%s'", attempt, payload.get("subject", ""))
+            return result
+        except Exception as e:
+            last_exc = e
+            if attempt < max_attempts:
+                logger.warning(
+                    "Resend attempt %d/%d failed ('%s'): %s — retrying in %.0fs",
+                    attempt, max_attempts, payload.get("subject", ""), e, delay_s
+                )
+                await asyncio.sleep(delay_s)
+            else:
+                logger.error(
+                    "Resend failed after %d attempts ('%s'): %s",
+                    max_attempts, payload.get("subject", ""), e
+                )
+    raise last_exc
+
+
 app = FastAPI(title="Traccia Fondi API", version="4.0.0")
 api = APIRouter(prefix="/api")
 
@@ -328,8 +358,7 @@ al completamento della procedura.</p>
             )
 
         if RESEND_API_KEY:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, lambda: resend.Emails.send({
+            await _resend_with_retry({
                 "from": RESEND_FROM_NOREPLY,
                 "to": [to_email],
                 "reply_to": RESEND_REPLY_TO,
@@ -337,7 +366,7 @@ al completamento della procedura.</p>
                 "text": text,
                 "html": html,
                 "tags": [{"name": "type", "value": "case_update_24h"}],
-            }))
+            })
             logger.info("24h email sent to %s for trace %s", to_email, trace_id)
             # ── Admin notification email ──
             try:
@@ -348,13 +377,13 @@ al completamento della procedura.</p>
                     f"L'email di aggiornamento 24h è stata inviata automaticamente al cliente.\n\n"
                     "Accedi al pannello admin per gestire il tracciamento."
                 )
-                await loop.run_in_executor(None, lambda: resend.Emails.send({
+                await _resend_with_retry({
                     "from": RESEND_FROM_NOREPLY,
                     "to": [ADMIN_EMAIL],
                     "subject": admin_subject,
                     "text": admin_text,
                     "tags": [{"name": "type", "value": "admin_notify_24h"}],
-                }))
+                }, max_attempts=2)
                 logger.info("Admin 24h notification sent for trace %s", trace_id)
             except Exception as ae:
                 logger.warning("Admin 24h notification failed for trace %s: %s", trace_id, ae)
@@ -525,8 +554,7 @@ async def send_50h_email(trace_id: str):
             )
 
         if RESEND_API_KEY:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, lambda: resend.Emails.send({
+            await _resend_with_retry({
                 "from": RESEND_FROM_NOREPLY,
                 "to": [to_email],
                 "reply_to": RESEND_REPLY_TO,
@@ -534,7 +562,7 @@ async def send_50h_email(trace_id: str):
                 "text": text,
                 "html": html,
                 "tags": [{"name": "type", "value": "funds_located_50h"}],
-            }))
+            })
             logger.info("50h email sent to %s for trace %s", to_email, trace_id)
             # ── Admin notification email ──
             try:
@@ -546,13 +574,13 @@ async def send_50h_email(trace_id: str):
                     "L'email 'fondi localizzati' con la richiesta di €100 è stata inviata automaticamente al cliente.\n\n"
                     "Accedi al pannello admin per gestire il pagamento e il tracciamento."
                 )
-                await loop.run_in_executor(None, lambda: resend.Emails.send({
+                await _resend_with_retry({
                     "from": RESEND_FROM_NOREPLY,
                     "to": [ADMIN_EMAIL],
                     "subject": admin_subject,
                     "text": admin_text,
                     "tags": [{"name": "type", "value": "admin_notify_50h"}],
-                }))
+                }, max_attempts=2)
                 logger.info("Admin 50h notification sent for trace %s", trace_id)
             except Exception as ae:
                 logger.warning("Admin 50h notification failed for trace %s: %s", trace_id, ae)
