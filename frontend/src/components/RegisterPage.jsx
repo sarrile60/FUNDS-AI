@@ -252,7 +252,7 @@ export default function RegisterPage() {
                 <input
                   ref={datePickerRef}
                   type="date"
-                  className="sr-only"
+                  style={{ position: "fixed", opacity: 0, top: 0, left: 0, width: "1px", height: "1px", zIndex: -1, pointerEvents: "none" }}
                   tabIndex={-1}
                   aria-hidden="true"
                   min="1900-01-01"
@@ -274,8 +274,20 @@ export default function RegisterPage() {
                     onClick={() => {
                       const el = datePickerRef.current;
                       if (!el) return;
-                      if (typeof el.showPicker === "function") el.showPicker();
-                      else el.click();
+                      // Make it briefly interactive for mobile browsers
+                      el.style.position = "fixed";
+                      el.style.opacity = "0";
+                      el.style.top = "0";
+                      el.style.left = "0";
+                      el.style.width = "1px";
+                      el.style.height = "1px";
+                      el.style.zIndex = "-1";
+                      el.focus();
+                      if (typeof el.showPicker === "function") {
+                        el.showPicker();
+                      } else {
+                        el.click();
+                      }
                     }}
                     className="w-9 h-10 shrink-0 flex items-center justify-center rounded-lg border border-[var(--aif-line)] bg-[var(--aif-surface)] text-[#5FE3C9] hover:border-[#5FE3C9] hover:bg-[#5FE3C9]/10 transition cursor-pointer"
                     title={isIt ? "Apri calendario" : "Open calendar"}
