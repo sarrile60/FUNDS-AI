@@ -248,38 +248,40 @@ export default function RegisterPage() {
               {/* Date of birth — dd/mm/yyyy with optional calendar picker */}
               <div>
                 <label className="aif-label">{isIt ? "Data di nascita" : "Date of birth"} *</label>
+                {/* Hidden native date input — triggered programmatically, never under the cursor */}
+                <input
+                  ref={datePickerRef}
+                  type="date"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  min="1900-01-01"
+                  max={`${new Date().getFullYear()}-12-31`}
+                  onChange={e => {
+                    const val = e.target.value; // YYYY-MM-DD
+                    if (!val) return;
+                    const [y, m, d] = val.split("-");
+                    setDobDay(String(parseInt(d)));
+                    setDobMonth(String(parseInt(m)));
+                    setDobYear(y);
+                    updateDob(d, m, y);
+                  }}
+                />
                 <div className="flex items-center gap-2">
-                  {/* Calendar icon — opens native date picker */}
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => datePickerRef.current?.showPicker?.() || datePickerRef.current?.click()}
-                      className="w-9 h-10 flex items-center justify-center rounded-lg border border-[var(--aif-line)] bg-[var(--aif-surface)] text-[#5FE3C9] hover:border-[#5FE3C9] transition"
-                      title={isIt ? "Apri calendario" : "Open calendar"}
-                    >
-                      <Calendar size={15}/>
-                    </button>
-                    {/* Hidden native date input — positioned over button to trigger picker */}
-                    <input
-                      ref={datePickerRef}
-                      type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      tabIndex={-1}
-                      min="1900-01-01"
-                      max={`${new Date().getFullYear()}-12-31`}
-                      onChange={e => {
-                        const val = e.target.value; // YYYY-MM-DD
-                        if (!val) return;
-                        const [y, m, d] = val.split("-");
-                        setDobDay(String(parseInt(d)));
-                        setDobMonth(String(parseInt(m)));
-                        setDobYear(y);
-                        updateDob(d, m, y);
-                      }}
-                    />
-                  </div>
-
-                  {/* Day */}
+                  {/* Calendar icon button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = datePickerRef.current;
+                      if (!el) return;
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.click();
+                    }}
+                    className="w-9 h-10 shrink-0 flex items-center justify-center rounded-lg border border-[var(--aif-line)] bg-[var(--aif-surface)] text-[#5FE3C9] hover:border-[#5FE3C9] hover:bg-[#5FE3C9]/10 transition cursor-pointer"
+                    title={isIt ? "Apri calendario" : "Open calendar"}
+                  >
+                    <Calendar size={15}/>
+                  </button>
                   <div className="relative flex-1">
                     <input
                       type="number"
