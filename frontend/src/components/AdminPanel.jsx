@@ -1942,7 +1942,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
     agent_id: agents[0]?.id || "",
     username: emailPrefix,
     password: "",
-    eur_amount: trace?.located_amount ? String(Math.round(trace.located_amount)) : "",
+    eur_amount: trace?.located_amount ? Number(trace.located_amount).toFixed(2) : "",
     total_fees: "",
     timer_duration_hours: "",
     start_date: "",
