@@ -428,6 +428,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
       }
       if (filter === "24h" && !c.email_24h_sent) return false;
       if (filter === "50h" && !c.email_50h_sent) return false;
+      if (filter === "paid" && !c.fee_paid) return false;
       return true;
     })
     .sort((a, b) => {
@@ -530,6 +531,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                   { key: "all",    label: isIt ? "Tutti" : "All" },
                   { key: "24h",    label: "24h ✓" },
                   { key: "50h",    label: "50h ✓" },
+                  { key: "paid",   label: "€100 ✓" },
                   { key: "newest", label: isIt ? "↓ Recenti" : "↓ Newest" },
                   { key: "oldest", label: isIt ? "↑ Vecchi" : "↑ Oldest" },
                 ].map(f => (
@@ -540,6 +542,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                       filter === f.key
                         ? f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]"
                         : f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]"
+                        : f.key === "paid" ? "bg-[#4ADE80]/20 text-[#4ADE80]"
                         : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
                         : "text-[var(--aif-text-dim)] hover:text-white"
                     }`}
