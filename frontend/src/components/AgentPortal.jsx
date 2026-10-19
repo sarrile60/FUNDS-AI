@@ -426,8 +426,11 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
         const full = `${c.first_name} ${c.last_name}`.toLowerCase();
         if (!full.includes(q) && !c.email.toLowerCase().includes(q)) return false;
       }
-      if (filter === "24h" && !c.email_24h_sent) return false;
-      if (filter === "50h" && !c.email_50h_sent) return false;
+      // 24h: got 24h email but NOT yet 50h
+      if (filter === "24h" && !(c.email_24h_sent && !c.email_50h_sent)) return false;
+      // 50h: got 50h email but NOT yet paid €100
+      if (filter === "50h" && !(c.email_50h_sent && !c.fee_paid)) return false;
+      // €100: paid the fee
       if (filter === "paid" && !c.fee_paid) return false;
       return true;
     })
