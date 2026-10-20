@@ -422,7 +422,14 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
   const displayed = clients
     .filter(c => {
       if (search.trim()) {
-        const q = search.toLowerCase();
+        // Strip invisible characters (non-breaking spaces, zero-width spaces,
+        // carriage returns, extra whitespace) that come from copy-paste out of CRMs
+        const q = search
+          .replace(/[\u00A0\u200B\u200C\u200D\uFEFF\u2060]/g, " ") // invisible unicode → space
+          .replace(/\r?\n/g, " ")   // newlines → space
+          .trim()
+          .toLowerCase();
+        if (!q) return true; // nothing left after stripping
         const full = `${c.first_name} ${c.last_name}`.toLowerCase();
         if (!full.includes(q) && !c.email.toLowerCase().includes(q)) return false;
       }
