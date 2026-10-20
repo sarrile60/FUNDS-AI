@@ -294,58 +294,61 @@ export default function RegisterPage() {
                   >
                     <Calendar size={15}/>
                   </button>
-                  <div className="relative flex-1">
+                  <div className="relative" style={{minWidth:"48px", flex:"1"}}>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="aif-input text-center"
                       data-testid="reg-dob-day"
                       value={dobDay}
                       onChange={e => {
-                        const v = e.target.value.slice(0, 2);
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 2);
                         setDobDay(v);
                         updateDob(v, dobMonth, dobYear);
                       }}
                       placeholder="GG"
-                      min="1"
-                      max="31"
+                      maxLength={2}
                       required
                     />
                   </div>
                   <span className="text-[var(--aif-text-dim)] font-bold text-lg select-none">/</span>
                   {/* Month */}
-                  <div className="relative flex-1">
+                  <div className="relative" style={{minWidth:"48px", flex:"1"}}>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="aif-input text-center"
                       data-testid="reg-dob-month"
                       value={dobMonth}
                       onChange={e => {
-                        const v = e.target.value.slice(0, 2);
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 2);
                         setDobMonth(v);
                         updateDob(dobDay, v, dobYear);
                       }}
                       placeholder="MM"
-                      min="1"
-                      max="12"
+                      maxLength={2}
                       required
                     />
                   </div>
                   <span className="text-[var(--aif-text-dim)] font-bold text-lg select-none">/</span>
                   {/* Year */}
-                  <div className="relative flex-[2]">
+                  <div className="relative" style={{minWidth:"72px", flex:"2"}}>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="aif-input text-center"
                       data-testid="reg-dob-year"
                       value={dobYear}
                       onChange={e => {
-                        const v = e.target.value.slice(0, 4);
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 4);
                         setDobYear(v);
                         updateDob(dobDay, dobMonth, v);
                       }}
                       placeholder="AAAA"
-                      min="1900"
-                      max={new Date().getFullYear()}
+                      maxLength={4}
                       required
                     />
                   </div>
