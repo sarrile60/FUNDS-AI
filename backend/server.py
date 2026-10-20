@@ -1861,10 +1861,20 @@ async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _
     if update:
         await db.users.update_one({"id": user_id}, {"$set": update})
 
-    # Sync email change to linked trace
+    # Sync all changed fields to the linked trace
+    trace_update = {}
+    if "first_name" in update:
+        trace_update["first_name"] = update["first_name"]
+    if "last_name" in update:
+        trace_update["last_name"] = update["last_name"]
     if "email" in update:
-        await db.traces.update_one({"user_id": user_id}, {"$set": {"email": update["email"]}})
-        logger.info("User %s email changed to %s — synced to linked trace", user_id, update["email"])
+        trace_update["email"] = update["email"]
+    if "lang" in update:
+        trace_update["user_lang"] = update["lang"]
+
+    if trace_update:
+        await db.traces.update_one({"user_id": user_id}, {"$set": trace_update})
+        logger.info("User %s changes synced to linked trace: %s", user_id, list(trace_update.keys()))
 
     # Update located_amount on linked trace
     if body.located_amount is not None:
