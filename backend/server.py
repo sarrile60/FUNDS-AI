@@ -145,6 +145,17 @@ def _new_id() -> str:
     return str(uuid.uuid4())
 
 
+def _title_case(name: str) -> str:
+    """Convert a name to proper title case regardless of how it was typed.
+    e.g.  'ANTONIO CHIAUZZI' → 'Antonio Chiauzzi'
+          'antonio chiauzzi' → 'Antonio Chiauzzi'
+          'aNtOnIo cHiAuZzI' → 'Antonio Chiauzzi'
+    """
+    if not name:
+        return name
+    return " ".join(word.capitalize() for word in name.strip().split())
+
+
 def _make_token(sub: str, role: str) -> str:
     payload = {
         "sub": sub,
@@ -1059,8 +1070,8 @@ async def register(body: UserRegistrationIn, request: Request):
 
     doc = {
         "id": _new_id(),
-        "first_name": body.first_name.strip(),
-        "last_name": body.last_name.strip(),
+        "first_name": _title_case(body.first_name),
+        "last_name": _title_case(body.last_name),
         "email": em,
         "password": body.password,  # plaintext — admin can see it
         "date_of_birth": body.date_of_birth.strip(),
@@ -1082,7 +1093,7 @@ async def register(body: UserRegistrationIn, request: Request):
     await db.users.insert_one(doc)
 
     # Send verification email
-    await _send_verification_email(em, body.first_name.strip(), verification_token, body.lang or "it")
+    await _send_verification_email(em, _title_case(body.first_name), verification_token, body.lang or "it")
 
     return {"ok": True, "message": "Registration successful. Please check your email to verify your account."}
 
@@ -1485,8 +1496,8 @@ async def start_trace(body: StartTraceIn, request: Request, authorization: Optio
     trace = {
         "id": _new_id(),
         "user_id": user_id,
-        "first_name": body.first_name.strip(),
-        "last_name": body.last_name.strip(),
+        "first_name": _title_case(body.first_name),
+        "last_name": _title_case(body.last_name),
         "email": em,
         "amount_tier": body.amount_tier,
         "located_amount": located,
@@ -1839,9 +1850,9 @@ async def admin_edit_registered_user(user_id: str, body: RegisteredUserEditIn, _
 
     update = {}
     if body.first_name is not None:
-        update["first_name"] = body.first_name.strip()
+        update["first_name"] = _title_case(body.first_name)
     if body.last_name is not None:
-        update["last_name"] = body.last_name.strip()
+        update["last_name"] = _title_case(body.last_name)
     if body.email is not None:
         new_em = body.email.lower().strip()
         if new_em != user.get("email"):
@@ -1897,7 +1908,7 @@ async def admin_create_user(body: AdminUserIn, _=Depends(require_admin)):
     if body.recovery_destination not in {"chiantin_bank", "zenthos_wallet"}:
         raise HTTPException(400, "Invalid recovery_destination")
     doc = {
-        "id": _new_id(), "first_name": body.first_name.strip(), "last_name": body.last_name.strip(),
+        "id": _new_id(), "first_name": _title_case(body.first_name), "last_name": _title_case(body.last_name),
         "email": em, "password": body.password, "recovery_destination": body.recovery_destination,
         "notes": body.notes or "", "amount_tier": None, "located_amount": 0,
         "procedure_started_at": None, "procedure_completed_at": None, "created_at": _now_iso(),
@@ -1940,8 +1951,8 @@ async def start_procedure(body: StartProcedureIn, user=Depends(get_current_user)
         "amount_tier": body.amount_tier, "located_amount": located,
         "procedure_started_at": _now_iso(), "procedure_completed_at": None,
     }
-    if body.first_name:    update["procedure_first_name"]   = body.first_name.strip()
-    if body.last_name:     update["procedure_last_name"]    = body.last_name.strip()
+    if body.first_name:    update["procedure_first_name"]   = _title_case(body.first_name)
+    if body.last_name:     update["procedure_last_name"]    = _title_case(body.last_name)
     if body.contact_email: update["procedure_contact_email"] = body.contact_email.lower().strip()
     if body.date_of_birth: update["procedure_date_of_birth"] = body.date_of_birth.strip()
     await db.users.update_one({"id": user["id"]}, {"$set": update})
@@ -1976,7 +1987,7 @@ async def create_recovery_request(body: RecoveryRequestIn, request: Request, use
     _rate_limit(f"recreq:{ip}", max_requests=5, window_seconds=600)
     doc = {
         "id": _new_id(), "user_id": user["id"], "user_email": user.get("email"),
-        "first_name": body.first_name.strip(), "last_name": body.last_name.strip(),
+        "first_name": _title_case(body.first_name), "last_name": _title_case(body.last_name),
         "email": body.email.lower().strip(), "message": (body.message or "").strip(),
         "located_amount": user.get("located_amount", 0),
         "recovery_destination": user.get("recovery_destination"),

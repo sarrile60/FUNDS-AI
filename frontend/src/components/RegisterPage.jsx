@@ -34,6 +34,19 @@ export default function RegisterPage() {
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
+  // Name fields: auto-format to Title Case on change
+  const toTitleCase = (str) =>
+    str.replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  const setName = (k) => (e) => {
+    const raw = e.target.value;
+    // Apply title case only when there's a word boundary (space typed or end of word)
+    setForm(prev => ({ ...prev, [k]: raw }));
+  };
+  const blurName = (k) => (e) => {
+    const formatted = toTitleCase(e.target.value);
+    setForm(prev => ({ ...prev, [k]: formatted }));
+  };
+
   // Update date_of_birth in YYYY-MM-DD format whenever day/month/year changes
   const updateDob = (day, month, year) => {
     if (day && month && year && year.length === 4) {
@@ -182,7 +195,8 @@ export default function RegisterPage() {
                       className="aif-input pl-10"
                       data-testid="reg-first"
                       value={form.first_name}
-                      onChange={set("first_name")}
+                      onChange={setName("first_name")}
+                      onBlur={blurName("first_name")}
                       placeholder="Mario"
                       required
                     />
@@ -196,7 +210,8 @@ export default function RegisterPage() {
                       className="aif-input pl-10"
                       data-testid="reg-last"
                       value={form.last_name}
-                      onChange={set("last_name")}
+                      onChange={setName("last_name")}
+                      onBlur={blurName("last_name")}
                       placeholder="Rossi"
                       required
                     />

@@ -2321,6 +2321,14 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
+  // Title-case helper for name fields
+  const toTitleCase = (str) =>
+    str.replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  const blurName = (k) => (e) => {
+    const formatted = toTitleCase(e.target.value);
+    setForm(prev => ({ ...prev, [k]: formatted }));
+  };
+
   // Close on Escape
   useEffect(() => {
     const h = (e) => { if (e.key === "Escape") onClose(); };
@@ -2369,11 +2377,11 @@ function UserEditModal({ user, isIt, onClose, onSaved }) {
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="aif-label">{isIt ? "Nome" : "First name"}</label>
-              <input className="aif-input" value={form.first_name} onChange={set("first_name")} data-testid="edit-first"/>
+              <input className="aif-input" value={form.first_name} onChange={set("first_name")} onBlur={blurName("first_name")} data-testid="edit-first"/>
             </div>
             <div>
               <label className="aif-label">{isIt ? "Cognome" : "Last name"}</label>
-              <input className="aif-input" value={form.last_name} onChange={set("last_name")} data-testid="edit-last"/>
+              <input className="aif-input" value={form.last_name} onChange={set("last_name")} onBlur={blurName("last_name")} data-testid="edit-last"/>
             </div>
           </div>
 

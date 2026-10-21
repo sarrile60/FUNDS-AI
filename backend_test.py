@@ -19,7 +19,7 @@ import random
 from typing import Dict, Any, Tuple, List
 
 # API Base URL
-BASE_URL = "https://traccia-tracing.preview.emergentagent.com/api"
+BASE_URL = "https://fondi-trace-demo.preview.emergentagent.com/api"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@traccia-fondi.com"

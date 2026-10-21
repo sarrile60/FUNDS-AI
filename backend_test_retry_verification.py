@@ -6,7 +6,7 @@ Traccia Fondi Backend - Email Retry Logic Verification
 Review request: Verify the Traccia Fondi backend is healthy and the email retry 
 logic works correctly after a code change. DO NOT send any real emails.
 
-Backend URL: https://traccia-tracing.preview.emergentagent.com
+Backend URL: https://fondi-trace-demo.preview.emergentagent.com
 
 Tests:
 1. Backend health - GET /api/health → should return {"status": "ok"}
@@ -22,7 +22,7 @@ import re
 from typing import Dict, Any, Tuple
 
 # API Base URL
-BASE_URL = "https://traccia-tracing.preview.emergentagent.com/api"
+BASE_URL = "https://fondi-trace-demo.preview.emergentagent.com/api"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@traccia-fondi.com"
