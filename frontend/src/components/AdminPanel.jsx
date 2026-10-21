@@ -37,6 +37,22 @@ export default function AdminPanel() {
   const isIt = lang === "it";
   const [tab, setTab] = useState("traces");
 
+  // ── Auto-migrate names to title case on first admin load ──
+  useEffect(() => {
+    const token = localStorage.getItem("aif_token");
+    if (!token) return;
+    axios.post(
+      `${process.env.REACT_APP_BACKEND_URL}/api/admin/migrate-title-case`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then(res => {
+      const { users_fixed, traces_fixed } = res.data;
+      if (users_fixed > 0 || traces_fixed > 0) {
+        console.log(`[AdminPanel] Title-case migration: ${users_fixed} users, ${traces_fixed} traces fixed`);
+      }
+    }).catch(() => { /* silent — non-critical */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Notification bell state ──
   const [notifications, setNotifications] = useState([]);
   const [bellOpen, setBellOpen] = useState(false);

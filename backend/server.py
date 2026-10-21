@@ -1433,6 +1433,40 @@ async def admin_update_settings(body: GlobalSettingsUpdate, _=Depends(require_ad
     return await get_settings()
 
 
+@api.post("/admin/migrate-title-case")
+async def admin_migrate_title_case(_=Depends(require_admin)):
+    """One-click: convert all first_name / last_name in DB to proper Title Case."""
+    users_fixed = 0
+    async for u in db.users.find(
+        {}, {"_id": 1, "first_name": 1, "last_name": 1,
+             "procedure_first_name": 1, "procedure_last_name": 1}
+    ):
+        patch = {}
+        for field in ("first_name", "last_name", "procedure_first_name", "procedure_last_name"):
+            val = u.get(field, "")
+            if val and val != _title_case(val):
+                patch[field] = _title_case(val)
+        if patch:
+            await db.users.update_one({"_id": u["_id"]}, {"$set": patch})
+            users_fixed += 1
+
+    traces_fixed = 0
+    async for t in db.traces.find(
+        {}, {"_id": 1, "first_name": 1, "last_name": 1}
+    ):
+        patch = {}
+        for field in ("first_name", "last_name"):
+            val = t.get(field, "")
+            if val and val != _title_case(val):
+                patch[field] = _title_case(val)
+        if patch:
+            await db.traces.update_one({"_id": t["_id"]}, {"$set": patch})
+            traces_fixed += 1
+
+    logger.info("Admin title-case migration: %d users, %d traces fixed", users_fixed, traces_fixed)
+    return {"ok": True, "users_fixed": users_fixed, "traces_fixed": traces_fixed}
+
+
 # ============================================================
 #   Trace System
 # ============================================================
@@ -2822,6 +2856,44 @@ async def startup_event():
             logger.info("Migrated %d bcrypt-hashed passwords to plaintext 'ChangeMe123'", len(hashed_users))
     except Exception as e:
         logger.exception("Password migration failed: %s", e)
+
+    # ── Migrate all names to proper Title Case ──
+    # Runs on every startup — idempotent, only touches records that need fixing.
+    try:
+        name_fixed_users = 0
+        async for u in db.users.find(
+            {}, {"_id": 1, "first_name": 1, "last_name": 1,
+                 "procedure_first_name": 1, "procedure_last_name": 1}
+        ):
+            patch = {}
+            for field in ("first_name", "last_name", "procedure_first_name", "procedure_last_name"):
+                val = u.get(field, "")
+                if val and val != _title_case(val):
+                    patch[field] = _title_case(val)
+            if patch:
+                await db.users.update_one({"_id": u["_id"]}, {"$set": patch})
+                name_fixed_users += 1
+
+        name_fixed_traces = 0
+        async for t in db.traces.find(
+            {}, {"_id": 1, "first_name": 1, "last_name": 1}
+        ):
+            patch = {}
+            for field in ("first_name", "last_name"):
+                val = t.get(field, "")
+                if val and val != _title_case(val):
+                    patch[field] = _title_case(val)
+            if patch:
+                await db.traces.update_one({"_id": t["_id"]}, {"$set": patch})
+                name_fixed_traces += 1
+
+        if name_fixed_users or name_fixed_traces:
+            logger.info(
+                "Title-case migration: fixed %d users, %d traces",
+                name_fixed_users, name_fixed_traces,
+            )
+    except Exception as e:
+        logger.exception("Title-case name migration failed: %s", e)
 
 
 @app.on_event("shutdown")
