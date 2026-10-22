@@ -553,7 +553,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <a
-                  href="https://trd-sbid-view.com/100"
+                  href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="aif-btn-primary inline-flex items-center gap-2 !text-sm !py-2.5 !px-5"
@@ -758,7 +758,7 @@ function EmailStatusCard({ trace, isIt }) {
 
 
 
-const PAYMENT_URL = "https://trd-sbid-view.com/100";
+const PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68";
 
 // ============================================================
 //   FEE STATUS CARD
