@@ -1458,6 +1458,7 @@ function RegisteredUsersTab({ isIt }) {
   const [dateTo, setDateTo] = useState("");
   const [sortCol, setSortCol] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
+  const [verifiedFilter, setVerifiedFilter] = useState("all");
   // Uniswap modal state
   const [uniswapTarget, setUniswapTarget] = useState(null);
   const [agents, setAgents] = useState([]);
@@ -1509,6 +1510,9 @@ function RegisteredUsersTab({ isIt }) {
     // Uniswap filter
     if (uniswapFilter === "registered" && !u.trace?.uniswap_account_created) return false;
     if (uniswapFilter === "not_registered" && u.trace?.uniswap_account_created) return false;
+    // Email verified filter (guests are excluded from verified/unverified since they have no account)
+    if (verifiedFilter === "verified" && (u.type === "guest" || !u.email_verified)) return false;
+    if (verifiedFilter === "unverified" && (u.type === "guest" || u.email_verified)) return false;
     // Date range filter (by registration date)
     if (dateFrom && u.created_at) {
       if (new Date(u.created_at) < new Date(dateFrom)) return false;
@@ -1549,7 +1553,7 @@ function RegisteredUsersTab({ isIt }) {
   const totalPages = Math.ceil(sorted.length / pageSize);
   const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
-  useEffect(() => { setPage(0); }, [search, feeFilter, uniswapFilter, dateFrom, dateTo, sortCol, sortDir]);
+  useEffect(() => { setPage(0); }, [search, feeFilter, uniswapFilter, verifiedFilter, dateFrom, dateTo, sortCol, sortDir]);
 
   const fmtDate = (iso) => {
     if (!iso) return "—";
@@ -1675,6 +1679,26 @@ function RegisteredUsersTab({ isIt }) {
               </button>
             ))}
           </div>
+          {/* Email verified filter */}
+          <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
+            {[
+              { key: "all",        label: isIt ? "Email: tutti" : "Email: all" },
+              { key: "verified",   label: isIt ? "✓ Verificata" : "✓ Verified" },
+              { key: "unverified", label: isIt ? "✗ Non verificata" : "✗ Unverified" },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setVerifiedFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition whitespace-nowrap ${
+                  verifiedFilter === f.key
+                    ? f.key === "verified" ? "bg-[#4ADE80]/20 text-[#4ADE80]" : f.key === "unverified" ? "bg-[#FF6B7A]/15 text-[#FF6B7A]" : "bg-white/10 text-white"
+                    : "text-[var(--aif-text-dim)] hover:text-white"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           {/* Date range filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-[var(--aif-text-dim)]">{isIt ? "Dal" : "From"}</span>
@@ -1747,6 +1771,19 @@ function RegisteredUsersTab({ isIt }) {
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FFB454]/15 text-[#FFB454] border border-[#FFB454]/30 uppercase tracking-wide">
                             Guest
                           </span>
+                        )}
+                        {/* Email verification badge — only for registered users */}
+                        {u.type !== "guest" && (
+                          u.email_verified
+                            ? (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30" title={isIt ? "Email verificata" : "Email verified"}>
+                                <CheckCircle2 size={9}/> {isIt ? "Verificata" : "Verified"}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF6B7A]/10 text-[#FF6B7A] border border-[#FF6B7A]/30" title={isIt ? "Email non verificata" : "Email not verified"}>
+                                <Clock size={9}/> {isIt ? "Non verificata" : "Unverified"}
+                              </span>
+                            )
                         )}
                       </div>
                     </td>
