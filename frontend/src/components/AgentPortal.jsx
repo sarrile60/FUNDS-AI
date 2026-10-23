@@ -617,6 +617,11 @@ export default function AgentPortal() {
     () => localStorage.getItem(LANG_KEY) || "it"
   );
 
+  // Log every portal page visit for admin IP tracking
+  useEffect(() => {
+    axios.post(`${API}/agent/portal-visit`, {}).catch(() => { /* silent */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) { setTokenChecked(true); return; }

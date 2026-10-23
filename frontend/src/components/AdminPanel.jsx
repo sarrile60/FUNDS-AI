@@ -2521,6 +2521,30 @@ function AgentsTab({ isIt }) {
   const [slugSaving, setSlugSaving] = useState(false);
   const [slugEditing, setSlugEditing] = useState(false);
 
+  // IP access logs
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
+
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const { data } = await axios.get(`${API}/admin/portal-access-logs`, { headers: getAuthHeader() });
+      setLogs(data);
+      setLogsOpen(true);
+    } catch { toast.error("Failed to load logs"); }
+    finally { setLogsLoading(false); }
+  };
+
+  const clearLogs = async () => {
+    if (!window.confirm(isIt ? "Cancellare tutti i log di accesso?" : "Clear all access logs?")) return;
+    try {
+      await axios.delete(`${API}/admin/portal-access-logs`, { headers: getAuthHeader() });
+      setLogs([]);
+      toast.success(isIt ? "Log cancellati" : "Logs cleared");
+    } catch { toast.error("Failed to clear logs"); }
+  };
+
   const loadSlug = async () => {
     try {
       const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
@@ -2842,6 +2866,122 @@ function AgentsTab({ isIt }) {
           </div>
         </div>
       </div>
+
+      {/* ── IP Access Logs ── */}
+      <div className="aif-card !rounded-xl border border-[#FFB454]/20 bg-[#FFB454]/5">
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Globe size={15} className="text-[#FFB454]"/>
+            <div>
+              <p className="text-white font-semibold text-sm">
+                {isIt ? "Log Accessi Portale (IP)" : "Portal Access Logs (IP)"}
+              </p>
+              <p className="text-[var(--aif-text-dim)] text-[11px]">
+                {isIt ? "Ogni visita alla pagina e ogni tentativo di login viene registrato" : "Every page visit and login attempt is logged"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {logsOpen && logs.length > 0 && (
+              <button
+                onClick={clearLogs}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium text-[#FF6B7A] border border-[#FF6B7A]/30 hover:bg-[#FF6B7A]/10 transition"
+              >
+                <Trash2 size={12}/> {isIt ? "Cancella" : "Clear"}
+              </button>
+            )}
+            <button
+              onClick={logsOpen ? () => setLogsOpen(false) : loadLogs}
+              disabled={logsLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#FFB454]/15 text-[#FFB454] hover:bg-[#FFB454]/25 transition"
+              data-testid="view-portal-logs-btn"
+            >
+              {logsLoading ? <Loader2 size={12} className="animate-spin"/> : <Eye size={12}/>}
+              {logsOpen ? (isIt ? "Nascondi" : "Hide") : (isIt ? "Visualizza log" : "View logs")}
+            </button>
+          </div>
+        </div>
+
+        {logsOpen && (
+          <div className="border-t border-[var(--aif-line)]">
+            {logs.length === 0 ? (
+              <div className="text-center py-8 text-[var(--aif-text-dim)] text-sm">
+                {isIt ? "Nessun accesso registrato" : "No access logs yet"}
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-[#0A1628] z-10">
+                    <tr className="border-b border-[var(--aif-line)] text-[var(--aif-text-dim)]">
+                      <th className="px-4 py-2.5 text-left font-medium">{isIt ? "Data/Ora" : "Date/Time"}</th>
+                      <th className="px-4 py-2.5 text-left font-medium">IP</th>
+                      <th className="px-4 py-2.5 text-left font-medium">{isIt ? "Evento" : "Event"}</th>
+                      <th className="px-4 py-2.5 text-left font-medium">{isIt ? "Agente" : "Agent"}</th>
+                      <th className="px-4 py-2.5 text-left font-medium">{isIt ? "Esito" : "Result"}</th>
+                      <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">User-Agent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log, i) => (
+                      <tr key={log.id || i} className="border-b border-[var(--aif-line)] last:border-0 hover:bg-white/[0.02]">
+                        <td className="px-4 py-2.5 text-[var(--aif-text-dim)] whitespace-nowrap">
+                          {log.timestamp ? new Date(log.timestamp).toLocaleString(isIt ? "it-IT" : "en-US", { dateStyle: "short", timeStyle: "medium" }) : "—"}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="font-mono text-white bg-[#6E8BFF]/10 px-2 py-0.5 rounded text-[11px]">
+                            {log.ip || "—"}
+                          </span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(log.ip || ""); toast.success("IP copied"); }}
+                            className="ml-1.5 text-[var(--aif-text-dim)] hover:text-[#5FE3C9] transition"
+                            title="Copy IP"
+                          >
+                            <Copy size={10}/>
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {log.event === "agent_login" ? (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#6E8BFF]/15 text-[#6E8BFF] border border-[#6E8BFF]/30">
+                              🔑 {isIt ? "Login" : "Login"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FFB454]/10 text-[#FFB454] border border-[#FFB454]/20">
+                              👁 {isIt ? "Visita" : "Visit"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-[var(--aif-text-dim)] font-mono">
+                          {log.agent_username || "—"}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {log.success === null || log.success === undefined ? (
+                            <span className="text-[var(--aif-text-dim)]">—</span>
+                          ) : log.success ? (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#4ADE80]/15 text-[#4ADE80]">
+                              <CheckCircle2 size={9}/> {isIt ? "OK" : "OK"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF6B7A]/15 text-[#FF6B7A]">
+                              <X size={9}/> {isIt ? "Fallito" : "Failed"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-[var(--aif-text-dim)] hidden lg:table-cell max-w-xs truncate" title={log.user_agent}>
+                          {log.user_agent ? log.user_agent.substring(0, 60) + (log.user_agent.length > 60 ? "…" : "") : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="px-5 py-2.5 border-t border-[var(--aif-line)] text-[10px] text-[var(--aif-text-dim)]">
+              {isIt ? `${logs.length} eventi registrati (ultimi 500)` : `${logs.length} events logged (latest 500)`}
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

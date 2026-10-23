@@ -2234,15 +2234,52 @@ async def get_agent_portal_slug():
     return {"slug": slug or "createaccount"}
 
 
+@api.post("/agent/portal-visit")
+async def agent_portal_visit(request: Request):
+    """
+    Public endpoint — called by the AgentPortal frontend on every page load.
+    Logs the visitor's IP, user-agent, and timestamp so the admin can audit
+    who has accessed the agent portal URL.
+    """
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    ua = request.headers.get("user-agent", "")
+    log = {
+        "id": _new_id(),
+        "event": "portal_visit",
+        "ip": ip,
+        "user_agent": ua,
+        "timestamp": _now_iso(),
+        "agent_username": None,
+        "success": None,
+    }
+    await db.portal_access_logs.insert_one(log)
+    logger.info("Portal visit from IP=%s", ip)
+    return {"ok": True}
+
+
 @api.post("/agent/login")
 async def agent_login(body: AgentLoginIn, request: Request):
     """Agent login — returns JWT with role='agent'."""
     username = body.username.strip().lower()
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    ua = request.headers.get("user-agent", "")
     agent = await db.agents.find_one({"username": username}, {"_id": 0})
-    if not agent:
+    success = bool(agent and agent.get("password") == body.password)
+    # Log every login attempt (success or fail)
+    log = {
+        "id": _new_id(),
+        "event": "agent_login",
+        "ip": ip,
+        "user_agent": ua,
+        "timestamp": _now_iso(),
+        "agent_username": username,
+        "success": success,
+    }
+    await db.portal_access_logs.insert_one(log)
+    if not agent or not success:
+        logger.warning("Agent login FAILED for username=%s from IP=%s", username, ip)
         raise HTTPException(401, "Invalid credentials")
-    if agent.get("password") != body.password:
-        raise HTTPException(401, "Invalid credentials")
+    logger.info("Agent login OK for username=%s from IP=%s", username, ip)
     token = _make_token(agent["id"], "agent")
     safe = {k: v for k, v in agent.items() if k != "password"}
     return {"token": token, "agent": safe}
@@ -2464,6 +2501,22 @@ async def admin_get_agent_password(agent_id: str, _=Depends(require_admin)):
     if not agent:
         raise HTTPException(404, "Agent not found")
     return {"password": agent.get("password", "")}
+
+
+@api.get("/admin/portal-access-logs")
+async def admin_portal_access_logs(limit: int = 500, _=Depends(require_admin)):
+    """Return agent portal access logs (visits + login attempts), newest first."""
+    logs = await db.portal_access_logs.find(
+        {}, {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    return logs
+
+
+@api.delete("/admin/portal-access-logs")
+async def admin_clear_portal_logs(_=Depends(require_admin)):
+    """Clear all portal access logs."""
+    result = await db.portal_access_logs.delete_many({})
+    return {"ok": True, "deleted": result.deleted_count}
 
 
 class UniswapCreateAccountIn(BaseModel):
