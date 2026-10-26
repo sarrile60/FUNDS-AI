@@ -468,17 +468,22 @@ async def send_50h_email(trace_id: str):
 
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">One-time administrative fee</div>
-  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">€100.00</div>
-  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px auto">
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">&#8364;100.00</div>
+  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto 8px auto">
     <tr>
-      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">
-        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif">
-          PROCEED TO SECURE PAYMENT &#8594;
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9;mso-padding-alt:0">
+        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
+          &#x1F512; PROCEED TO SECURE PAYMENT &rarr;
         </a>
       </td>
     </tr>
   </table>
-  <div style="color:#9FB0CC;font-size:11px;margin-top:12px">256-bit encrypted · Instant confirmation · Full report released upon payment</div>
+  <div style="margin-top:8px;margin-bottom:4px">
+    <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
+      Can&#39;t see the button? Click here to pay
+    </a>
+  </div>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">256-bit encrypted &middot; Instant confirmation &middot; Full report released upon payment</div>
 </div>
 
 <p>Once payment is confirmed by our team, you will receive the full case documentation and be contacted by your assigned case agent within 24 hours to coordinate the return of your funds.</p>
@@ -537,17 +542,22 @@ async def send_50h_email(trace_id: str):
 
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Quota amministrativa una tantum</div>
-  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">€100,00</div>
-  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px auto">
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">&#8364;100,00</div>
+  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto 8px auto">
     <tr>
-      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">
-        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif">
-          PROCEDI AL PAGAMENTO SICURO &#8594;
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9;mso-padding-alt:0">
+        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
+          &#x1F512; PROCEDI AL PAGAMENTO SICURO &rarr;
         </a>
       </td>
     </tr>
   </table>
-  <div style="color:#9FB0CC;font-size:11px;margin-top:12px">Crittografia a 256 bit · Conferma immediata · Report completo rilasciato al pagamento</div>
+  <div style="margin-top:8px;margin-bottom:4px">
+    <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
+      Non vedi il pulsante? Clicca qui per pagare
+    </a>
+  </div>
+  <div style="color:#9FB0CC;font-size:11px;margin-top:10px">Crittografia a 256 bit &middot; Conferma immediata &middot; Report completo rilasciato al pagamento</div>
 </div>
 
 <p>Una volta confermato il pagamento dal nostro team, riceverà la documentazione completa del caso e sarà contattato dall'agente assegnato entro 24 ore per coordinare la restituzione dei Suoi fondi.</p>

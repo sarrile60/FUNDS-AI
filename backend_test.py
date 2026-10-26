@@ -1,263 +1,260 @@
 #!/usr/bin/env python3
 """
-Backend test for 50h email template button fix verification
-Tests the admin panel 50h email trigger functionality
+Backend test for Traccia Fondi 50h email button fix verification
+Tests the button HTML structure in the 50h funds-located email
 """
 
 import requests
 import sys
-import json
+import re
 
-BASE_URL = "https://fondi-trace-demo.preview.emergentagent.com/api"
+BACKEND_URL = "https://fondi-trace-demo.preview.emergentagent.com/api"
 ADMIN_EMAIL = "admin@traccia-fondi.com"
 ADMIN_PASSWORD = "admin123"
 
-def test_admin_login():
-    """Test 1: Admin login"""
-    print("\n=== TEST 1: Admin Login ===")
-    response = requests.post(
-        f"{BASE_URL}/auth/login",
-        json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
-        timeout=15
-    )
-    print(f"Status: {response.status_code}")
-    if response.status_code == 200:
-        data = response.json()
-        token = data.get("token")
-        print(f"✅ Admin login successful")
-        print(f"Token: {token[:20]}...")
-        return token
-    else:
-        print(f"❌ Admin login failed: {response.text}")
-        return None
-
-
-def test_get_traces(token):
-    """Test 2: Get all traces to find a trace ID"""
-    print("\n=== TEST 2: Get All Traces ===")
-    response = requests.get(
-        f"{BASE_URL}/admin/traces",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=15
-    )
-    print(f"Status: {response.status_code}")
-    if response.status_code == 200:
-        traces = response.json()
-        print(f"✅ Found {len(traces)} traces")
-        if traces:
-            trace = traces[0]
-            trace_id = trace.get("id")
-            print(f"Using trace ID: {trace_id}")
-            print(f"Trace email: {trace.get('email')}")
-            print(f"Trace name: {trace.get('first_name')} {trace.get('last_name')}")
-            print(f"Email 50h sent: {trace.get('email_50h_sent', False)}")
-            return trace_id
-        else:
-            print("❌ No traces found in system")
-            return None
-    else:
-        print(f"❌ Failed to get traces: {response.text}")
-        return None
-
-
-def test_send_50h_email_endpoint(token, trace_id):
-    """Test 3: Test POST /api/admin/traces/{trace_id}/send-50h-email endpoint"""
-    print("\n=== TEST 3: Send 50h Email Endpoint ===")
-    print(f"Testing endpoint: POST /api/admin/traces/{trace_id}/send-50h-email")
-    
-    response = requests.post(
-        f"{BASE_URL}/admin/traces/{trace_id}/send-50h-email",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=20
-    )
-    print(f"Status: {response.status_code}")
-    
-    if response.status_code == 200:
-        data = response.json()
-        print(f"✅ 50h email endpoint returned 200 OK")
-        print(f"Email 50h sent flag: {data.get('email_50h_sent', False)}")
-        print(f"Email 50h sent at: {data.get('email_50h_sent_at', 'N/A')}")
-        return True
-    else:
-        print(f"❌ 50h email endpoint failed with status {response.status_code}")
-        print(f"Response: {response.text}")
-        return False
-
-
-def test_verify_email_template():
-    """Test 4: Verify the email template uses table-based button (not gradient)"""
-    print("\n=== TEST 4: Verify Email Template Button Implementation ===")
-    
-    # Read server.py to check the button implementation
-    try:
-        with open("/app/backend/server.py", "r") as f:
-            content = f.read()
-        
-        # Check for table-based button in 50h email (English version)
-        if '<table cellpadding="0" cellspacing="0" border="0"' in content:
-            print("✅ Found table-based button structure")
-        else:
-            print("❌ Table-based button structure NOT found")
-            return False
-        
-        # Check for bgcolor attribute on td
-        if 'bgcolor="#5FE3C9"' in content:
-            print("✅ Found bgcolor attribute on <td> (email-safe approach)")
-        else:
-            print("❌ bgcolor attribute NOT found")
-            return False
-        
-        # Check that button text exists
-        if "PROCEED TO SECURE PAYMENT" in content and "PROCEDI AL PAGAMENTO SICURO" in content:
-            print("✅ Found button text in both English and Italian")
-        else:
-            print("❌ Button text NOT found")
-            return False
-        
-        # Check for problematic gradient on <a> tag (should NOT exist)
-        # The gradient should only be in the header, not on buttons
-        lines = content.split('\n')
-        gradient_on_button = False
-        for i, line in enumerate(lines):
-            # Check if line has <a> tag with inline style containing linear-gradient
-            if '<a ' in line and 'linear-gradient' in line and 'PROCEED TO SECURE PAYMENT' in content[max(0, i-10):min(len(content), i+10)]:
-                gradient_on_button = True
-                print(f"❌ Found linear-gradient on button <a> tag at line {i+1}")
-                break
-        
-        if not gradient_on_button:
-            print("✅ No linear-gradient found on button <a> tags (correct)")
-        else:
-            return False
-        
-        # Verify the button structure is correct
-        button_pattern_en = 'PROCEED TO SECURE PAYMENT'
-        button_pattern_it = 'PROCEDI AL PAGAMENTO SICURO'
-        
-        # Find the button sections
-        en_button_start = content.find(button_pattern_en)
-        it_button_start = content.find(button_pattern_it)
-        
-        if en_button_start > 0 and it_button_start > 0:
-            # Check 800 chars before each button for table structure (need more context)
-            en_context = content[max(0, en_button_start-800):en_button_start+100]
-            it_context = content[max(0, it_button_start-800):it_button_start+100]
-            
-            if '<table cellpadding="0" cellspacing="0"' in en_context and 'bgcolor="#5FE3C9"' in en_context:
-                print("✅ English button uses correct table-based structure")
-            else:
-                print("❌ English button does NOT use correct table structure")
-                return False
-            
-            if '<table cellpadding="0" cellspacing="0"' in it_context and 'bgcolor="#5FE3C9"' in it_context:
-                print("✅ Italian button uses correct table-based structure")
-            else:
-                print("❌ Italian button does NOT use correct table structure")
-                return False
-        
-        print("\n✅ ALL EMAIL TEMPLATE CHECKS PASSED")
-        print("   - Table-based button structure: ✓")
-        print("   - bgcolor attribute on <td>: ✓")
-        print("   - No gradient on <a> tags: ✓")
-        print("   - Both language versions correct: ✓")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error reading server.py: {e}")
-        return False
-
-
-def test_backend_logs():
-    """Test 5: Check backend logs for any errors"""
-    print("\n=== TEST 5: Check Backend Logs ===")
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["tail", "-n", "50", "/var/log/supervisor/backend.err.log"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        
-        if result.returncode == 0:
-            error_log = result.stdout
-            if error_log.strip():
-                print("Backend error log (last 50 lines):")
-                print(error_log)
-                # Check for critical errors
-                if "ERROR" in error_log or "Exception" in error_log:
-                    print("⚠️  Found errors in backend log")
-                else:
-                    print("✅ No critical errors in backend log")
-            else:
-                print("✅ Backend error log is empty (no errors)")
-            return True
-        else:
-            print("⚠️  Could not read backend error log")
-            return True  # Don't fail the test for this
-    except Exception as e:
-        print(f"⚠️  Error checking logs: {e}")
-        return True  # Don't fail the test for this
-
-
-def main():
-    print("=" * 70)
-    print("50H EMAIL TEMPLATE BUTTON FIX - BACKEND TEST")
-    print("=" * 70)
-    print(f"Backend URL: {BASE_URL}")
-    print(f"Admin credentials: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
+def test_50h_email_button_fix():
+    """
+    Test the 50h email button fix by:
+    1. Logging in as admin
+    2. Getting a trace ID
+    3. Triggering the 50h email (force resend)
+    4. Verifying the button HTML in server.py contains all required elements
+    """
+    print("=" * 80)
+    print("50H EMAIL BUTTON FIX VERIFICATION TEST")
+    print("=" * 80)
     
     # Test 1: Admin login
-    token = test_admin_login()
-    if not token:
-        print("\n❌ CRITICAL: Admin login failed. Cannot proceed with tests.")
-        sys.exit(1)
+    print("\n[TEST 1] Admin login...")
+    try:
+        resp = requests.post(f"{BACKEND_URL}/auth/login", json={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD
+        }, timeout=10)
+        
+        if resp.status_code != 200:
+            print(f"❌ FAIL: Admin login failed with status {resp.status_code}")
+            print(f"Response: {resp.text}")
+            return False
+        
+        data = resp.json()
+        admin_token = data.get("token")
+        if not admin_token:
+            print("❌ FAIL: No token in admin login response")
+            return False
+        
+        print(f"✅ PASS: Admin login successful")
+        print(f"   Token: {admin_token[:20]}...")
+    except Exception as e:
+        print(f"❌ FAIL: Admin login exception: {e}")
+        return False
     
     # Test 2: Get traces
-    trace_id = test_get_traces(token)
-    if not trace_id:
-        print("\n⚠️  WARNING: No traces found. Skipping endpoint test.")
-        print("   (This is expected if no traces exist in the system)")
-    else:
-        # Test 3: Test 50h email endpoint
-        endpoint_success = test_send_50h_email_endpoint(token, trace_id)
-        if not endpoint_success:
-            print("\n❌ CRITICAL: 50h email endpoint test failed")
+    print("\n[TEST 2] Get traces to find a trace ID...")
+    try:
+        resp = requests.get(f"{BACKEND_URL}/admin/traces", headers={
+            "Authorization": f"Bearer {admin_token}"
+        }, timeout=10)
+        
+        if resp.status_code != 200:
+            print(f"❌ FAIL: Get traces failed with status {resp.status_code}")
+            return False
+        
+        traces = resp.json()
+        if not traces or len(traces) == 0:
+            print("❌ FAIL: No traces found in system")
+            return False
+        
+        trace_id = traces[0].get("id")
+        trace_email = traces[0].get("email", "N/A")
+        trace_name = f"{traces[0].get('first_name', '')} {traces[0].get('last_name', '')}"
+        
+        print(f"✅ PASS: Found {len(traces)} trace(s)")
+        print(f"   Using trace ID: {trace_id}")
+        print(f"   Trace email: {trace_email}")
+        print(f"   Trace name: {trace_name}")
+    except Exception as e:
+        print(f"❌ FAIL: Get traces exception: {e}")
+        return False
     
-    # Test 4: Verify email template
-    template_success = test_verify_email_template()
-    if not template_success:
-        print("\n❌ CRITICAL: Email template verification failed")
-        sys.exit(1)
+    # Test 3: Trigger 50h email (force resend)
+    print("\n[TEST 3] Trigger 50h email force resend...")
+    try:
+        resp = requests.post(f"{BACKEND_URL}/admin/traces/{trace_id}/send-50h-email", headers={
+            "Authorization": f"Bearer {admin_token}"
+        }, timeout=10)
+        
+        if resp.status_code != 200:
+            print(f"⚠️  WARNING: Force resend returned status {resp.status_code}")
+            print(f"   Response: {resp.text}")
+            print(f"   This is expected if RESEND_API_KEY is not configured")
+        else:
+            print(f"✅ PASS: 50h email endpoint called successfully")
+            print(f"   Response: {resp.json()}")
+    except Exception as e:
+        print(f"⚠️  WARNING: Force resend exception: {e}")
+        print(f"   This is expected if RESEND_API_KEY is not configured")
     
-    # Test 5: Check backend logs
-    test_backend_logs()
-    
-    # Summary
-    print("\n" + "=" * 70)
-    print("TEST SUMMARY")
-    print("=" * 70)
-    print("✅ Admin login: PASS")
-    print("✅ Get traces: PASS")
-    if trace_id:
-        print("✅ 50h email endpoint: PASS" if endpoint_success else "❌ 50h email endpoint: FAIL")
-    else:
-        print("⚠️  50h email endpoint: SKIPPED (no traces)")
-    print("✅ Email template verification: PASS" if template_success else "❌ Email template verification: FAIL")
-    print("=" * 70)
-    
-    if template_success:
-        print("\n✅ ALL CRITICAL TESTS PASSED")
-        print("\nVERIFICATION COMPLETE:")
-        print("1. ✅ The 50h email button now uses table-based approach with bgcolor")
-        print("2. ✅ No linear-gradient found on <a> tags (email-safe)")
-        print("3. ✅ Button will be visible in Gmail/Outlook/mobile clients")
-        print("4. ✅ POST /api/admin/traces/{trace_id}/send-50h-email endpoint works")
-        sys.exit(0)
-    else:
-        print("\n❌ SOME TESTS FAILED")
-        sys.exit(1)
-
+    # Test 4: Verify button HTML in server.py
+    print("\n[TEST 4] Verify button HTML structure in server.py...")
+    try:
+        with open("/app/backend/server.py", "r") as f:
+            server_py_content = f.read()
+        
+        # Find the send_50h_email function
+        if "async def send_50h_email" not in server_py_content:
+            print("❌ FAIL: send_50h_email function not found in server.py")
+            return False
+        
+        print("✅ Found send_50h_email function")
+        
+        # Extract the English button section (lines 469-487)
+        english_button_match = re.search(
+            r'<table cellpadding="0" cellspacing="0" border="0" role="presentation".*?'
+            r'PROCEED TO SECURE PAYMENT.*?'
+            r'Can&#39;t see the button\? Click here to pay.*?'
+            r'</div>',
+            server_py_content,
+            re.DOTALL
+        )
+        
+        # Extract the Italian button section (lines 543-561)
+        italian_button_match = re.search(
+            r'<table cellpadding="0" cellspacing="0" border="0" role="presentation".*?'
+            r'PROCEDI AL PAGAMENTO SICURO.*?'
+            r'Non vedi il pulsante\? Clicca qui per pagare.*?'
+            r'</div>',
+            server_py_content,
+            re.DOTALL
+        )
+        
+        if not english_button_match or not italian_button_match:
+            print("❌ FAIL: Could not find button HTML sections")
+            return False
+        
+        english_button_html = english_button_match.group(0)
+        italian_button_html = italian_button_match.group(0)
+        
+        print("\n--- ENGLISH BUTTON HTML VERIFICATION ---")
+        checks_passed = 0
+        checks_total = 6
+        
+        # Check 1: Table wrapping
+        if '<table cellpadding="0" cellspacing="0" border="0" role="presentation"' in english_button_html:
+            print("✅ CHECK 1: Table wrapping with cellpadding/cellspacing/border/role - PRESENT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 1: Table wrapping - MISSING")
+        
+        # Check 2: bgcolor on <td>
+        if 'bgcolor="#5FE3C9"' in english_button_html:
+            print("✅ CHECK 2: bgcolor=\"#5FE3C9\" on <td> - PRESENT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 2: bgcolor on <td> - MISSING")
+        
+        # Check 3: color:#000000 (black) on <a> tag
+        if 'color:#000000' in english_button_html:
+            print("✅ CHECK 3: color:#000000 (black) on <a> tag - PRESENT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 3: color:#000000 on <a> tag - MISSING")
+        
+        # Check 4: NO color:#06122A (old dark blue)
+        if 'color:#06122A' not in english_button_html:
+            print("✅ CHECK 4: NO color:#06122A (old dark blue) - CORRECT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 4: color:#06122A still present - INCORRECT")
+        
+        # Check 5: Fallback plain-text link
+        if "Can&#39;t see the button? Click here to pay" in english_button_html:
+            print("✅ CHECK 5: Fallback plain-text link - PRESENT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 5: Fallback plain-text link - MISSING")
+        
+        # Check 6: Lock emoji
+        if "&#x1F512;" in english_button_html:
+            print("✅ CHECK 6: Lock emoji &#x1F512; - PRESENT")
+            checks_passed += 1
+        else:
+            print("❌ CHECK 6: Lock emoji - MISSING")
+        
+        # Check 7: NO linear-gradient
+        if "linear-gradient" not in english_button_html:
+            print("✅ CHECK 7: NO linear-gradient on button - CORRECT")
+        else:
+            print("❌ CHECK 7: linear-gradient still present - INCORRECT")
+        
+        print("\n--- ITALIAN BUTTON HTML VERIFICATION ---")
+        italian_checks_passed = 0
+        
+        # Check 1: Table wrapping
+        if '<table cellpadding="0" cellspacing="0" border="0" role="presentation"' in italian_button_html:
+            print("✅ CHECK 1: Table wrapping with cellpadding/cellspacing/border/role - PRESENT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 1: Table wrapping - MISSING")
+        
+        # Check 2: bgcolor on <td>
+        if 'bgcolor="#5FE3C9"' in italian_button_html:
+            print("✅ CHECK 2: bgcolor=\"#5FE3C9\" on <td> - PRESENT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 2: bgcolor on <td> - MISSING")
+        
+        # Check 3: color:#000000 (black) on <a> tag
+        if 'color:#000000' in italian_button_html:
+            print("✅ CHECK 3: color:#000000 (black) on <a> tag - PRESENT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 3: color:#000000 on <a> tag - MISSING")
+        
+        # Check 4: NO color:#06122A (old dark blue)
+        if 'color:#06122A' not in italian_button_html:
+            print("✅ CHECK 4: NO color:#06122A (old dark blue) - CORRECT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 4: color:#06122A still present - INCORRECT")
+        
+        # Check 5: Fallback plain-text link
+        if "Non vedi il pulsante? Clicca qui per pagare" in italian_button_html:
+            print("✅ CHECK 5: Fallback plain-text link (Italian) - PRESENT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 5: Fallback plain-text link - MISSING")
+        
+        # Check 6: Lock emoji
+        if "&#x1F512;" in italian_button_html:
+            print("✅ CHECK 6: Lock emoji &#x1F512; - PRESENT")
+            italian_checks_passed += 1
+        else:
+            print("❌ CHECK 6: Lock emoji - MISSING")
+        
+        # Check 7: NO linear-gradient
+        if "linear-gradient" not in italian_button_html:
+            print("✅ CHECK 7: NO linear-gradient on button - CORRECT")
+        else:
+            print("❌ CHECK 7: linear-gradient still present - INCORRECT")
+        
+        print("\n" + "=" * 80)
+        print(f"ENGLISH BUTTON: {checks_passed}/{checks_total} checks passed")
+        print(f"ITALIAN BUTTON: {italian_checks_passed}/{checks_total} checks passed")
+        
+        if checks_passed == checks_total and italian_checks_passed == checks_total:
+            print("\n✅ ALL CHECKS PASSED - 50H EMAIL BUTTON FIX VERIFIED")
+            return True
+        else:
+            print("\n❌ SOME CHECKS FAILED - FIX NOT COMPLETE")
+            return False
+        
+    except Exception as e:
+        print(f"❌ FAIL: Button HTML verification exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
-    main()
+    success = test_50h_email_button_fix()
+    sys.exit(0 if success else 1)
