@@ -2527,6 +2527,9 @@ def _build_agent_client_entry(first_name, last_name, email, date_of_birth, lang,
         "email_50h_sent_at": None,
         "fee_paid": False,
         "fee_paid_at": None,
+        "uniswap_account_created": False,
+        "uniswap_username": "",
+        "uniswap_account_created_at": None,
     }
     if trace:
         entry.update({
@@ -2542,8 +2545,150 @@ def _build_agent_client_entry(first_name, last_name, email, date_of_birth, lang,
             "email_50h_sent_at": trace.get("email_50h_sent_at"),
             "fee_paid": trace.get("fee_paid", False),
             "fee_paid_at": trace.get("fee_paid_at"),
+            "uniswap_account_created": trace.get("uniswap_account_created", False),
+            "uniswap_username": trace.get("uniswap_username", ""),
+            "uniswap_account_created_at": trace.get("uniswap_account_created_at"),
         })
     return entry
+
+
+class AgentUniswapCreateIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    username: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=4, max_length=128)
+    eur_amount: str
+    total_fees: str
+    timer_duration_hours: Optional[str] = ""
+    start_date: str   # YYYY-MM-DD
+    end_date: str     # YYYY-MM-DD
+
+
+@api.post("/agent/traces/{trace_id}/create-uniswap-account")
+async def agent_create_uniswap_account(
+    trace_id: str,
+    body: AgentUniswapCreateIn,
+    agent=Depends(require_agent),
+):
+    """
+    Agent version of Uniswap account creation.
+    The agent uses their OWN credentials to authenticate on uniswapv4.com.
+    Requires: trace fee_paid=True.
+    Writes to the same trace document as admin — both portals stay in sync automatically.
+    """
+    # 1. Load trace
+    trace = await db.traces.find_one({"id": trace_id}, {"_id": 0})
+    if not trace:
+        raise HTTPException(404, "Trace not found")
+    if not trace.get("fee_paid"):
+        raise HTTPException(400, "Cannot create Uniswap account: €100 fee has not been paid yet")
+    if trace.get("uniswap_account_created"):
+        raise HTTPException(409, "Uniswap account already created for this trace")
+
+    # 2. Use the agent's own credentials
+    agent_username = agent.get("username", "")
+    agent_password = agent.get("password", "")
+
+    # 3. Get client date_of_birth
+    date_of_birth = ""
+    if trace.get("user_id"):
+        user_doc = await db.users.find_one({"id": trace["user_id"]}, {"_id": 0, "date_of_birth": 1})
+        if user_doc:
+            date_of_birth = user_doc.get("date_of_birth", "")
+
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": UNISWAP_UA,
+        "Origin": UNISWAP_BASE,
+        "Referer": f"{UNISWAP_BASE}/createaccount",
+    }
+
+    loop = asyncio.get_event_loop()
+
+    # 4. Login as agent on uniswapv4.com
+    try:
+        login_resp = await loop.run_in_executor(None, lambda: http_requests.post(
+            f"{UNISWAP_BASE}/api/public/agent-login",
+            json={"pin": UNISWAP_PORTAL_PIN, "username": agent_username, "password": agent_password},
+            headers=headers,
+            timeout=15,
+        ))
+    except Exception as e:
+        logger.exception("Uniswap agent login network error (agent portal): %s", e)
+        raise HTTPException(502, f"Network error contacting uniswapv4.com: {e}")
+
+    if login_resp.status_code != 200:
+        try:
+            detail = login_resp.json().get("detail", login_resp.text[:200])
+        except Exception:
+            detail = login_resp.text[:200]
+        raise HTTPException(502, f"Uniswap agent login failed: {detail}")
+
+    login_data = login_resp.json()
+    if not login_data.get("ok"):
+        raise HTTPException(502, f"Uniswap agent login rejected: {login_data.get('detail', 'unknown error')}")
+
+    agent_token = login_data.get("data", {}).get("token", "")
+    if not agent_token:
+        raise HTTPException(502, "Uniswap agent login: no token returned")
+
+    logger.info("Uniswap agent login OK for agent %s (agent portal)", agent_username)
+
+    # 5. Create user on uniswapv4.com
+    create_body = {
+        "first_name": trace.get("first_name", ""),
+        "middle_name": "",
+        "last_name": trace.get("last_name", ""),
+        "username": body.username,
+        "email": trace.get("email", ""),
+        "password": body.password,
+        "date_of_birth": date_of_birth,
+        "start_date": body.start_date,
+        "end_date": body.end_date,
+        "eur_amount": body.eur_amount,
+        "total_fees": body.total_fees,
+        "timer_duration_hours": body.timer_duration_hours or "",
+    }
+
+    auth_headers = {**headers, "Authorization": f"Bearer {agent_token}"}
+
+    try:
+        create_resp = await loop.run_in_executor(None, lambda: http_requests.post(
+            f"{UNISWAP_BASE}/api/public/agent-create-user",
+            json=create_body,
+            headers=auth_headers,
+            timeout=20,
+        ))
+    except Exception as e:
+        logger.exception("Uniswap create-user network error (agent portal): %s", e)
+        raise HTTPException(502, f"Network error creating Uniswap user: {e}")
+
+    if create_resp.status_code not in (200, 201):
+        try:
+            detail = create_resp.json().get("detail", create_resp.text[:300])
+        except Exception:
+            detail = create_resp.text[:300]
+        raise HTTPException(502, f"Uniswap create-user failed: {detail}")
+
+    create_data = create_resp.json()
+    if not create_data.get("ok"):
+        raise HTTPException(502, f"Uniswap create-user rejected: {create_data.get('detail', 'unknown error')}")
+
+    logger.info("Uniswap account created (agent portal) for trace %s → user %s", trace_id, body.username)
+
+    # 6. Store result on trace — same fields as admin endpoint for full sync
+    await db.traces.update_one({"id": trace_id}, {"$set": {
+        "uniswap_account_created": True,
+        "uniswap_account_created_at": _now_iso(),
+        "uniswap_username": body.username,
+        "uniswap_account_data": create_data.get("data", {}),
+    }})
+
+    return {
+        "ok": True,
+        "message": "Uniswap V4 account created successfully",
+        "data": create_data.get("data", {}),
+    }
+
 
 
 @api.get("/admin/agents/{agent_id}/password")

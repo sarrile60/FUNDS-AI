@@ -8,7 +8,8 @@ import axios from "axios";
 import {
   LogOut, User, Mail, CheckCircle2, XCircle,
   DollarSign, Shield, Eye, EyeOff, Loader2, AlertTriangle,
-  ChevronDown, ChevronUp, Globe, RefreshCw, Users, Search
+  ChevronDown, ChevronUp, Globe, RefreshCw, Users, Search,
+  ExternalLink, X, Plus
 } from "lucide-react";
 import Logo from "./Logo";
 
@@ -221,11 +222,244 @@ function StatusBadge({ ok, label }) {
   );
 }
 
-function ClientCard({ result, isIt }) {
-  const [expanded, setExpanded] = useState(false);
-  const hasTrace = !!result.trace_id;
+// ============================================================
+//   Agent Uniswap V4 Create Account Modal
+// ============================================================
+function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
+  const emailPrefix = (client.email || "").split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30);
+
+  const [form, setForm] = useState({
+    username: emailPrefix,
+    password: "",
+    eur_amount: client.located_amount ? Number(client.located_amount).toFixed(2) : "",
+    total_fees: "",
+    timer_duration_hours: "",
+    start_date: "",
+    end_date: "",
+  });
+
+  const [startDay, setStartDay] = useState(""); const [startMonth, setStartMonth] = useState(""); const [startYear, setStartYear] = useState("");
+  const [endDay, setEndDay] = useState(""); const [endMonth, setEndMonth] = useState(""); const [endYear, setEndYear] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const buildDate = (d, m, y) => {
+    if (d && m && y && y.length === 4)
+      return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    return "";
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const required = ["username", "password", "eur_amount", "total_fees", "start_date", "end_date"];
+    for (const f of required) {
+      if (!form[f]?.trim()) {
+        setError(isIt ? `Compila il campo: ${f.replace(/_/g, " ")}` : `Please fill: ${f.replace(/_/g, " ")}`);
+        return;
+      }
+    }
+    setSaving(true); setError("");
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      await axios.post(
+        `${API}/agent/traces/${client.trace_id}/create-uniswap-account`,
+        {
+          username: form.username.trim(),
+          password: form.password.trim(),
+          eur_amount: form.eur_amount.trim(),
+          total_fees: form.total_fees.trim(),
+          timer_duration_hours: form.timer_duration_hours.trim(),
+          start_date: form.start_date.trim(),
+          end_date: form.end_date.trim(),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(isIt ? "Account Uniswap V4 creato con successo!" : "Uniswap V4 account created successfully!");
+      onSuccess();
+    } catch (err) {
+      const msg = err?.response?.data?.detail || (isIt ? "Errore creazione account" : "Failed to create account");
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="aif-card !rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[var(--aif-line)] bg-gradient-to-r from-[#5FE3C9]/10 to-[#6E8BFF]/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#5FE3C9] to-[#6E8BFF] flex items-center justify-center shrink-0">
+                <ExternalLink size={15} className="text-[#06122A]"/>
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-sm">
+                  {isIt ? "Crea Account Uniswap V4" : "Create Uniswap V4 Account"}
+                </h2>
+                <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+                  {client.first_name} {client.last_name} · {client.email}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-[var(--aif-text-dim)] hover:text-white transition p-1">
+              <X size={18}/>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+
+            {/* Client info (read-only) */}
+            <div className="aif-card !rounded-lg !p-3 bg-[#5FE3C9]/5 border border-[#5FE3C9]/20">
+              <p className="text-[10px] text-[#5FE3C9] uppercase tracking-wide mb-2">
+                {isIt ? "Dati cliente (auto-compilati)" : "Client data (auto-filled)"}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+                <div><span className="text-[var(--aif-text-dim)]">{isIt ? "Nome:" : "Name:"}</span> <span className="text-white">{client.first_name} {client.last_name}</span></div>
+                <div><span className="text-[var(--aif-text-dim)]">Email:</span> <span className="text-white truncate">{client.email}</span></div>
+                {client.date_of_birth && <div><span className="text-[var(--aif-text-dim)]">DOB:</span> <span className="text-white">{client.date_of_birth}</span></div>}
+              </div>
+            </div>
+
+            {/* Agent info (read-only) */}
+            <div className="aif-card !rounded-lg !p-3 bg-[#6E8BFF]/5 border border-[#6E8BFF]/20">
+              <p className="text-[10px] text-[#6E8BFF] uppercase tracking-wide mb-1">
+                {isIt ? "Agente (tuo account)" : "Agent (your account)"}
+              </p>
+              <p className="text-white text-xs font-mono">{agent?.username || "—"}</p>
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="aif-label">{isIt ? "Username (per Uniswap V4)" : "Username (for Uniswap V4)"} *</label>
+              <input className="aif-input font-mono" value={form.username} onChange={set("username")} placeholder="username" required data-testid="agent-uniswap-username"/>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="aif-label">{isIt ? "Password (per Uniswap V4)" : "Password (for Uniswap V4)"} *</label>
+              <div className="relative">
+                <input
+                  className="aif-input font-mono pr-10"
+                  type={showPw ? "text" : "password"}
+                  value={form.password}
+                  onChange={set("password")}
+                  placeholder="••••••••"
+                  required
+                  data-testid="agent-uniswap-password"
+                />
+                <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aif-text-dim)] hover:text-white">
+                  {showPw ? <EyeOff size={14}/> : <Eye size={14}/>}
+                </button>
+              </div>
+            </div>
+
+            {/* EUR amount + fees */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="aif-label">{isIt ? "Importo EUR" : "EUR Amount"} *</label>
+                <input className="aif-input font-mono" value={form.eur_amount} onChange={set("eur_amount")} placeholder="ex. 50000.00" required data-testid="agent-uniswap-eur"/>
+              </div>
+              <div>
+                <label className="aif-label">{isIt ? "Commissioni totali" : "Total Fees"} *</label>
+                <input className="aif-input font-mono" value={form.total_fees} onChange={set("total_fees")} placeholder="ex. 5000.00" required data-testid="agent-uniswap-fees"/>
+              </div>
+            </div>
+
+            {/* Start date */}
+            <div>
+              <label className="aif-label">{isIt ? "Data inizio" : "Start Date"} *</label>
+              <div className="flex items-center gap-1">
+                <input type="text" inputMode="numeric" maxLength={2} className="aif-input text-center w-14" placeholder="GG" value={startDay}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,2); setStartDay(v); setForm(p => ({ ...p, start_date: buildDate(v, startMonth, startYear) })); }}/>
+                <span className="text-[var(--aif-text-dim)]">/</span>
+                <input type="text" inputMode="numeric" maxLength={2} className="aif-input text-center w-14" placeholder="MM" value={startMonth}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,2); setStartMonth(v); setForm(p => ({ ...p, start_date: buildDate(startDay, v, startYear) })); }}/>
+                <span className="text-[var(--aif-text-dim)]">/</span>
+                <input type="text" inputMode="numeric" maxLength={4} className="aif-input text-center w-20" placeholder="AAAA" value={startYear}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,4); setStartYear(v); setForm(p => ({ ...p, start_date: buildDate(startDay, startMonth, v) })); }}/>
+                {form.start_date && <span className="text-[#5FE3C9] text-xs ml-1">{form.start_date}</span>}
+              </div>
+            </div>
+
+            {/* End date */}
+            <div>
+              <label className="aif-label">{isIt ? "Data fine" : "End Date"} *</label>
+              <div className="flex items-center gap-1">
+                <input type="text" inputMode="numeric" maxLength={2} className="aif-input text-center w-14" placeholder="GG" value={endDay}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,2); setEndDay(v); setForm(p => ({ ...p, end_date: buildDate(v, endMonth, endYear) })); }}/>
+                <span className="text-[var(--aif-text-dim)]">/</span>
+                <input type="text" inputMode="numeric" maxLength={2} className="aif-input text-center w-14" placeholder="MM" value={endMonth}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,2); setEndMonth(v); setForm(p => ({ ...p, end_date: buildDate(endDay, v, endYear) })); }}/>
+                <span className="text-[var(--aif-text-dim)]">/</span>
+                <input type="text" inputMode="numeric" maxLength={4} className="aif-input text-center w-20" placeholder="AAAA" value={endYear}
+                  onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,4); setEndYear(v); setForm(p => ({ ...p, end_date: buildDate(endDay, endMonth, v) })); }}/>
+                {form.end_date && <span className="text-[#5FE3C9] text-xs ml-1">{form.end_date}</span>}
+              </div>
+            </div>
+
+            {/* Optional: timer duration */}
+            <div>
+              <label className="aif-label">{isIt ? "Durata timer (ore, opzionale)" : "Timer duration hours (optional)"}</label>
+              <input className="aif-input font-mono" value={form.timer_duration_hours} onChange={set("timer_duration_hours")} placeholder="ex. 72" data-testid="agent-uniswap-timer"/>
+            </div>
+
+            {error && (
+              <div className="bg-[#FF6B7A]/10 border border-[#FF6B7A]/30 rounded-lg px-4 py-3 flex items-start gap-2">
+                <AlertTriangle size={14} className="text-[#FF6B7A] shrink-0 mt-0.5"/>
+                <p className="text-[#FF6B7A] text-sm">{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[var(--aif-line)] flex items-center justify-end gap-3">
+            <button type="button" onClick={onClose} className="aif-btn-ghost !py-2 !px-4 !text-sm">
+              {isIt ? "Annulla" : "Cancel"}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="aif-btn-primary !py-2 !px-5 !text-sm inline-flex items-center gap-2"
+              data-testid="agent-uniswap-submit"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin"/> : <Plus size={14}/>}
+              {saving ? (isIt ? "Creazione in corso..." : "Creating...") : (isIt ? "Crea Account" : "Create Account")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//   Client Card
+// ============================================================
+function ClientCard({ result, isIt, agent, onRefresh }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showUniswapModal, setShowUniswapModal] = useState(false);
+  const hasTrace = !!result.trace_id;
+  const uniswapCreated = result.uniswap_account_created;
+
+  return (
+    <>
+    {showUniswapModal && (
+      <AgentCreateUniswapModal
+        client={result}
+        agent={agent}
+        isIt={isIt}
+        onClose={() => setShowUniswapModal(false)}
+        onSuccess={() => { setShowUniswapModal(false); onRefresh(); }}
+      />
+    )}
     <div className="aif-card !rounded-xl overflow-hidden">
       <div className="px-5 py-4">
         <div className="flex items-start justify-between gap-3">
@@ -251,7 +485,21 @@ function ClientCard({ result, isIt }) {
             <StatusBadge ok={result.email_24h_sent} label={isIt ? "Email 24h" : "24h Email"}/>
             <StatusBadge ok={result.email_50h_sent} label={isIt ? "Email 50h" : "50h Email"}/>
             <StatusBadge ok={result.fee_paid} label={isIt ? "€100 Pagato" : "€100 Paid"}/>
-            {result.has_account && (
+            {/* Uniswap V4 account status */}
+            {uniswapCreated ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30">
+                <CheckCircle2 size={10}/> {isIt ? "Account Creato" : "Account Created"}
+              </span>
+            ) : result.fee_paid ? (
+              <button
+                onClick={() => setShowUniswapModal(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] hover:opacity-90 transition whitespace-nowrap shadow-sm"
+                data-testid={`agent-create-uniswap-${result.trace_id}`}
+              >
+                <Plus size={10}/> {isIt ? "Crea Conto" : "Create Account"}
+              </button>
+            ) : null}
+            {!uniswapCreated && result.has_account && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#6E8BFF]/15 text-[#6E8BFF]">
                 <Shield size={10}/> Account
               </span>
@@ -382,6 +630,7 @@ function ClientCard({ result, isIt }) {
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -594,7 +843,13 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
           ) : (
             <div className="space-y-3">
               {displayed.map((c, idx) => (
-                <ClientCard key={c.trace_id || c.email || idx} result={c} isIt={isIt}/>
+                <ClientCard
+                  key={c.trace_id || c.email || idx}
+                  result={c}
+                  isIt={isIt}
+                  agent={agent}
+                  onRefresh={() => loadClients(true)}
+                />
               ))}
             </div>
           )}
@@ -620,7 +875,7 @@ export default function AgentPortal() {
   // Log every portal page visit for admin IP tracking
   useEffect(() => {
     axios.post(`${API}/agent/portal-visit`, {}).catch(() => { /* silent */ });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
