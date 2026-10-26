@@ -2489,6 +2489,8 @@ async def agent_my_clients(agent=Depends(require_agent)):
         trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
         entry = _build_agent_client_entry(u.get("first_name",""), u.get("last_name",""), u.get("email",""),
                                           u.get("date_of_birth"), u.get("lang","it"), True, u["id"], trace)
+        # not_interested lives on the user doc for registered users
+        entry["not_interested"] = u.get("not_interested", False)
         results.append(entry)
 
     # Orphan traces assigned to this agent
@@ -2500,10 +2502,51 @@ async def agent_my_clients(agent=Depends(require_agent)):
     for t in orphan_traces:
         entry = _build_agent_client_entry(t.get("first_name",""), t.get("last_name",""), t.get("email",""),
                                           None, t.get("user_lang","it"), False, None, t)
+        # not_interested lives on the trace doc for orphan traces
+        entry["not_interested"] = t.get("not_interested", False)
         results.append(entry)
 
-    results.sort(key=lambda x: x.get("trace_created_at") or x.get("trace_created_at") or "", reverse=True)
+    results.sort(key=lambda x: x.get("trace_created_at") or "", reverse=True)
     return results
+
+
+class AgentNotInterestedIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    user_id: Optional[str] = None    # set for registered users
+    trace_id: Optional[str] = None   # set for orphan traces (no user)
+    not_interested: bool = True
+
+
+@api.put("/agent/clients/not-interested")
+async def agent_toggle_not_interested(body: AgentNotInterestedIn, agent=Depends(require_agent)):
+    """
+    Agent marks (or unmarks) a client as 'not interested'.
+    - For registered users: flag stored on the user document.
+    - For orphan traces: flag stored on the trace document.
+    """
+    if not body.user_id and not body.trace_id:
+        raise HTTPException(400, "Provide user_id or trace_id")
+
+    if body.user_id:
+        user = await db.users.find_one({"id": body.user_id}, {"_id": 0, "id": 1})
+        if not user:
+            raise HTTPException(404, "User not found")
+        await db.users.update_one(
+            {"id": body.user_id},
+            {"$set": {"not_interested": body.not_interested, "not_interested_at": _now_iso() if body.not_interested else None}}
+        )
+    else:
+        trace = await db.traces.find_one({"id": body.trace_id}, {"_id": 0, "id": 1})
+        if not trace:
+            raise HTTPException(404, "Trace not found")
+        await db.traces.update_one(
+            {"id": body.trace_id},
+            {"$set": {"not_interested": body.not_interested, "not_interested_at": _now_iso() if body.not_interested else None}}
+        )
+
+    logger.info("Agent %s set not_interested=%s for user_id=%s trace_id=%s",
+                agent.get("username"), body.not_interested, body.user_id, body.trace_id)
+    return {"ok": True, "not_interested": body.not_interested}
 
 
 def _build_agent_client_entry(first_name, last_name, email, date_of_birth, lang, has_account, user_id, trace):

@@ -446,8 +446,27 @@ function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
 function ClientCard({ result, isIt, agent, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
   const [showUniswapModal, setShowUniswapModal] = useState(false);
+  const [togglingNI, setTogglingNI] = useState(false);
   const hasTrace = !!result.trace_id;
   const uniswapCreated = result.uniswap_account_created;
+  const notInterested = result.not_interested;
+
+  const toggleNotInterested = async (val) => {
+    setTogglingNI(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      await axios.put(
+        `${API}/agent/clients/not-interested`,
+        { user_id: result.user_id || null, trace_id: result.trace_id || null, not_interested: val },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onRefresh();
+    } catch {
+      toast.error(isIt ? "Errore aggiornamento stato" : "Failed to update status");
+    } finally {
+      setTogglingNI(false);
+    }
+  };
 
   return (
     <>
@@ -464,11 +483,21 @@ function ClientCard({ result, isIt, agent, onRefresh }) {
       <div className="px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-[#5FE3C9]/15 flex items-center justify-center shrink-0">
-              <User size={18} className="text-[#5FE3C9]"/>
+            <div className="w-10 h-10 rounded-full bg-[#5FE3C9]/15 flex items-center justify-center shrink-0"
+              style={notInterested ? { background: "rgba(159,122,234,0.15)" } : {}}>
+              <User size={18} className={notInterested ? "text-[#9F7AEA]" : "text-[#5FE3C9]"}/>
             </div>
             <div className="min-w-0">
-              <p className="text-white font-semibold text-sm">{result.first_name} {result.last_name}</p>
+              <div className="flex items-center gap-2">
+                <p className={`font-semibold text-sm ${notInterested ? "text-[var(--aif-text-dim)] line-through" : "text-white"}`}>
+                  {result.first_name} {result.last_name}
+                </p>
+                {notInterested && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#9F7AEA]/15 text-[#9F7AEA] border border-[#9F7AEA]/30 whitespace-nowrap">
+                    <XCircle size={8}/> {isIt ? "Non interessato" : "Not Interested"}
+                  </span>
+                )}
+              </div>
               <p className="text-[var(--aif-text-dim)] text-xs mt-0.5 truncate">{result.email}</p>
             </div>
           </div>
@@ -510,6 +539,33 @@ function ClientCard({ result, isIt, agent, onRefresh }) {
         {!hasTrace && (
           <p className="text-[var(--aif-text-dim)] text-xs mt-2">{isIt ? "Nessun tracciamento avviato" : "No trace started yet"}</p>
         )}
+
+        {/* Not Interested toggle — always visible regardless of trace */}
+        <div className="mt-3 flex justify-end">
+          {notInterested ? (
+            <button
+              onClick={() => toggleNotInterested(false)}
+              disabled={togglingNI}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium text-[#9F7AEA] border border-[#9F7AEA]/30 hover:bg-[#9F7AEA]/10 transition disabled:opacity-50"
+              data-testid={`undo-not-interested-${result.trace_id || result.user_id}`}
+              title={isIt ? "Rimuovi 'non interessato'" : "Remove 'not interested'"}
+            >
+              {togglingNI ? <Loader2 size={10} className="animate-spin"/> : <CheckCircle2 size={10}/>}
+              {isIt ? "Riattiva" : "Reactivate"}
+            </button>
+          ) : (
+            <button
+              onClick={() => toggleNotInterested(true)}
+              disabled={togglingNI}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium text-[var(--aif-text-dim)] border border-[var(--aif-line)] hover:text-[#FF6B7A] hover:border-[#FF6B7A]/40 hover:bg-[#FF6B7A]/5 transition disabled:opacity-50"
+              data-testid={`not-interested-${result.trace_id || result.user_id}`}
+              title={isIt ? "Segna come non interessato" : "Mark as not interested"}
+            >
+              {togglingNI ? <Loader2 size={10} className="animate-spin"/> : <XCircle size={10}/>}
+              {isIt ? "Non interessato" : "Not Interested"}
+            </button>
+          )}
+        </div>
       </div>
 
       {expanded && hasTrace && (
@@ -688,14 +744,21 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
       if (filter === "50h" && !(c.email_50h_sent && !c.fee_paid)) return false;
       // €100: paid the fee
       if (filter === "paid" && !c.fee_paid) return false;
+      // Not interested filter — show ONLY not-interested
+      if (filter === "not_interested" && !c.not_interested) return false;
       return true;
     })
     .sort((a, b) => {
+      // Not-interested always go to the bottom regardless of other sort
+      if (a.not_interested && !b.not_interested) return 1;
+      if (!a.not_interested && b.not_interested) return -1;
       const ta = new Date(a.trace_created_at || 0).getTime();
       const tb = new Date(b.trace_created_at || 0).getTime();
       if (filter === "oldest") return ta - tb;
       return tb - ta; // newest first (default)
     });
+
+  const notInterestedCount = clients.filter(c => c.not_interested).length;
 
   const toggleLang = () => {
     const next = isIt ? "en" : "it";
@@ -787,12 +850,13 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
               {/* Filter buttons */}
               <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1 flex-wrap">
                 {[
-                  { key: "all",    label: isIt ? "Tutti" : "All" },
-                  { key: "24h",    label: "24h ✓" },
-                  { key: "50h",    label: "50h ✓" },
-                  { key: "paid",   label: "€100 ✓" },
-                  { key: "newest", label: isIt ? "↓ Recenti" : "↓ Newest" },
-                  { key: "oldest", label: isIt ? "↑ Vecchi" : "↑ Oldest" },
+                  { key: "all",           label: isIt ? "Tutti" : "All" },
+                  { key: "24h",           label: "24h ✓" },
+                  { key: "50h",           label: "50h ✓" },
+                  { key: "paid",          label: "€100 ✓" },
+                  { key: "not_interested",label: isIt ? `Non interessati${notInterestedCount > 0 ? ` (${notInterestedCount})` : ""}` : `Not Interested${notInterestedCount > 0 ? ` (${notInterestedCount})` : ""}` },
+                  { key: "newest",        label: isIt ? "↓ Recenti" : "↓ Newest" },
+                  { key: "oldest",        label: isIt ? "↑ Vecchi" : "↑ Oldest" },
                 ].map(f => (
                   <button
                     key={f.key}
@@ -802,9 +866,11 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                         ? f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]"
                         : f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]"
                         : f.key === "paid" ? "bg-[#4ADE80]/20 text-[#4ADE80]"
+                        : f.key === "not_interested" ? "bg-[#9F7AEA]/20 text-[#9F7AEA]"
                         : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
                         : "text-[var(--aif-text-dim)] hover:text-white"
                     }`}
+                    data-testid={`filter-${f.key}`}
                   >
                     {f.label}
                   </button>
