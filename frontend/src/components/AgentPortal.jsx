@@ -744,6 +744,8 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
       if (filter === "50h" && !(c.email_50h_sent && !c.fee_paid)) return false;
       // €100: paid the fee
       if (filter === "paid" && !c.fee_paid) return false;
+      // Crea conto: fee paid, Uniswap NOT yet created, NOT not-interested
+      if (filter === "crea_conto" && !(c.fee_paid && !c.uniswap_account_created && !c.not_interested)) return false;
       // Not interested filter — show ONLY not-interested
       if (filter === "not_interested" && !c.not_interested) return false;
       return true;
@@ -759,6 +761,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
     });
 
   const notInterestedCount = clients.filter(c => c.not_interested).length;
+  const creaContoCount = clients.filter(c => c.fee_paid && !c.uniswap_account_created && !c.not_interested).length;
 
   const toggleLang = () => {
     const next = isIt ? "en" : "it";
@@ -854,6 +857,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                   { key: "24h",           label: "24h ✓" },
                   { key: "50h",           label: "50h ✓" },
                   { key: "paid",          label: "€100 ✓" },
+                  { key: "crea_conto",    label: isIt ? `Crea Conto${creaContoCount > 0 ? ` (${creaContoCount})` : ""}` : `Create Acc.${creaContoCount > 0 ? ` (${creaContoCount})` : ""}` },
                   { key: "not_interested",label: isIt ? `Non interessati${notInterestedCount > 0 ? ` (${notInterestedCount})` : ""}` : `Not Interested${notInterestedCount > 0 ? ` (${notInterestedCount})` : ""}` },
                   { key: "newest",        label: isIt ? "↓ Recenti" : "↓ Newest" },
                   { key: "oldest",        label: isIt ? "↑ Vecchi" : "↑ Oldest" },
@@ -866,6 +870,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                         ? f.key === "24h" ? "bg-[#FFB454]/20 text-[#FFB454]"
                         : f.key === "50h" ? "bg-[#FF6B7A]/20 text-[#FF6B7A]"
                         : f.key === "paid" ? "bg-[#4ADE80]/20 text-[#4ADE80]"
+                        : f.key === "crea_conto" ? "bg-gradient-to-r from-[#5FE3C9]/20 to-[#6E8BFF]/20 text-[#5FE3C9]"
                         : f.key === "not_interested" ? "bg-[#9F7AEA]/20 text-[#9F7AEA]"
                         : "bg-[#5FE3C9]/15 text-[#5FE3C9]"
                         : "text-[var(--aif-text-dim)] hover:text-white"
