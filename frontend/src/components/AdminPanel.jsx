@@ -637,6 +637,7 @@ function TracesTab({ isIt }) {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [markingFee, setMarkingFee] = useState(null);
   const [sending24h, setSending24h] = useState(null);
+  const [sending50h, setSending50h] = useState(null);
   const [simulating, setSimulating] = useState(null);
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(50);
@@ -700,6 +701,20 @@ function TracesTab({ isIt }) {
       toast.error(e?.response?.data?.detail || (isIt ? "Errore invio" : "Send error"));
     } finally {
       setSending24h(null);
+    }
+  };
+
+  const send50hEmail = async (traceId) => {
+    if (!window.confirm(isIt ? "Inviare email fondi localizzati (50h) ora? Verrà inviata anche se già inviata in precedenza." : "Send funds-located (50h) email now? It will send even if already sent before.")) return;
+    setSending50h(traceId);
+    try {
+      const { data } = await axios.post(`${API}/admin/traces/${traceId}/send-50h-email`, {}, { headers: getAuthHeader() });
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, ...data } : t));
+      toast.success(isIt ? "Email 50h fondi localizzati inviata" : "50h funds-located email sent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore invio" : "Send error"));
+    } finally {
+      setSending50h(null);
     }
   };
 
@@ -1031,10 +1046,19 @@ function TracesTab({ isIt }) {
                             onClick={() => send24hEmail(trace.id)}
                             disabled={sending24h === trace.id}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                            title={isIt ? "Invia email 24h" : "Send 24h email"}
+                            title={isIt ? "Forza invio email 24h (funziona anche se già inviata)" : "Force send 24h email (works even if already sent)"}
                             data-testid={`send-24h-btn-${trace.id}`}
                           >
                             {sending24h === trace.id ? "…" : "📧 24h"}
+                          </button>
+                          <button
+                            onClick={() => send50hEmail(trace.id)}
+                            disabled={sending50h === trace.id}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] font-medium hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
+                            title={isIt ? "Forza invio email 50h fondi localizzati (funziona anche se già inviata)" : "Force send 50h funds-located email (works even if already sent)"}
+                            data-testid={`send-50h-btn-${trace.id}`}
+                          >
+                            {sending50h === trace.id ? "…" : "📧 51h"}
                           </button>
                           {trace.fee_paid ? (
                             <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
