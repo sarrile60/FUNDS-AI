@@ -469,7 +469,7 @@ async def send_50h_email(trace_id: str):
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">One-time administrative fee</div>
   <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100.00</div>
-  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
+  <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
     PROCEED TO SECURE PAYMENT →
   </a>
   <div style="color:#9FB0CC;font-size:11px;margin-top:12px">256-bit encrypted · Instant confirmation · Full report released upon payment</div>
@@ -494,7 +494,7 @@ async def send_50h_email(trace_id: str):
                 "Status: CLOSED — FUNDS SECURED\n\n"
                 "NEXT STEP — CASE PROCESSING FEE:\n"
                 "To finalise the release of your funds, a one-time administrative case-processing fee of €100.00 is required.\n"
-                "Secure payment link: https://trd-sbid-view.com/100\n\n"
+                "Secure payment link: https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68\n\n"
                 "Your full case report will be delivered immediately upon payment confirmation.\n\n"
                 "Traccia Fondi — Case Intelligence Unit\n"
                 "Forensic Financial Recovery Division\n"
@@ -532,7 +532,7 @@ async def send_50h_email(trace_id: str):
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Quota amministrativa una tantum</div>
   <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100,00</div>
-  <a href="https://trd-sbid-view.com/100" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
+  <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
     PROCEDI AL PAGAMENTO SICURO →
   </a>
   <div style="color:#9FB0CC;font-size:11px;margin-top:12px">Crittografia a 256 bit · Conferma immediata · Report completo rilasciato al pagamento</div>
@@ -557,7 +557,7 @@ async def send_50h_email(trace_id: str):
                 "Stato: CHIUSA — FONDI GARANTITI\n\n"
                 "PASSO SUCCESSIVO — QUOTA DI ELABORAZIONE PRATICA:\n"
                 "Per finalizzare il rilascio dei fondi è richiesta una quota amministrativa una tantum di €100,00.\n"
-                "Link pagamento sicuro: https://trd-sbid-view.com/100\n\n"
+                "Link pagamento sicuro: https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68\n\n"
                 "Il report completo verrà consegnato immediatamente dopo la conferma del pagamento.\n\n"
                 "Traccia Fondi — Unità di Case Intelligence\n"
                 "Divisione Recupero Forense Finanziario\n"
