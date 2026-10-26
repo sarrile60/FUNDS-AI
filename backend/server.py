@@ -468,10 +468,16 @@ async def send_50h_email(trace_id: str):
 
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">One-time administrative fee</div>
-  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100.00</div>
-  <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
-    PROCEED TO SECURE PAYMENT →
-  </a>
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">€100.00</div>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">
+        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif">
+          PROCEED TO SECURE PAYMENT &#8594;
+        </a>
+      </td>
+    </tr>
+  </table>
   <div style="color:#9FB0CC;font-size:11px;margin-top:12px">256-bit encrypted · Instant confirmation · Full report released upon payment</div>
 </div>
 
@@ -531,10 +537,16 @@ async def send_50h_email(trace_id: str):
 
 <div style="background:#06122A;border:1px solid #5FE3C9;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
   <div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Quota amministrativa una tantum</div>
-  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:16px">€100,00</div>
-  <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:16px;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.02em">
-    PROCEDI AL PAGAMENTO SICURO →
-  </a>
+  <div style="color:#fff;font-size:28px;font-weight:900;margin-bottom:20px">€100,00</div>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">
+        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif">
+          PROCEDI AL PAGAMENTO SICURO &#8594;
+        </a>
+      </td>
+    </tr>
+  </table>
   <div style="color:#9FB0CC;font-size:11px;margin-top:12px">Crittografia a 256 bit · Conferma immediata · Report completo rilasciato al pagamento</div>
 </div>
 
@@ -640,8 +652,11 @@ async def send_fee_paid_email(trace_id: str):
                     f'<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:10px;padding:20px;margin:20px 0;text-align:center">'
                     f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Your dedicated case agent is ready to assist you</div>'
                     f'<div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:14px">Contact our Fund Release Team</div>'
-                    f'<a href="mailto:support@traccia-fondi.com?subject=Fund Release - Case {case_ref}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
-                    f'CONTACT OUR TEAM &rarr;</a>'
+                    f'<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px auto"><tr>'
+                    f'<td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">'
+                    f'<a href="mailto:support@traccia-fondi.com?subject=Fund Release - Case {case_ref}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:10px;font-family:Arial,Helvetica,sans-serif">'
+                    f'CONTACT OUR TEAM &#8594;</a>'
+                    f'</td></tr></table>'
                     f'<div style="color:#9FB0CC;font-size:12px;margin-top:10px">support@traccia-fondi.com</div>'
                     f'<div style="color:#9FB0CC;font-size:11px;margin-top:6px">Response within 24 hours · Reference: {case_ref}</div></div>'
                 )
@@ -693,8 +708,11 @@ async def send_fee_paid_email(trace_id: str):
                     f'<div style="background:#06122A;border:1px solid #5FE3C9;border-radius:10px;padding:20px;margin:20px 0;text-align:center">'
                     f'<div style="color:#9FB0CC;font-size:12px;margin-bottom:6px">Il Suo agente dedicato è pronto ad assisterLa</div>'
                     f'<div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:14px">Contatti il nostro Team di Rilascio Fondi</div>'
-                    f'<a href="mailto:support@traccia-fondi.com?subject=Rilascio Fondi - Pratica {case_ref}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">'
-                    f'CONTATTA IL TEAM &rarr;</a>'
+                    f'<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px auto"><tr>'
+                    f'<td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9">'
+                    f'<a href="mailto:support@traccia-fondi.com?subject=Rilascio Fondi - Pratica {case_ref}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:10px;font-family:Arial,Helvetica,sans-serif">'
+                    f'CONTATTA IL TEAM &#8594;</a>'
+                    f'</td></tr></table>'
                     f'<div style="color:#9FB0CC;font-size:12px;margin-top:10px">support@traccia-fondi.com</div>'
                     f'<div style="color:#9FB0CC;font-size:11px;margin-top:6px">Risposta entro 24 ore · Riferimento: {case_ref}</div></div>'
                 )
@@ -955,9 +973,15 @@ async def _send_verification_email(to_email: str, first_name: str, token: str, l
 <p>Hi <strong>{first_name}</strong>,</p>
 <p>Thank you for registering with Traccia Fondi. Please verify your email address to activate your account and start the tracing procedure.</p>
 <div style="text-align:center;margin:28px 0">
-  <a href="{verify_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
-    Verify my email
-  </a>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:12px;background-color:#5FE3C9">
+        <a href="{verify_url}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:12px;font-family:Arial,Helvetica,sans-serif">
+          Verify my email
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 <p style="color:#9FB0CC;font-size:12px">Or copy this link into your browser:<br/><a href="{verify_url}" style="color:#5FE3C9;word-break:break-all">{verify_url}</a></p>
 <p style="color:#9FB0CC;font-size:12px">This link is valid for 48 hours. If you did not create this account, you can ignore this email.</p>
@@ -975,9 +999,15 @@ async def _send_verification_email(to_email: str, first_name: str, token: str, l
 <p>Ciao <strong>{first_name}</strong>,</p>
 <p>Grazie per esserti registrato su Traccia Fondi. Verifica il tuo indirizzo email per attivare l'account e avviare la procedura di tracciamento.</p>
 <div style="text-align:center;margin:28px 0">
-  <a href="{verify_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
-    Verifica la mia email
-  </a>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:12px;background-color:#5FE3C9">
+        <a href="{verify_url}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:12px;font-family:Arial,Helvetica,sans-serif">
+          Verifica la mia email
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 <p style="color:#9FB0CC;font-size:12px">Oppure copia questo link nel browser:<br/><a href="{verify_url}" style="color:#5FE3C9;word-break:break-all">{verify_url}</a></p>
 <p style="color:#9FB0CC;font-size:12px">Il link è valido per 48 ore. Se non hai creato questo account, puoi ignorare questa email.</p>
@@ -1192,9 +1222,15 @@ async def forgot_password(body: CheckEmailIn, request: Request):
 <p>Hi <strong>{first_name}</strong>,</p>
 <p>We received a request to reset the password for your Traccia Fondi account.</p>
 <div style="text-align:center;margin:28px 0">
-  <a href="{reset_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
-    Reset my password
-  </a>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:12px;background-color:#5FE3C9">
+        <a href="{reset_url}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:12px;font-family:Arial,Helvetica,sans-serif">
+          Reset my password
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 <p style="color:#9FB0CC;font-size:12px">Or copy this link into your browser:<br/><a href="{reset_url}" style="color:#5FE3C9;word-break:break-all">{reset_url}</a></p>
 <p style="color:#9FB0CC;font-size:12px">This link is valid for <strong>2 hours</strong>. If you did not request a password reset, you can safely ignore this email.</p>
@@ -1213,9 +1249,15 @@ async def forgot_password(body: CheckEmailIn, request: Request):
 <p>Ciao <strong>{first_name}</strong>,</p>
 <p>Abbiamo ricevuto una richiesta di reimpostazione della password per il tuo account Traccia Fondi.</p>
 <div style="text-align:center;margin:28px 0">
-  <a href="{reset_url}" style="display:inline-block;background:linear-gradient(135deg,#5FE3C9,#6E8BFF);color:#06122A;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
-    Reimposta la password
-  </a>
+  <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+    <tr>
+      <td align="center" bgcolor="#5FE3C9" style="border-radius:12px;background-color:#5FE3C9">
+        <a href="{reset_url}" style="display:inline-block;padding:14px 32px;background-color:#5FE3C9;color:#06122A;font-weight:700;font-size:15px;text-decoration:none;border-radius:12px;font-family:Arial,Helvetica,sans-serif">
+          Reimposta la password
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 <p style="color:#9FB0CC;font-size:12px">Oppure copia questo link nel browser:<br/><a href="{reset_url}" style="color:#5FE3C9;word-break:break-all">{reset_url}</a></p>
 <p style="color:#9FB0CC;font-size:12px">Il link è valido per <strong>2 ore</strong>. Se non hai richiesto la reimpostazione della password, puoi ignorare questa email.</p>
