@@ -34,6 +34,27 @@ export function AuthProvider({ children }) {
     if (usr) localStorage.setItem("aif_user", JSON.stringify(usr)); else localStorage.removeItem("aif_user");
   }, []);
 
+  /**
+   * Re-fetch the user profile from the server and update local state/storage.
+   * Call this when the UserApp mounts so any admin-side changes (email, name, etc.)
+   * are reflected immediately without requiring a new login.
+   */
+  const refreshUser = useCallback(async (tok) => {
+    const activeToken = tok || token;
+    if (!activeToken) return;
+    try {
+      const { data } = await axios.get(`${API}/users/me`, {
+        headers: { Authorization: `Bearer ${activeToken}` },
+      });
+      // Merge fresh server data into stored user (preserves role/id etc.)
+      const fresh = { ...data };
+      setUser(fresh);
+      localStorage.setItem("aif_user", JSON.stringify(fresh));
+    } catch {
+      // Silent — if it fails (expired token etc.) the user stays as-is
+    }
+  }, [token]);
+
   const login = async (email, password) => {
     setLoading(true);
     try {
@@ -59,7 +80,7 @@ export function AuthProvider({ children }) {
   const logout = () => persist(null, null);
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register, logout, API }}>
+    <Ctx.Provider value={{ user, token, loading, login, register, logout, refreshUser, API }}>
       {children}
     </Ctx.Provider>
   );

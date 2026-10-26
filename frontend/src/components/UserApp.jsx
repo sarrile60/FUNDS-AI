@@ -41,7 +41,7 @@ function fmtElapsed(seconds) {
 
 export default function UserApp() {
   const { lang } = useI18n();
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, refreshUser } = useAuth();
   const nav = useNavigate();
   const isIt = lang === "it";
 
@@ -49,6 +49,12 @@ export default function UserApp() {
   const [activeTrace, setActiveTrace] = useState(null);
   const [loadingTrace, setLoadingTrace] = useState(true);
   const [traceView, setTraceView] = useState("list"); // "list" | "form"
+
+  // Refresh user profile from server on mount — picks up any admin-side changes
+  // (email correction, name fix, etc.) without requiring a new login
+  useEffect(() => {
+    if (token) refreshUser(token);
+  }, []); // run once on mount only
 
   useEffect(() => {
     if (!user) nav("/register", { replace: true });
