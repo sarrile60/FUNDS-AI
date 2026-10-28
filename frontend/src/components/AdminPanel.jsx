@@ -638,6 +638,7 @@ function TracesTab({ isIt }) {
   const [markingFee, setMarkingFee] = useState(null);
   const [sending24h, setSending24h] = useState(null);
   const [sending50h, setSending50h] = useState(null);
+  const [forcingFee, setForcingFee] = useState(null);
   const [simulating, setSimulating] = useState(null);
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(50);
@@ -715,6 +716,20 @@ function TracesTab({ isIt }) {
       toast.error(e?.response?.data?.detail || (isIt ? "Errore invio" : "Send error"));
     } finally {
       setSending50h(null);
+    }
+  };
+
+  const forceFee = async (traceId) => {
+    if (!window.confirm(isIt ? "Forzare quota €100 come pagata (anche se già pagata) e reinviare email di conferma?" : "Force €100 fee as paid (even if already paid) and resend confirmation email?")) return;
+    setForcingFee(traceId);
+    try {
+      const { data } = await axios.post(`${API}/admin/traces/${traceId}/mark-fee-paid`, {}, { headers: getAuthHeader() });
+      setTraces(prev => prev.map(t => t.id === traceId ? { ...t, ...data } : t));
+      toast.success(isIt ? "Quota forzata — email di conferma reinviata" : "Fee forced — confirmation email resent");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore" : "Error"));
+    } finally {
+      setForcingFee(null);
     }
   };
 
@@ -1040,7 +1055,7 @@ function TracesTab({ isIt }) {
                     </td>
                     <td className="px-3 py-3">
                       <div className="space-y-1.5">
-                        {/* ── Real actions ── */}
+                        {/* ── Row 1: Regular actions ── */}
                         <div className="flex items-center gap-1 flex-nowrap">
                           <button
                             onClick={() => send24hEmail(trace.id)}
@@ -1075,7 +1090,7 @@ function TracesTab({ isIt }) {
                             </button>
                           )}
                         </div>
-                        {/* ── Test simulations ── */}
+                        {/* ── Row 2: Force / time simulations ── */}
                         <div className="flex items-center gap-1">
                           <span className="text-[9px] uppercase text-[var(--aif-text-dim)]">T:</span>
                           <button
@@ -1090,6 +1105,15 @@ function TracesTab({ isIt }) {
                             className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50"
                             data-testid={`sim-51h-btn-${trace.id}`}
                           >⏩51h</button>
+                          <button
+                            onClick={() => forceFee(trace.id)}
+                            disabled={forcingFee === trace.id}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#4ADE80]/40 text-[#4ADE80] text-[10px] hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
+                            title={isIt ? "Forza quota €100 come pagata e reinvia email conferma" : "Force €100 fee paid and resend confirmation email"}
+                            data-testid={`force-fee-btn-${trace.id}`}
+                          >
+                            {forcingFee === trace.id ? "…" : "⏩Fee"}
+                          </button>
                         </div>
                       </div>
                     </td>
