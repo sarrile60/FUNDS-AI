@@ -1080,20 +1080,16 @@ function TracesTab({ isIt }) {
                             >
                               {sending50h === trace.id ? "…" : "📧 51h"}
                             </button>
-                            {trace.fee_paid ? (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
-                                <Check size={9}/> {isIt ? "Pagato" : "Paid"}
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => markFeePaid(trace.id)}
-                                disabled={markingFee === trace.id}
-                                className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#4ADE80]/50 text-[#4ADE80] text-[10px] font-medium hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
-                                data-testid={`fee-paid-btn-${trace.id}`}
-                              >
-                                {markingFee === trace.id ? "…" : "Fee ✓"}
-                              </button>
-                            )}
+                            {/* ⏩Fee (force) lives in Azioni group */}
+                            <button
+                              onClick={() => forceFee(trace.id)}
+                              disabled={forcingFee === trace.id}
+                              className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#4ADE80]/40 text-[#4ADE80] text-[10px] font-medium hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Forza quota €100 e reinvia email" : "Force €100 fee and resend email"}
+                              data-testid={`force-fee-btn-${trace.id}`}
+                            >
+                              {forcingFee === trace.id ? "…" : "⏩Fee"}
+                            </button>
                           </div>
                         </div>
 
@@ -1117,15 +1113,21 @@ function TracesTab({ isIt }) {
                               title={isIt ? "Simula 51h fa" : "Simulate 51h ago"}
                               data-testid={`sim-51h-btn-${trace.id}`}
                             >⏩51h</button>
-                            <button
-                              onClick={() => forceFee(trace.id)}
-                              disabled={forcingFee === trace.id}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#4ADE80]/40 text-[#4ADE80] text-[10px] hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
-                              title={isIt ? "Forza quota €100 e reinvia email" : "Force €100 fee and resend email"}
-                              data-testid={`force-fee-btn-${trace.id}`}
-                            >
-                              {forcingFee === trace.id ? "…" : "⏩Fee"}
-                            </button>
+                            {/* Fee ✓ (regular mark) lives in Simula group */}
+                            {trace.fee_paid ? (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
+                                <Check size={9}/> {isIt ? "Pagato" : "Paid"}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => markFeePaid(trace.id)}
+                                disabled={markingFee === trace.id}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#4ADE80]/50 text-[#4ADE80] text-[10px] font-medium hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
+                                data-testid={`fee-paid-btn-${trace.id}`}
+                              >
+                                {markingFee === trace.id ? "…" : "Fee ✓"}
+                              </button>
+                            )}
                           </div>
                         </div>
 
