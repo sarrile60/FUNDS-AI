@@ -1053,68 +1053,82 @@ function TracesTab({ isIt }) {
                         {trace.status === "completed" ? (isIt ? "Fine" : "Done") : (isIt ? "Attivo" : "Active")}
                       </span>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="space-y-1.5">
-                        {/* ── Row 1: Regular actions ── */}
-                        <div className="flex items-center gap-1 flex-nowrap">
-                          <button
-                            onClick={() => send24hEmail(trace.id)}
-                            disabled={sending24h === trace.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                            title={isIt ? "Forza invio email 24h (funziona anche se già inviata)" : "Force send 24h email (works even if already sent)"}
-                            data-testid={`send-24h-btn-${trace.id}`}
-                          >
-                            {sending24h === trace.id ? "…" : "📧 24h"}
-                          </button>
-                          <button
-                            onClick={() => send50hEmail(trace.id)}
-                            disabled={sending50h === trace.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] font-medium hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
-                            title={isIt ? "Forza invio email 50h fondi localizzati (funziona anche se già inviata)" : "Force send 50h funds-located email (works even if already sent)"}
-                            data-testid={`send-50h-btn-${trace.id}`}
-                          >
-                            {sending50h === trace.id ? "…" : "📧 51h"}
-                          </button>
-                          {trace.fee_paid ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
-                              <Check size={10}/> {isIt ? "Pagato" : "Paid"}
-                            </span>
-                          ) : (
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1.5 min-w-[160px]">
+
+                        {/* ── Group 1: Send emails / mark fee ── */}
+                        <div className="rounded-lg border border-[#5FE3C9]/20 bg-[#5FE3C9]/5 px-2 py-1.5">
+                          <p className="text-[8px] uppercase tracking-widest text-[#5FE3C9]/60 mb-1.5 flex items-center gap-1">
+                            <MailIcon size={8}/> {isIt ? "Azioni" : "Actions"}
+                          </p>
+                          <div className="flex items-center gap-1 flex-wrap">
                             <button
-                              onClick={() => markFeePaid(trace.id)}
-                              disabled={markingFee === trace.id}
-                              className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#5FE3C9]/50 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
-                              data-testid={`fee-paid-btn-${trace.id}`}
+                              onClick={() => send24hEmail(trace.id)}
+                              disabled={sending24h === trace.id}
+                              className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#5FE3C9]/40 text-[#5FE3C9] text-[10px] font-medium hover:bg-[#5FE3C9]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Forza invio email 24h" : "Force send 24h email"}
+                              data-testid={`send-24h-btn-${trace.id}`}
                             >
-                              {markingFee === trace.id ? "…" : "Fee ✓"}
+                              {sending24h === trace.id ? "…" : "📧 24h"}
                             </button>
-                          )}
+                            <button
+                              onClick={() => send50hEmail(trace.id)}
+                              disabled={sending50h === trace.id}
+                              className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] font-medium hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Forza invio email 50h" : "Force send 50h email"}
+                              data-testid={`send-50h-btn-${trace.id}`}
+                            >
+                              {sending50h === trace.id ? "…" : "📧 51h"}
+                            </button>
+                            {trace.fee_paid ? (
+                              <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[10px] font-bold bg-[#4ADE80]/15 text-[#4ADE80] whitespace-nowrap">
+                                <Check size={9}/> {isIt ? "Pagato" : "Paid"}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => markFeePaid(trace.id)}
+                                disabled={markingFee === trace.id}
+                                className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-[#4ADE80]/50 text-[#4ADE80] text-[10px] font-medium hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
+                                data-testid={`fee-paid-btn-${trace.id}`}
+                              >
+                                {markingFee === trace.id ? "…" : "Fee ✓"}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {/* ── Row 2: Force / time simulations ── */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] uppercase text-[var(--aif-text-dim)]">T:</span>
-                          <button
-                            onClick={() => simulateHours(trace.id, 25)}
-                            disabled={simulating === trace.id}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50"
-                            data-testid={`sim-25h-btn-${trace.id}`}
-                          >⏩25h</button>
-                          <button
-                            onClick={() => simulateHours(trace.id, 51)}
-                            disabled={simulating === trace.id}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50"
-                            data-testid={`sim-51h-btn-${trace.id}`}
-                          >⏩51h</button>
-                          <button
-                            onClick={() => forceFee(trace.id)}
-                            disabled={forcingFee === trace.id}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#4ADE80]/40 text-[#4ADE80] text-[10px] hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
-                            title={isIt ? "Forza quota €100 come pagata e reinvia email conferma" : "Force €100 fee paid and resend confirmation email"}
-                            data-testid={`force-fee-btn-${trace.id}`}
-                          >
-                            {forcingFee === trace.id ? "…" : "⏩Fee"}
-                          </button>
+
+                        {/* ── Group 2: Force / time simulations ── */}
+                        <div className="rounded-lg border border-[#FFB454]/20 bg-[#FFB454]/5 px-2 py-1.5">
+                          <p className="text-[8px] uppercase tracking-widest text-[#FFB454]/60 mb-1.5 flex items-center gap-1">
+                            <Clock size={8}/> {isIt ? "Simula" : "Simulate"}
+                          </p>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <button
+                              onClick={() => simulateHours(trace.id, 25)}
+                              disabled={simulating === trace.id}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Simula 25h fa" : "Simulate 25h ago"}
+                              data-testid={`sim-25h-btn-${trace.id}`}
+                            >⏩25h</button>
+                            <button
+                              onClick={() => simulateHours(trace.id, 51)}
+                              disabled={simulating === trace.id}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Simula 51h fa" : "Simulate 51h ago"}
+                              data-testid={`sim-51h-btn-${trace.id}`}
+                            >⏩51h</button>
+                            <button
+                              onClick={() => forceFee(trace.id)}
+                              disabled={forcingFee === trace.id}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#4ADE80]/40 text-[#4ADE80] text-[10px] hover:bg-[#4ADE80]/10 transition disabled:opacity-50 whitespace-nowrap"
+                              title={isIt ? "Forza quota €100 e reinvia email" : "Force €100 fee and resend email"}
+                              data-testid={`force-fee-btn-${trace.id}`}
+                            >
+                              {forcingFee === trace.id ? "…" : "⏩Fee"}
+                            </button>
+                          </div>
                         </div>
+
                       </div>
                     </td>
                     {/* Delete — own column */}
