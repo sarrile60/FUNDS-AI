@@ -31,6 +31,8 @@ export default function RegisterPage() {
   const [done, setDone] = useState(false);
   const [resending, setResending] = useState(false);
   const datePickerRef = useRef(null); // hidden native date input
+  const dobMonthRef = useRef(null);   // auto-advance: day → month
+  const dobYearRef = useRef(null);    // auto-advance: month → year
 
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
@@ -321,6 +323,13 @@ export default function RegisterPage() {
                         const v = e.target.value.replace(/\D/g, "").slice(0, 2);
                         setDobDay(v);
                         updateDob(v, dobMonth, dobYear);
+                        // Auto-advance to month:
+                        // - 2 digits typed, OR
+                        // - first digit is 4-9 (no valid day starts with 4+)
+                        if (v.length === 2 || (v.length === 1 && parseInt(v) >= 4)) {
+                          dobMonthRef.current?.focus();
+                          dobMonthRef.current?.select();
+                        }
                       }}
                       placeholder="GG"
                       maxLength={2}
@@ -331,6 +340,7 @@ export default function RegisterPage() {
                   {/* Month */}
                   <div className="relative" style={{minWidth:"48px", flex:"1"}}>
                     <input
+                      ref={dobMonthRef}
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
@@ -341,6 +351,14 @@ export default function RegisterPage() {
                         const v = e.target.value.replace(/\D/g, "").slice(0, 2);
                         setDobMonth(v);
                         updateDob(dobDay, v, dobYear);
+                        // Auto-advance to year:
+                        // - 2 digits typed, OR
+                        // - first digit is 2-9 (no valid month starts with 2+ as a 2-digit number,
+                        //   since months only go 01-12)
+                        if (v.length === 2 || (v.length === 1 && parseInt(v) >= 2)) {
+                          dobYearRef.current?.focus();
+                          dobYearRef.current?.select();
+                        }
                       }}
                       placeholder="MM"
                       maxLength={2}
@@ -351,6 +369,7 @@ export default function RegisterPage() {
                   {/* Year */}
                   <div className="relative" style={{minWidth:"72px", flex:"2"}}>
                     <input
+                      ref={dobYearRef}
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
