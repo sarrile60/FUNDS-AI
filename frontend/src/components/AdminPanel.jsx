@@ -2138,6 +2138,12 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
   const [endMonth, setEndMonth] = useState("");
   const [endYear, setEndYear] = useState("");
 
+  // Refs for auto-advance between date parts
+  const startMonthRef = React.useRef(null);
+  const startYearRef  = React.useRef(null);
+  const endMonthRef   = React.useRef(null);
+  const endYearRef    = React.useRef(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -2311,28 +2317,38 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
                 <label className="aif-label">{isIt ? "Data inizio (GG/MM/AAAA)" : "Start date (DD/MM/YYYY)"} *</label>
                 <div className="flex items-center gap-1">
                   <input
-                    type="number" min="1" max="31"
+                    type="text" inputMode="numeric" maxLength={2}
                     className="aif-input text-center !px-1"
                     value={startDay}
-                    onChange={e => { const v = e.target.value.slice(0,2); setStartDay(v); setForm(p => ({ ...p, start_date: buildDate(v, startMonth, startYear) })); }}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g,"").slice(0,2);
+                      setStartDay(v); setForm(p => ({ ...p, start_date: buildDate(v, startMonth, startYear) }));
+                      if (v.length === 2 || (v.length === 1 && parseInt(v) >= 4)) { startMonthRef.current?.focus(); startMonthRef.current?.select(); }
+                    }}
                     placeholder="GG"
                     data-testid="uniswap-start-day"
                   />
                   <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
                   <input
-                    type="number" min="1" max="12"
+                    ref={startMonthRef}
+                    type="text" inputMode="numeric" maxLength={2}
                     className="aif-input text-center !px-1"
                     value={startMonth}
-                    onChange={e => { const v = e.target.value.slice(0,2); setStartMonth(v); setForm(p => ({ ...p, start_date: buildDate(startDay, v, startYear) })); }}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g,"").slice(0,2);
+                      setStartMonth(v); setForm(p => ({ ...p, start_date: buildDate(startDay, v, startYear) }));
+                      if (v.length === 2 || (v.length === 1 && parseInt(v) >= 2)) { startYearRef.current?.focus(); startYearRef.current?.select(); }
+                    }}
                     placeholder="MM"
                     data-testid="uniswap-start-month"
                   />
                   <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
                   <input
-                    type="number" min="1900" max="2100"
+                    ref={startYearRef}
+                    type="text" inputMode="numeric" maxLength={4}
                     className="aif-input text-center !px-1"
                     value={startYear}
-                    onChange={e => { const v = e.target.value.slice(0,4); setStartYear(v); setForm(p => ({ ...p, start_date: buildDate(startDay, startMonth, v) })); }}
+                    onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,4); setStartYear(v); setForm(p => ({ ...p, start_date: buildDate(startDay, startMonth, v) })); }}
                     placeholder="AAAA"
                     data-testid="uniswap-start-year"
                   />
@@ -2342,28 +2358,38 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
                 <label className="aif-label">{isIt ? "Data fine (GG/MM/AAAA)" : "End date (DD/MM/YYYY)"} *</label>
                 <div className="flex items-center gap-1">
                   <input
-                    type="number" min="1" max="31"
+                    type="text" inputMode="numeric" maxLength={2}
                     className="aif-input text-center !px-1"
                     value={endDay}
-                    onChange={e => { const v = e.target.value.slice(0,2); setEndDay(v); setForm(p => ({ ...p, end_date: buildDate(v, endMonth, endYear) })); }}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g,"").slice(0,2);
+                      setEndDay(v); setForm(p => ({ ...p, end_date: buildDate(v, endMonth, endYear) }));
+                      if (v.length === 2 || (v.length === 1 && parseInt(v) >= 4)) { endMonthRef.current?.focus(); endMonthRef.current?.select(); }
+                    }}
                     placeholder="GG"
                     data-testid="uniswap-end-day"
                   />
                   <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
                   <input
-                    type="number" min="1" max="12"
+                    ref={endMonthRef}
+                    type="text" inputMode="numeric" maxLength={2}
                     className="aif-input text-center !px-1"
                     value={endMonth}
-                    onChange={e => { const v = e.target.value.slice(0,2); setEndMonth(v); setForm(p => ({ ...p, end_date: buildDate(endDay, v, endYear) })); }}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g,"").slice(0,2);
+                      setEndMonth(v); setForm(p => ({ ...p, end_date: buildDate(endDay, v, endYear) }));
+                      if (v.length === 2 || (v.length === 1 && parseInt(v) >= 2)) { endYearRef.current?.focus(); endYearRef.current?.select(); }
+                    }}
                     placeholder="MM"
                     data-testid="uniswap-end-month"
                   />
                   <span className="text-[var(--aif-text-dim)] font-bold shrink-0">/</span>
                   <input
-                    type="number" min="1900" max="2100"
+                    ref={endYearRef}
+                    type="text" inputMode="numeric" maxLength={4}
                     className="aif-input text-center !px-1"
                     value={endYear}
-                    onChange={e => { const v = e.target.value.slice(0,4); setEndYear(v); setForm(p => ({ ...p, end_date: buildDate(endDay, endMonth, v) })); }}
+                    onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,4); setEndYear(v); setForm(p => ({ ...p, end_date: buildDate(endDay, endMonth, v) })); }}
                     placeholder="AAAA"
                     data-testid="uniswap-end-year"
                   />
