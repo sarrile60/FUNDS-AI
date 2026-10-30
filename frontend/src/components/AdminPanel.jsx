@@ -578,11 +578,21 @@ function ElapsedCell({ createdAt, email50hSent, email50hSentAt, feePaid }) {
   // Once 50h email sent → show frozen time = when email was sent minus createdAt
   // (NOT current time minus createdAt — that would grow forever)
   if (email50hSent) {
-    // Use email50hSentAt if available, else fall back to 50h exactly
-    const frozenMs = email50hSentAt
-      ? new Date(email50hSentAt).getTime() - new Date(createdAt).getTime()
-      : 50 * 3600 * 1000; // fallback: cap at 50h
-    const frozenSec = Math.max(0, Math.floor(frozenMs / 1000));
+    // Calculate frozen time = when email was sent minus when trace was created.
+    // Cap at 50h as max display — anything over that means the timestamp is
+    // missing/corrupt (very old trace, null value, etc.)
+    const MAX_FROZEN_MS = 50 * 3600 * 1000 + 30 * 60 * 1000; // 50h 30min max slack
+    let frozenMs = MAX_FROZEN_MS; // default fallback
+    if (email50hSentAt) {
+      const sentMs = new Date(email50hSentAt).getTime();
+      const createdMs = new Date(createdAt).getTime();
+      const diff = sentMs - createdMs;
+      // Only use the real diff if it's a plausible value (between 0 and max)
+      if (diff > 0 && diff <= MAX_FROZEN_MS) {
+        frozenMs = diff;
+      }
+    }
+    const frozenSec = Math.floor(frozenMs / 1000);
     const h = Math.floor(frozenSec / 3600);
     const m = Math.floor((frozenSec % 3600) / 60);
     const s = frozenSec % 60;
