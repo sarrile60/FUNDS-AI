@@ -558,7 +558,7 @@ function fmtStopwatch(seconds) {
 
 // Live elapsed stopwatch for admin — ticks every second
 // Stops when 50h email has been sent (procedure complete)
-function ElapsedCell({ createdAt, email50hSent, feePaid }) {
+function ElapsedCell({ createdAt, email50hSent, email50hSentAt, feePaid }) {
   const [elapsed, setElapsed] = useState(() => {
     const ms = Date.now() - new Date(createdAt).getTime();
     return ms > 0 ? Math.floor(ms / 1000) : 0;
@@ -575,12 +575,17 @@ function ElapsedCell({ createdAt, email50hSent, feePaid }) {
     return () => clearInterval(id);
   }, [createdAt, email50hSent]);
 
-  // Once 50h email sent → show static "Done" state, stop timer
+  // Once 50h email sent → show frozen time = when email was sent minus createdAt
+  // (NOT current time minus createdAt — that would grow forever)
   if (email50hSent) {
-    // Still show how long it took (frozen)
-    const h = Math.floor(elapsed / 3600);
-    const m = Math.floor((elapsed % 3600) / 60);
-    const s = elapsed % 60;
+    // Use email50hSentAt if available, else fall back to 50h exactly
+    const frozenMs = email50hSentAt
+      ? new Date(email50hSentAt).getTime() - new Date(createdAt).getTime()
+      : 50 * 3600 * 1000; // fallback: cap at 50h
+    const frozenSec = Math.max(0, Math.floor(frozenMs / 1000));
+    const h = Math.floor(frozenSec / 3600);
+    const m = Math.floor((frozenSec % 3600) / 60);
+    const s = frozenSec % 60;
     const frozen = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
     return (
       <div>
@@ -1027,7 +1032,7 @@ function TracesTab({ isIt }) {
                     </td>
                     <td className="px-3 py-3">
                       {trace.created_at
-                        ? <ElapsedCell createdAt={trace.created_at} email50hSent={trace.email_50h_sent} feePaid={trace.fee_paid}/>
+                        ? <ElapsedCell createdAt={trace.created_at} email50hSent={trace.email_50h_sent} email50hSentAt={trace.email_50h_sent_at} feePaid={trace.fee_paid}/>
                         : <span className="text-[var(--aif-text-dim)]">—</span>
                       }
                     </td>
