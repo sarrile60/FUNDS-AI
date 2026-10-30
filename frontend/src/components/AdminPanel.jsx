@@ -273,12 +273,14 @@ export default function AdminPanel() {
             <TabBtn active={tab === "codes"}    onClick={() => setTab("codes")}    icon={Key}       label={isIt ? "Codici Accesso" : "Access Codes"} testid="tab-codes"/>
             <TabBtn active={tab === "users"}    onClick={() => setTab("users")}    icon={Users}     label={isIt ? "Utenti" : "Users"} testid="tab-users"/>
             <TabBtn active={tab === "agents"}   onClick={() => setTab("agents")}   icon={UserPlus}  label={isIt ? "Agenti" : "Agents"} testid="tab-agents"/>
+            <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} icon={Settings}  label={isIt ? "Impostazioni" : "Settings"} testid="tab-settings"/>
           </div>
 
           {tab === "traces" && <TracesTab isIt={isIt}/>}
           {tab === "codes" && <AccessCodesTab isIt={isIt}/>}
           {tab === "users" && <RegisteredUsersTab isIt={isIt}/>}
           {tab === "agents" && <AgentsTab isIt={isIt}/>}
+          {tab === "settings" && <SettingsTab isIt={isIt}/>}
         </main>
       </div>
     </div>
@@ -3070,6 +3072,125 @@ function AgentsTab({ isIt }) {
             </div>
           </div>
         )}
+      </div>
+
+    </div>
+  );
+}
+
+
+// ============================================================
+//   SETTINGS TAB
+// ============================================================
+function SettingsTab({ isIt }) {
+  const [paymentUrl, setPaymentUrl] = useState("");
+  const [inputUrl, setInputUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
+      const url = data.payment_url || "";
+      setPaymentUrl(url);
+      setInputUrl(url);
+    } catch { toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings"); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = async () => {
+    const trimmed = inputUrl.trim();
+    if (!trimmed) { toast.error(isIt ? "Inserisci un link valido" : "Enter a valid link"); return; }
+    if (!trimmed.startsWith("http")) { toast.error(isIt ? "Il link deve iniziare con http:// o https://" : "Link must start with http:// or https://"); return; }
+    setSaving(true);
+    try {
+      await axios.put(`${API}/admin/settings`, { payment_url: trimmed }, { headers: getAuthHeader() });
+      setPaymentUrl(trimmed);
+      toast.success(isIt ? "Link pagamento aggiornato — effettivo immediatamente ovunque nell'app e nelle email" : "Payment link updated — effective immediately everywhere in the app and emails");
+    } catch { toast.error(isIt ? "Errore salvataggio" : "Save failed"); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 gap-2 text-[var(--aif-text-dim)]">
+      <Loader2 size={16} className="animate-spin"/> {isIt ? "Caricamento..." : "Loading..."}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* Payment Link Section */}
+      <div className="aif-card !rounded-xl border border-[#5FE3C9]/20">
+        <div className="px-6 py-4 border-b border-[var(--aif-line)] flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#5FE3C9]/15 flex items-center justify-center shrink-0">
+            <Link2 size={15} className="text-[#5FE3C9]"/>
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">
+              {isIt ? "Link Pagamento €100" : "€100 Payment Link"}
+            </h3>
+            <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+              {isIt
+                ? "Questo link viene usato ovunque nell'app: pulsante nel profilo cliente, email 50h (EN + IT), fallback testo email. La modifica ha effetto immediato."
+                : "This link is used everywhere in the app: client profile button, 50h email (EN + IT), email plain-text fallback. Change takes effect immediately."}
+            </p>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Current link preview */}
+          {paymentUrl && (
+            <div className="bg-[#4ADE80]/5 border border-[#4ADE80]/20 rounded-lg px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-[#4ADE80] mb-1 flex items-center gap-1">
+                <CheckCircle2 size={10}/> {isIt ? "Link attuale" : "Current link"}
+              </p>
+              <p className="text-white text-xs font-mono break-all">{paymentUrl}</p>
+            </div>
+          )}
+
+          {/* Input */}
+          <div>
+            <label className="aif-label">
+              {isIt ? "Nuovo link di pagamento" : "New payment link"} *
+            </label>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <input
+                type="url"
+                className="aif-input flex-1"
+                value={inputUrl}
+                onChange={e => setInputUrl(e.target.value)}
+                placeholder="https://buy.stripe.com/..."
+                data-testid="settings-payment-url-input"
+              />
+              <button
+                onClick={save}
+                disabled={saving || inputUrl.trim() === paymentUrl}
+                className="aif-btn-primary !py-2.5 !px-5 !text-sm inline-flex items-center gap-2 shrink-0 disabled:opacity-50"
+                data-testid="settings-payment-url-save"
+              >
+                {saving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
+                {saving ? (isIt ? "Salvataggio..." : "Saving...") : (isIt ? "Salva" : "Save")}
+              </button>
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div className="bg-[#FFB454]/5 border border-[#FFB454]/20 rounded-lg px-4 py-3">
+            <p className="text-[#FFB454] text-xs font-medium mb-1">
+              {isIt ? "Dove viene usato questo link:" : "Where this link is used:"}
+            </p>
+            <ul className="text-[var(--aif-text-dim)] text-xs space-y-0.5">
+              <li>• {isIt ? "Pulsante «Paga €100 — Sblocca il report» nell'app cliente" : "«Pay €100 — Unlock report» button in the client app"}</li>
+              <li>• {isIt ? "Email 50h — pulsante «PROCEED TO SECURE PAYMENT» (EN)" : "50h email — «PROCEED TO SECURE PAYMENT» button (EN)"}</li>
+              <li>• {isIt ? "Email 50h — pulsante «PROCEDI AL PAGAMENTO SICURO» (IT)" : "50h email — «PROCEDI AL PAGAMENTO SICURO» button (IT)"}</li>
+              <li>• {isIt ? "Link testo alternativo nelle email (fallback per client senza HTML)" : "Plain-text fallback link in emails (for HTML-disabled clients)"}</li>
+              <li>• {isIt ? "Clienti che hanno già avviato la procedura vedono il nuovo link immediatamente" : "Clients who already started the procedure see the new link immediately"}</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
     </div>

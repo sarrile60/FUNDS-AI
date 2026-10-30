@@ -20,6 +20,7 @@ import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const DEFAULT_PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68";
 
 const TIERS = [
   { id: "5000_20000",   label: "< €20.000" },
@@ -49,6 +50,14 @@ export default function UserApp() {
   const [activeTrace, setActiveTrace] = useState(null);
   const [loadingTrace, setLoadingTrace] = useState(true);
   const [traceView, setTraceView] = useState("list"); // "list" | "form"
+  const [paymentUrl, setPaymentUrl] = useState(DEFAULT_PAYMENT_URL);
+
+  // Fetch payment URL from settings on mount (always fresh from server)
+  useEffect(() => {
+    axios.get(`${API}/settings/payment-url`)
+      .then(r => { if (r.data?.payment_url) setPaymentUrl(r.data.payment_url); })
+      .catch(() => {}); // silent fallback to default
+  }, []); // run once on mount
 
   // Refresh user profile from server on mount — picks up any admin-side changes
   // (email correction, name fix, etc.) without requiring a new login
@@ -160,7 +169,7 @@ export default function UserApp() {
                     )}
                     {activeTrace && (
                       <motion.div key="active-trace" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                        <ActiveTracePanel trace={activeTrace} isIt={isIt} onRefresh={loadTrace}/>
+                        <ActiveTracePanel trace={activeTrace} isIt={isIt} onRefresh={loadTrace} paymentUrl={paymentUrl}/>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -497,8 +506,9 @@ function TraceForm({ user, token, isIt, onCancel, onStarted }) {
 // ============================================================
 //   ACTIVE TRACE PANEL — no time, no destination
 // ============================================================
-function ActiveTracePanel({ trace, isIt, onRefresh }) {
+function ActiveTracePanel({ trace, isIt, onRefresh, paymentUrl }) {
   const caseRef = trace?.id ? `TF-${trace.id.slice(0, 8).toUpperCase()}` : "TF-XXXXXXXX";
+  const url = paymentUrl || DEFAULT_PAYMENT_URL;
 
   // Determine phase based on flags
   const feePaid     = trace?.fee_paid || false;
@@ -559,7 +569,7 @@ function ActiveTracePanel({ trace, isIt, onRefresh }) {
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <a
-                  href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
+                  href={url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="aif-btn-primary inline-flex items-center gap-2 !text-sm !py-2.5 !px-5"
@@ -764,13 +774,14 @@ function EmailStatusCard({ trace, isIt }) {
 
 
 
-const PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68";
+
 
 // ============================================================
 //   FEE STATUS CARD
 // ============================================================
-function FeeStatusCard({ trace, isIt }) {
+function FeeStatusCard({ trace, isIt, paymentUrl }) {
   const paid = trace?.fee_paid || false;
+  const url = paymentUrl || DEFAULT_PAYMENT_URL;
 
   if (paid) {
     return (
@@ -821,7 +832,7 @@ function FeeStatusCard({ trace, isIt }) {
               : "The tracing has located your funds. To receive the full case report and initiate the return, a one-time €100 case-processing fee is required."}
           </p>
           <a
-            href={PAYMENT_URL}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 aif-btn-primary inline-flex items-center gap-2 !text-sm !py-2.5 !px-5"

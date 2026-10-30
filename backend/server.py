@@ -433,6 +433,10 @@ async def send_50h_email(trace_id: str):
         year = datetime.now(timezone.utc).year
         amount_str = _fmt_amount(amount)
 
+        # Always fetch payment_url fresh from settings so any admin change takes effect immediately
+        _s = await get_settings()
+        pay_url = _s.get("payment_url") or DEFAULT_PAYMENT_URL
+
         safe_url = dest_url
         if dest_url and not dest_url.startswith("http"):
             safe_url = f"http://{dest_url}"
@@ -472,14 +476,14 @@ async def send_50h_email(trace_id: str):
   <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto 8px auto">
     <tr>
       <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9;mso-padding-alt:0">
-        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
+        <a href="{pay_url}" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
           &#x1F512; PROCEED TO SECURE PAYMENT &rarr;
         </a>
       </td>
     </tr>
   </table>
   <div style="margin-top:8px;margin-bottom:4px">
-    <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
+    <a href="{pay_url}" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
       Can&#39;t see the button? Click here to pay
     </a>
   </div>
@@ -505,7 +509,7 @@ async def send_50h_email(trace_id: str):
                 "Status: CLOSED — FUNDS SECURED\n\n"
                 "NEXT STEP — CASE PROCESSING FEE:\n"
                 "To finalise the release of your funds, a one-time administrative case-processing fee of €100.00 is required.\n"
-                "Secure payment link: https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68\n\n"
+                "Secure payment link: {pay_url}\n\n"
                 "Your full case report will be delivered immediately upon payment confirmation.\n\n"
                 "Traccia Fondi — Case Intelligence Unit\n"
                 "Forensic Financial Recovery Division\n"
@@ -546,14 +550,14 @@ async def send_50h_email(trace_id: str):
   <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto 8px auto">
     <tr>
       <td align="center" bgcolor="#5FE3C9" style="border-radius:10px;background-color:#5FE3C9;mso-padding-alt:0">
-        <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
+        <a href="{pay_url}" target="_blank" style="display:inline-block;padding:16px 40px;background-color:#5FE3C9;color:#000000;font-weight:800;font-size:16px;text-decoration:none;border-radius:10px;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;mso-padding-alt:16px 40px">
           &#x1F512; PROCEDI AL PAGAMENTO SICURO &rarr;
         </a>
       </td>
     </tr>
   </table>
   <div style="margin-top:8px;margin-bottom:4px">
-    <a href="https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
+    <a href="{pay_url}" target="_blank" style="color:#5FE3C9;font-size:12px;text-decoration:underline;font-family:Arial,Helvetica,sans-serif">
       Non vedi il pulsante? Clicca qui per pagare
     </a>
   </div>
@@ -579,7 +583,7 @@ async def send_50h_email(trace_id: str):
                 "Stato: CHIUSA — FONDI GARANTITI\n\n"
                 "PASSO SUCCESSIVO — QUOTA DI ELABORAZIONE PRATICA:\n"
                 "Per finalizzare il rilascio dei fondi è richiesta una quota amministrativa una tantum di €100,00.\n"
-                "Link pagamento sicuro: https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68\n\n"
+                "Link pagamento sicuro: {pay_url}\n\n"
                 "Il report completo verrà consegnato immediatamente dopo la conferma del pagamento.\n\n"
                 "Traccia Fondi — Unità di Case Intelligence\n"
                 "Divisione Recupero Forense Finanziario\n"
@@ -920,6 +924,7 @@ class GlobalSettingsUpdate(BaseModel):
     destination_name: Optional[str] = None
     destination_url: Optional[str] = None
     agent_portal_slug: Optional[str] = None  # configurable agent portal URL slug
+    payment_url: Optional[str] = None        # configurable payment link (shown in app + emails)
 
 
 import requests as http_requests
@@ -1402,16 +1407,23 @@ async def user_trace(user=Depends(get_current_user)):
 #   Settings
 # ============================================================
 
+DEFAULT_PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
+
 async def get_settings() -> dict:
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
     if not settings:
-        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": ""}
+        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": "", "payment_url": DEFAULT_PAYMENT_URL}
+    # Ensure payment_url always has a fallback
+    if not settings.get("payment_url"):
+        settings["payment_url"] = DEFAULT_PAYMENT_URL
     return settings
 
 
-@api.get("/settings")
-async def public_get_settings():
-    return {"ok": True}
+@api.get("/settings/payment-url")
+async def public_payment_url():
+    """Public endpoint — returns the configured payment URL for the UserApp."""
+    settings = await get_settings()
+    return {"payment_url": settings.get("payment_url", DEFAULT_PAYMENT_URL)}
 
 
 # ============================================================
