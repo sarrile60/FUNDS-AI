@@ -52,12 +52,21 @@ export default function UserApp() {
   const [traceView, setTraceView] = useState("list"); // "list" | "form"
   const [paymentUrl, setPaymentUrl] = useState(DEFAULT_PAYMENT_URL);
 
-  // Fetch payment URL from settings on mount (always fresh from server)
-  useEffect(() => {
+  // Helper to fetch payment URL from settings (always fresh)
+  const fetchPaymentUrl = useCallback(() => {
     axios.get(`${API}/settings/payment-url`)
       .then(r => { if (r.data?.payment_url) setPaymentUrl(r.data.payment_url); })
       .catch(() => {}); // silent fallback to default
-  }, []); // run once on mount
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => { fetchPaymentUrl(); }, [fetchPaymentUrl]);
+
+  // Re-fetch every time user opens the "cases" tab — ensures link is always current
+  // even if admin changed it while user was on Account tab
+  useEffect(() => {
+    if (tab === "cases") fetchPaymentUrl();
+  }, [tab, fetchPaymentUrl]);
 
   // Refresh user profile from server on mount — picks up any admin-side changes
   // (email correction, name fix, etc.) without requiring a new login
@@ -508,7 +517,21 @@ function TraceForm({ user, token, isIt, onCancel, onStarted }) {
 // ============================================================
 function ActiveTracePanel({ trace, isIt, onRefresh, paymentUrl }) {
   const caseRef = trace?.id ? `TF-${trace.id.slice(0, 8).toUpperCase()}` : "TF-XXXXXXXX";
-  const url = paymentUrl || DEFAULT_PAYMENT_URL;
+
+  // Also fetch payment URL locally on mount as belt-and-suspenders
+  // so the button is always current even on stale prop
+  const [localPaymentUrl, setLocalPaymentUrl] = React.useState(paymentUrl || DEFAULT_PAYMENT_URL);
+  React.useEffect(() => {
+    axios.get(`${API}/settings/payment-url`)
+      .then(r => { if (r.data?.payment_url) setLocalPaymentUrl(r.data.payment_url); })
+      .catch(() => {});
+  }, []); // run once on mount only
+  // Also update when parent prop changes
+  React.useEffect(() => {
+    if (paymentUrl) setLocalPaymentUrl(paymentUrl);
+  }, [paymentUrl]);
+
+  const url = localPaymentUrl || DEFAULT_PAYMENT_URL;
 
   // Determine phase based on flags
   const feePaid     = trace?.fee_paid || false;
