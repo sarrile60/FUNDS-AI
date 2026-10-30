@@ -1126,17 +1126,17 @@ function TracesTab({ isIt }) {
                           </p>
                           <div className="flex items-center gap-1 flex-wrap">
                             <button
-                              onClick={() => simulateHours(trace.id, 25)}
+                              onClick={() => simulateHours(trace.id, 24.1)}
                               disabled={simulating === trace.id}
                               className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FFB454]/40 text-[#FFB454] text-[10px] hover:bg-[#FFB454]/10 transition disabled:opacity-50 whitespace-nowrap"
-                              title={isIt ? "Simula 25h fa" : "Simulate 25h ago"}
+                              title={isIt ? "Simula 24h fa — attiva email 24h" : "Simulate 24h ago — triggers 24h email"}
                               data-testid={`sim-25h-btn-${trace.id}`}
                             >⏩25h</button>
                             <button
-                              onClick={() => simulateHours(trace.id, 51)}
+                              onClick={() => simulateHours(trace.id, 50.1)}
                               disabled={simulating === trace.id}
                               className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#FF6B7A]/40 text-[#FF6B7A] text-[10px] hover:bg-[#FF6B7A]/10 transition disabled:opacity-50 whitespace-nowrap"
-                              title={isIt ? "Simula 51h fa" : "Simulate 51h ago"}
+                              title={isIt ? "Simula 50h fa — attiva email 50h" : "Simulate 50h ago — triggers 50h email"}
                               data-testid={`sim-51h-btn-${trace.id}`}
                             >⏩51h</button>
                             {/* Fee ✓ (regular mark) lives in Simula group */}
