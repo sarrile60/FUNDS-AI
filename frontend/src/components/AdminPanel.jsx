@@ -921,11 +921,31 @@ function TracesTab({ isIt }) {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label={isIt ? "Totale Tracciamenti" : "Total Traces"} value={traces.length} icon={BarChart3}/>
         <StatCard label={isIt ? "Completati" : "Completed"} value={traces.filter(t => t.status === "completed").length} icon={Check}/>
         <StatCard label={isIt ? "Importo Totale" : "Total Amount"} value={formatAmount(traces.reduce((sum, t) => sum + (t.located_amount || 0), 0))} icon={DollarSign}/>
         <StatCard label={isIt ? "Con Documenti" : "With Documents"} value={traces.filter(t => t.documents?.length > 0).length} icon={FileText}/>
+        <StatCard
+          label={isIt ? "€100 Pagati Oggi" : "€100 Paid Today"}
+          value={traces.filter(t => {
+            if (!t.fee_paid_at) return false;
+            const d = new Date(t.fee_paid_at); const n = new Date();
+            return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+          }).length}
+          icon={CheckCircle2}
+          highlight
+        />
+        <StatCard
+          label={isIt ? "Account Creati Oggi" : "Accounts Created Today"}
+          value={traces.filter(t => {
+            if (!t.uniswap_account_created_at) return false;
+            const d = new Date(t.uniswap_account_created_at); const n = new Date();
+            return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+          }).length}
+          icon={UserPlus}
+          highlight
+        />
       </div>
 
       {/* Traces list */}
@@ -1517,14 +1537,14 @@ function ensureFilenameHasExtension(name, mime) {
   return safe + ext;
 }
 
-function StatCard({ label, value, icon: Icon }) {
+function StatCard({ label, value, icon: Icon, highlight }) {
   return (
-    <div className="aif-card p-4">
+    <div className={`aif-card p-4 ${highlight ? "border !border-[#4ADE80]/30 bg-[#4ADE80]/5" : ""}`}>
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={16} className="text-[#5FE3C9]"/>
-        <span className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider">{label}</span>
+        <Icon size={16} className={highlight ? "text-[#4ADE80]" : "text-[#5FE3C9]"}/>
+        <span className="text-[11px] text-[var(--aif-text-dim)] uppercase tracking-wider leading-tight">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className={`text-2xl font-bold ${highlight ? "text-[#4ADE80]" : "text-white"}`}>{value}</div>
     </div>
   );
 }
