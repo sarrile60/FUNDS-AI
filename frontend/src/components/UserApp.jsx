@@ -606,6 +606,21 @@ function ActiveTracePanel({ trace, isIt, onRefresh, paymentUrl }) {
                   {isIt ? "Rilasciato dopo conferma del team" : "Released after team confirmation"}
                 </span>
               </div>
+              {/* Fallback plain-text link for users who can't click the button */}
+              <div className="mt-3 px-1">
+                <p className="text-[11px] text-[var(--aif-text-dim)]">
+                  {isIt ? "Il pulsante non funziona? " : "Button not working? "}
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#5FE3C9] underline underline-offset-2 break-all hover:text-white transition"
+                    data-testid="case-pay-fallback-link"
+                  >
+                    {isIt ? "Clicca qui per pagare" : "Click here to pay"}
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
         </div>
