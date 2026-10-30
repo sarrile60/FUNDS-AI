@@ -1863,6 +1863,8 @@ async def admin_list_registered_users(_=Depends(require_admin)):
                 assigned_agent_username = ag.get("username", "")
         u_out["assigned_agent_id"] = assigned_agent_id
         u_out["assigned_agent_username"] = assigned_agent_username
+        # Ensure not_interested always has a default value
+        u_out["not_interested"] = u.get("not_interested", False)
         if trace:
             u_out["trace"] = {
                 "id": trace.get("id"),
@@ -1905,6 +1907,7 @@ async def admin_list_registered_users(_=Depends(require_admin)):
             "type": "guest",   # no registered account
             "role": "user",
             "created_at": trace.get("created_at"),
+            "not_interested": trace.get("not_interested", False),
             "assigned_agent_id": trace_agent_id,
             "assigned_agent_username": trace_agent_username,
             "trace": {
