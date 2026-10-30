@@ -610,8 +610,17 @@ function ElapsedCell({ createdAt, email50hSent, email50hSentAt, feePaid }) {
   return (
     <div>
       <span className="font-mono text-[13px] font-bold tabular-nums" style={{ color }}>{fmtStopwatch(elapsed)}</span>
-      <div className="text-[10px] text-[var(--aif-text-dim)] mt-0.5">
-        {h >= 50 ? "50h+" : h >= 24 ? "24h+" : h > 0 ? `${h}h elapsed` : "< 1h"}
+      <div className="text-[10px] mt-0.5">
+        {h >= 50
+          ? <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF6B7A]/15 text-[#FF6B7A] border border-[#FF6B7A]/30 animate-pulse" title="50h email not sent — action required">
+              ⚠ Email 50h non inviata
+            </span>
+          : h >= 24
+            ? <span className="text-[#FFB454]">24h+</span>
+            : h > 0
+              ? <span className="text-[var(--aif-text-dim)]">{h}h elapsed</span>
+              : <span className="text-[var(--aif-text-dim)]">&lt; 1h</span>
+        }
       </div>
     </div>
   );
