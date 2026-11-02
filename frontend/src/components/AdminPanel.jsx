@@ -692,6 +692,19 @@ function TracesTab({ isIt }) {
 
   useEffect(() => { load(); }, []);
 
+  // Auto-refresh every 30s + refresh when window regains focus
+  // This ensures "today" counters (€100 paid, accounts created) are always current
+  // even when agents create accounts from the agent portal
+  useEffect(() => {
+    const interval = setInterval(() => { load(); }, 30000);
+    const onFocus = () => { load(); };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []); // run once — load is stable reference
+
   const deleteTrace = async (id) => {
     if (!window.confirm(isIt ? "Eliminare questo tracciamento?" : "Delete this trace?")) return;
     try {
