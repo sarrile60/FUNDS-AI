@@ -2786,7 +2786,7 @@ class UniswapCreateAccountIn(BaseModel):
     end_date: str                               # YYYY-MM-DD
 
 
-UNISWAP_BASE = "https://uniswapv4.com"
+UNISWAP_BASE = "https://uniswapv4.net"
 UNISWAP_PORTAL_PIN = "8971"
 UNISWAP_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

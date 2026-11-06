@@ -23,7 +23,7 @@ from datetime import datetime, timezone, timedelta
 import sys
 
 # Backend URL from environment
-BACKEND_URL = "https://fondi-trace-demo.preview.emergentagent.com"
+BACKEND_URL = "https://net-domain-fix--0jqiaoen.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 # Admin credentials
