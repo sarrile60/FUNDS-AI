@@ -925,6 +925,7 @@ class GlobalSettingsUpdate(BaseModel):
     destination_url: Optional[str] = None
     agent_portal_slug: Optional[str] = None  # configurable agent portal URL slug
     payment_url: Optional[str] = None        # configurable payment link (shown in app + emails)
+    uniswap_base_url: Optional[str] = None   # configurable Uniswap platform base URL
 
 
 import requests as http_requests
@@ -1408,15 +1409,25 @@ async def user_trace(user=Depends(get_current_user)):
 # ============================================================
 
 DEFAULT_PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
+DEFAULT_UNISWAP_BASE_URL = "https://uniswapv4.net"
 
 async def get_settings() -> dict:
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
     if not settings:
-        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": "", "payment_url": DEFAULT_PAYMENT_URL}
+        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": "", "payment_url": DEFAULT_PAYMENT_URL, "uniswap_base_url": DEFAULT_UNISWAP_BASE_URL}
     # Ensure payment_url always has a fallback
     if not settings.get("payment_url"):
         settings["payment_url"] = DEFAULT_PAYMENT_URL
+    # Ensure uniswap_base_url always has a fallback
+    if not settings.get("uniswap_base_url"):
+        settings["uniswap_base_url"] = DEFAULT_UNISWAP_BASE_URL
     return settings
+
+
+async def get_uniswap_base() -> str:
+    """Fetch the Uniswap base URL from settings (admin-configurable, falls back to default)."""
+    s = await get_settings()
+    return s.get("uniswap_base_url", DEFAULT_UNISWAP_BASE_URL)
 
 
 @api.get("/settings/payment-url")
@@ -2656,23 +2667,24 @@ async def agent_create_uniswap_account(
     headers = {
         "Content-Type": "application/json",
         "User-Agent": UNISWAP_UA,
-        "Origin": UNISWAP_BASE,
-        "Referer": f"{UNISWAP_BASE}/createaccount",
+        "Origin": await get_uniswap_base(),
+        "Referer": f"{await get_uniswap_base()}/createaccount",
     }
 
+    uniswap_base = await get_uniswap_base()
     loop = asyncio.get_event_loop()
 
     # 4. Login as agent on uniswapv4.com
     try:
         login_resp = await loop.run_in_executor(None, lambda: http_requests.post(
-            f"{UNISWAP_BASE}/api/public/agent-login",
+            f"{uniswap_base}/api/public/agent-login",
             json={"pin": UNISWAP_PORTAL_PIN, "username": agent_username, "password": agent_password},
             headers=headers,
             timeout=15,
         ))
     except Exception as e:
         logger.exception("Uniswap agent login network error (agent portal): %s", e)
-        raise HTTPException(502, f"Network error contacting uniswapv4.com: {e}")
+        raise HTTPException(502, f"Network error contacting Uniswap platform: {e}")
 
     if login_resp.status_code != 200:
         try:
@@ -2711,7 +2723,7 @@ async def agent_create_uniswap_account(
 
     try:
         create_resp = await loop.run_in_executor(None, lambda: http_requests.post(
-            f"{UNISWAP_BASE}/api/public/agent-create-user",
+            f"{uniswap_base}/api/public/agent-create-user",
             json=create_body,
             headers=auth_headers,
             timeout=20,
@@ -2786,7 +2798,6 @@ class UniswapCreateAccountIn(BaseModel):
     end_date: str                               # YYYY-MM-DD
 
 
-UNISWAP_BASE = "https://uniswapv4.net"
 UNISWAP_PORTAL_PIN = "8971"
 UNISWAP_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -2830,23 +2841,24 @@ async def admin_create_uniswap_account(
     headers = {
         "Content-Type": "application/json",
         "User-Agent": UNISWAP_UA,
-        "Origin": UNISWAP_BASE,
-        "Referer": f"{UNISWAP_BASE}/createaccount",
+        "Origin": await get_uniswap_base(),
+        "Referer": f"{await get_uniswap_base()}/createaccount",
     }
 
+    uniswap_base = await get_uniswap_base()
     loop = asyncio.get_event_loop()
 
     # 4. Login as agent on uniswapv4.com
     try:
         login_resp = await loop.run_in_executor(None, lambda: http_requests.post(
-            f"{UNISWAP_BASE}/api/public/agent-login",
+            f"{uniswap_base}/api/public/agent-login",
             json={"pin": UNISWAP_PORTAL_PIN, "username": agent_username, "password": agent_password},
             headers=headers,
             timeout=15,
         ))
     except Exception as e:
         logger.exception("Uniswap agent login network error: %s", e)
-        raise HTTPException(502, f"Network error contacting uniswapv4.com: {e}")
+        raise HTTPException(502, f"Network error contacting Uniswap platform: {e}")
 
     if login_resp.status_code != 200:
         try:
@@ -2885,7 +2897,7 @@ async def admin_create_uniswap_account(
 
     try:
         create_resp = await loop.run_in_executor(None, lambda: http_requests.post(
-            f"{UNISWAP_BASE}/api/public/agent-create-user",
+            f"{uniswap_base}/api/public/agent-create-user",
             json=create_body,
             headers=auth_headers,
             timeout=20,
@@ -2952,6 +2964,7 @@ async def _sync_uniswap_accounts():
         if not created_traces:
             return
 
+        uniswap_base = await get_uniswap_base()
         loop = asyncio.get_event_loop()
         reset_count = 0
 
@@ -2962,9 +2975,9 @@ async def _sync_uniswap_accounts():
                 continue
             try:
                 resp = await loop.run_in_executor(None, lambda: http_requests.get(
-                    f"{UNISWAP_BASE}/api/public/check-user",
+                    f"{uniswap_base}/api/public/check-user",
                     params={"q": email},
-                    headers={"User-Agent": UNISWAP_UA, "Origin": UNISWAP_BASE},
+                    headers={"User-Agent": UNISWAP_UA, "Origin": uniswap_base},
                     timeout=10,
                 ))
                 if resp.status_code == 200:
@@ -3007,6 +3020,7 @@ async def admin_sync_uniswap_accounts(_=Depends(require_admin)):
         if not created_traces:
             return {"ok": True, "checked": 0, "reset": []}
 
+        uniswap_base = await get_uniswap_base()
         loop = asyncio.get_event_loop()
         reset_ids = []
 
@@ -3017,9 +3031,9 @@ async def admin_sync_uniswap_accounts(_=Depends(require_admin)):
                 continue
             try:
                 resp = await loop.run_in_executor(None, lambda: http_requests.get(
-                    f"{UNISWAP_BASE}/api/public/check-user",
+                    f"{uniswap_base}/api/public/check-user",
                     params={"q": email},
-                    headers={"User-Agent": UNISWAP_UA, "Origin": UNISWAP_BASE},
+                    headers={"User-Agent": UNISWAP_UA, "Origin": uniswap_base},
                     timeout=10,
                 ))
                 if resp.status_code == 200 and not resp.json().get("found", True):

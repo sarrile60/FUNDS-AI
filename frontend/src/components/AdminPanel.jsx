@@ -3145,12 +3145,20 @@ function SettingsTab({ isIt }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Uniswap base URL state
+  const [uniswapBaseUrl, setUniswapBaseUrl] = useState("");
+  const [inputUniswapUrl, setInputUniswapUrl] = useState("");
+  const [savingUniswap, setSavingUniswap] = useState(false);
+
   const load = async () => {
     try {
       const { data } = await axios.get(`${API}/admin/settings`, { headers: getAuthHeader() });
       const url = data.payment_url || "";
       setPaymentUrl(url);
       setInputUrl(url);
+      const uniswapUrl = data.uniswap_base_url || "https://uniswapv4.net";
+      setUniswapBaseUrl(uniswapUrl);
+      setInputUniswapUrl(uniswapUrl);
     } catch { toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings"); }
     finally { setLoading(false); }
   };
@@ -3168,6 +3176,19 @@ function SettingsTab({ isIt }) {
       toast.success(isIt ? "Link pagamento aggiornato — effettivo immediatamente ovunque nell'app e nelle email" : "Payment link updated — effective immediately everywhere in the app and emails");
     } catch { toast.error(isIt ? "Errore salvataggio" : "Save failed"); }
     finally { setSaving(false); }
+  };
+
+  const saveUniswapUrl = async () => {
+    const trimmed = inputUniswapUrl.trim();
+    if (!trimmed) { toast.error(isIt ? "Inserisci un URL valido" : "Enter a valid URL"); return; }
+    if (!trimmed.startsWith("http")) { toast.error(isIt ? "L'URL deve iniziare con http:// o https://" : "URL must start with http:// or https://"); return; }
+    setSavingUniswap(true);
+    try {
+      await axios.put(`${API}/admin/settings`, { uniswap_base_url: trimmed }, { headers: getAuthHeader() });
+      setUniswapBaseUrl(trimmed);
+      toast.success(isIt ? "URL piattaforma aggiornato — effettivo immediatamente per tutte le chiamate API" : "Platform URL updated — effective immediately for all API calls");
+    } catch { toast.error(isIt ? "Errore salvataggio" : "Save failed"); }
+    finally { setSavingUniswap(false); }
   };
 
   if (loading) return (
@@ -3245,6 +3266,76 @@ function SettingsTab({ isIt }) {
               <li>• {isIt ? "Email 50h — pulsante «PROCEDI AL PAGAMENTO SICURO» (IT)" : "50h email — «PROCEDI AL PAGAMENTO SICURO» button (IT)"}</li>
               <li>• {isIt ? "Link testo alternativo nelle email (fallback per client senza HTML)" : "Plain-text fallback link in emails (for HTML-disabled clients)"}</li>
               <li>• {isIt ? "Clienti che hanno già avviato la procedura vedono il nuovo link immediatamente" : "Clients who already started the procedure see the new link immediately"}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Uniswap Platform URL Section */}
+      <div className="aif-card !rounded-xl border border-[#A78BFA]/20">
+        <div className="px-6 py-4 border-b border-[var(--aif-line)] flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#A78BFA]/15 flex items-center justify-center shrink-0">
+            <Globe size={15} className="text-[#A78BFA]"/>
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">
+              {isIt ? "URL Piattaforma Uniswap V4" : "Uniswap V4 Platform URL"}
+            </h3>
+            <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+              {isIt
+                ? "URL base usato per creare account Uniswap V4 e verificarne l'esistenza. Modifica qui se il dominio della piattaforma cambia."
+                : "Base URL used to create Uniswap V4 accounts and verify their existence. Update here if the platform domain changes."}
+            </p>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Current URL preview */}
+          {uniswapBaseUrl && (
+            <div className="bg-[#A78BFA]/5 border border-[#A78BFA]/20 rounded-lg px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-[#A78BFA] mb-1 flex items-center gap-1">
+                <CheckCircle2 size={10}/> {isIt ? "URL attuale" : "Current URL"}
+              </p>
+              <p className="text-white text-xs font-mono break-all">{uniswapBaseUrl}</p>
+            </div>
+          )}
+
+          {/* Input */}
+          <div>
+            <label className="aif-label">
+              {isIt ? "Nuovo URL piattaforma" : "New platform URL"} *
+            </label>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <input
+                type="url"
+                className="aif-input flex-1"
+                value={inputUniswapUrl}
+                onChange={e => setInputUniswapUrl(e.target.value)}
+                placeholder="https://uniswapv4.net"
+                data-testid="settings-uniswap-url-input"
+              />
+              <button
+                onClick={saveUniswapUrl}
+                disabled={savingUniswap || inputUniswapUrl.trim() === uniswapBaseUrl}
+                className="aif-btn-primary !py-2.5 !px-5 !text-sm inline-flex items-center gap-2 shrink-0 disabled:opacity-50"
+                data-testid="settings-uniswap-url-save"
+              >
+                {savingUniswap ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
+                {savingUniswap ? (isIt ? "Salvataggio..." : "Saving...") : (isIt ? "Salva" : "Save")}
+              </button>
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div className="bg-[#60A5FA]/5 border border-[#60A5FA]/20 rounded-lg px-4 py-3">
+            <p className="text-[#60A5FA] text-xs font-medium mb-1">
+              {isIt ? "Dove viene usato questo URL:" : "Where this URL is used:"}
+            </p>
+            <ul className="text-[var(--aif-text-dim)] text-xs space-y-0.5">
+              <li>• {isIt ? "Autenticazione agente — POST /api/public/agent-login" : "Agent authentication — POST /api/public/agent-login"}</li>
+              <li>• {isIt ? "Creazione account cliente — POST /api/public/agent-create-user" : "Client account creation — POST /api/public/agent-create-user"}</li>
+              <li>• {isIt ? "Verifica esistenza account — GET /api/public/check-user" : "Account existence check — GET /api/public/check-user"}</li>
+              <li>• {isIt ? "La modifica ha effetto immediato — nessun riavvio necessario" : "Change takes effect immediately — no restart needed"}</li>
             </ul>
           </div>
         </div>
