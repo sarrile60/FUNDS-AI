@@ -1854,59 +1854,53 @@ async def admin_list_registered_users(_=Depends(require_admin)):
     2. Orphan traces — traces started without a registered account (user_id is null)
        These are shown as ghost entries so admin can see every client.
     """
-    # Fetch all registered users
-    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
+    # Fetch all registered users, all traces, all agents in 3 parallel bulk queries
+    users_raw, traces_raw, agents_raw = await asyncio.gather(
+        db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000),
+        db.traces.find({}, {"_id": 0}).to_list(5000),
+        db.agents.find({}, {"_id": 0, "id": 1, "username": 1}).to_list(500),
+    )
+
+    # Build lookup dicts for O(1) joins
+    trace_by_user_id = {t["user_id"]: t for t in traces_raw if t.get("user_id")}
+    agent_by_id = {a["id"]: a.get("username", "") for a in agents_raw}
 
     # Build a set of user_ids that have a linked account
-    user_ids_with_account = {u["id"] for u in users}
+    user_ids_with_account = {u["id"] for u in users_raw}
 
-    # Enrich registered users with their trace
+    def _trace_summary(trace):
+        return {
+            "id": trace.get("id"),
+            "status": trace.get("status"),
+            "created_at": trace.get("created_at"),
+            "located_amount": trace.get("located_amount"),
+            "email_24h_sent": trace.get("email_24h_sent", False),
+            "email_50h_sent": trace.get("email_50h_sent", False),
+            "fee_paid": trace.get("fee_paid", False),
+            "destination_name": trace.get("destination_name"),
+            "uniswap_account_created": trace.get("uniswap_account_created", False),
+            "uniswap_username": trace.get("uniswap_username", ""),
+        }
+
+    # Enrich registered users with their trace (all in-memory, zero extra DB calls)
     result = []
-    for u in users:
-        trace = await db.traces.find_one({"user_id": u["id"]}, {"_id": 0})
-        u_out = dict(u)
-        # Resolve assigned agent name
+    for u in users_raw:
         assigned_agent_id = u.get("assigned_agent_id")
-        assigned_agent_username = ""
-        if assigned_agent_id:
-            ag = await db.agents.find_one({"id": assigned_agent_id}, {"_id": 0, "username": 1})
-            if ag:
-                assigned_agent_username = ag.get("username", "")
+        u_out = dict(u)
         u_out["assigned_agent_id"] = assigned_agent_id
-        u_out["assigned_agent_username"] = assigned_agent_username
-        # Ensure not_interested always has a default value
+        u_out["assigned_agent_username"] = agent_by_id.get(assigned_agent_id, "") if assigned_agent_id else ""
         u_out["not_interested"] = u.get("not_interested", False)
-        if trace:
-            u_out["trace"] = {
-                "id": trace.get("id"),
-                "status": trace.get("status"),
-                "created_at": trace.get("created_at"),
-                "located_amount": trace.get("located_amount"),
-                "email_24h_sent": trace.get("email_24h_sent", False),
-                "email_50h_sent": trace.get("email_50h_sent", False),
-                "fee_paid": trace.get("fee_paid", False),
-                "destination_name": trace.get("destination_name"),
-                "uniswap_account_created": trace.get("uniswap_account_created", False),
-                "uniswap_username": trace.get("uniswap_username", ""),
-            }
-        else:
-            u_out["trace"] = None
+        trace = trace_by_user_id.get(u["id"])
+        u_out["trace"] = _trace_summary(trace) if trace else None
         result.append(u_out)
 
     # Find orphan traces (no linked account) and add them as ghost entries
-    orphan_traces = await db.traces.find(
-        {"$or": [{"user_id": None}, {"user_id": {"$exists": False}}]},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(5000)
-
-    for trace in orphan_traces:
-        # Check if the trace itself has an assigned agent (stored on trace for orphans)
+    for trace in traces_raw:
+        if trace.get("user_id") and trace["user_id"] in user_ids_with_account:
+            continue  # already included above
+        if trace.get("user_id"):
+            continue  # has a user_id but user was deleted — skip
         trace_agent_id = trace.get("assigned_agent_id")
-        trace_agent_username = ""
-        if trace_agent_id:
-            ag = await db.agents.find_one({"id": trace_agent_id}, {"_id": 0, "username": 1})
-            if ag:
-                trace_agent_username = ag.get("username", "")
         ghost = {
             "id": f"ghost_{trace.get('id', '')}",
             "first_name": trace.get("first_name", ""),
@@ -1920,19 +1914,8 @@ async def admin_list_registered_users(_=Depends(require_admin)):
             "created_at": trace.get("created_at"),
             "not_interested": trace.get("not_interested", False),
             "assigned_agent_id": trace_agent_id,
-            "assigned_agent_username": trace_agent_username,
-            "trace": {
-                "id": trace.get("id"),
-                "status": trace.get("status"),
-                "created_at": trace.get("created_at"),
-                "located_amount": trace.get("located_amount"),
-                "email_24h_sent": trace.get("email_24h_sent", False),
-                "email_50h_sent": trace.get("email_50h_sent", False),
-                "fee_paid": trace.get("fee_paid", False),
-                "destination_name": trace.get("destination_name"),
-                "uniswap_account_created": trace.get("uniswap_account_created", False),
-                "uniswap_username": trace.get("uniswap_username", ""),
-            }
+            "assigned_agent_username": agent_by_id.get(trace_agent_id, "") if trace_agent_id else "",
+            "trace": _trace_summary(trace),
         }
         result.append(ghost)
 
