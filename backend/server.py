@@ -2033,6 +2033,22 @@ async def admin_delete_user(user_id: str, _=Depends(require_admin)):
     return {"ok": True}
 
 
+@api.post("/admin/users/{user_id}/verify-email")
+async def admin_verify_user_email(user_id: str, _=Depends(require_admin)):
+    """Admin manually marks a user's email as verified, bypassing the confirmation email."""
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+    if user.get("email_verified"):
+        return {"ok": True, "already_verified": True}
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"email_verified": True, "email_verified_at": _now_iso()}}
+    )
+    logger.info("Admin manually verified email for user %s (%s)", user_id, user.get("email"))
+    return {"ok": True, "already_verified": False}
+
+
 # ============================================================
 #   User flow — legacy procedure (kept for compat)
 # ============================================================

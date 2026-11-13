@@ -1709,6 +1709,16 @@ function RegisteredUsersTab({ isIt }) {
     }
   };
 
+  const verifyEmail = async (u) => {
+    try {
+      await axios.post(`${API}/admin/users/${u.id}/verify-email`, {}, { headers: getAuthHeader() });
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, email_verified: true } : x));
+      toast.success(isIt ? `Email di ${u.first_name} verificata manualmente ✓` : `${u.first_name}'s email manually verified ✓`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || (isIt ? "Errore verifica email" : "Verify failed"));
+    }
+  };
+
   if (loading) {
     return <div className="aif-card p-8 text-center text-[var(--aif-text-dim)]">{isIt ? "Caricamento..." : "Loading..."}</div>;
   }
@@ -1903,8 +1913,18 @@ function RegisteredUsersTab({ isIt }) {
                                 <CheckCircle2 size={9}/> {isIt ? "Verificata" : "Verified"}
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF6B7A]/10 text-[#FF6B7A] border border-[#FF6B7A]/30" title={isIt ? "Email non verificata" : "Email not verified"}>
-                                <Clock size={9}/> {isIt ? "Non verificata" : "Unverified"}
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF6B7A]/10 text-[#FF6B7A] border border-[#FF6B7A]/30" title={isIt ? "Email non verificata" : "Email not verified"}>
+                                  <Clock size={9}/> {isIt ? "Non verificata" : "Unverified"}
+                                </span>
+                                <button
+                                  onClick={() => verifyEmail(u)}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#5FE3C9]/10 text-[#5FE3C9] border border-[#5FE3C9]/30 hover:bg-[#5FE3C9]/20 transition"
+                                  title={isIt ? "Verifica manualmente (salta conferma email)" : "Manually verify (skip email confirmation)"}
+                                  data-testid={`verify-email-btn-${u.id}`}
+                                >
+                                  <CheckCircle2 size={9}/> {isIt ? "Verifica" : "Verify"}
+                                </button>
                               </span>
                             )
                         )}
