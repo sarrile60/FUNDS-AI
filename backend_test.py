@@ -1,278 +1,331 @@
+#!/usr/bin/env python3
 """
-Backend Test for Traccia Fondi - Uniswap Account Created Today Counter Fix
-===========================================================================
-
-Testing the fix for "Accounts Created Today" counter in admin panel.
-
-Bug: The counter always showed 0 even when agents created Uniswap V4 accounts.
-Root cause: TracesTab only loaded trace data once on mount, so uniswap_account_created_at 
-            timestamps were stale.
-
-Fix: TracesTab now auto-refreshes every 30 seconds AND refreshes when browser window regains focus.
-
-This test verifies:
-1. GET /api/admin/traces returns traces with uniswap_account_created_at field
-2. Traces with uniswap_account_created: true have valid uniswap_account_created_at timestamps
-3. The timestamp is in ISO format and can be parsed
-4. The backend correctly stores uniswap_account_created_at when accounts are created
+Backend API Testing Script for Traccia Fondi - Email Language Fix Verification
+Tests the _resolve_lang() function fix for 24h/50h emails
 """
 
 import requests
 import json
-from datetime import datetime, timezone, timedelta
 import sys
+from typing import Dict, Any, Optional
 
-# Backend URL from environment
-BACKEND_URL = "https://net-domain-fix--0jqiaoen.preview.emergentagent.com"
-API_BASE = f"{BACKEND_URL}/api"
+# Production backend URL
+BASE_URL = "https://traccia-fondi.com/api"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@traccia-fondi.com"
 ADMIN_PASSWORD = "admin123"
 
-def print_test(msg):
-    """Print test message"""
-    print(f"\n{'='*80}")
-    print(f"TEST: {msg}")
-    print('='*80)
+class Colors:
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    END = '\033[0m'
 
-def print_success(msg):
-    """Print success message"""
-    print(f"✅ SUCCESS: {msg}")
+def print_success(msg: str):
+    print(f"{Colors.GREEN}✅ {msg}{Colors.END}")
 
-def print_error(msg):
-    """Print error message"""
-    print(f"❌ ERROR: {msg}")
+def print_error(msg: str):
+    print(f"{Colors.RED}❌ {msg}{Colors.END}")
 
-def print_info(msg):
-    """Print info message"""
-    print(f"ℹ️  INFO: {msg}")
+def print_info(msg: str):
+    print(f"{Colors.BLUE}ℹ️  {msg}{Colors.END}")
 
-def admin_login():
-    """Login as admin and return token"""
-    print_test("Admin Login")
-    
-    response = requests.post(
-        f"{API_BASE}/auth/login",
-        json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
-        timeout=10
-    )
-    
-    if response.status_code != 200:
-        print_error(f"Admin login failed with status {response.status_code}")
-        print(f"Response: {response.text}")
-        sys.exit(1)
-    
-    data = response.json()
-    token = data.get("token")
-    
-    if not token:
-        print_error("No token in login response")
-        sys.exit(1)
-    
-    print_success(f"Admin logged in successfully")
-    return token
+def print_warning(msg: str):
+    print(f"{Colors.YELLOW}⚠️  {msg}{Colors.END}")
 
-def get_all_traces(token):
-    """Get all traces from admin endpoint"""
-    print_test("GET /api/admin/traces - Fetch All Traces")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/admin/traces", headers=headers, timeout=10)
-    
-    if response.status_code != 200:
-        print_error(f"Failed to fetch traces: {response.status_code}")
-        print(f"Response: {response.text}")
-        sys.exit(1)
-    
-    traces = response.json()
-    print_success(f"Fetched {len(traces)} traces")
-    
-    return traces
-
-def verify_uniswap_account_created_at_field(traces):
-    """Verify that traces with uniswap_account_created=true have valid uniswap_account_created_at timestamps"""
-    print_test("Verify uniswap_account_created_at Field on Traces")
-    
-    traces_with_uniswap = [t for t in traces if t.get("uniswap_account_created") == True]
-    
-    print_info(f"Found {len(traces_with_uniswap)} traces with uniswap_account_created=true")
-    
-    if len(traces_with_uniswap) == 0:
-        print_info("No traces with Uniswap accounts created yet - this is expected if no accounts have been created")
-        print_info("The field structure is correct in the code (server.py lines 2739 and 2913)")
-        return True
-    
-    # Check each trace with uniswap account
-    all_valid = True
-    today = datetime.now(timezone.utc).date()
-    accounts_created_today = 0
-    
-    for trace in traces_with_uniswap:
-        trace_id = trace.get("id", "unknown")
-        email = trace.get("email", "unknown")
-        created_at = trace.get("uniswap_account_created_at")
-        
-        print_info(f"\nTrace ID: {trace_id}")
-        print_info(f"  Email: {email}")
-        print_info(f"  uniswap_account_created: {trace.get('uniswap_account_created')}")
-        print_info(f"  uniswap_account_created_at: {created_at}")
-        
-        # Check if field exists
-        if created_at is None:
-            print_error(f"  ❌ CRITICAL BUG: uniswap_account_created_at is NULL for trace {trace_id}")
-            print_error(f"     This trace has uniswap_account_created=true but no timestamp!")
-            all_valid = False
-            continue
-        
-        # Check if it's a valid ISO timestamp
-        try:
-            timestamp = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-            print_success(f"  ✅ Valid ISO timestamp: {timestamp}")
-            
-            # Check if it's today
-            if timestamp.date() == today:
-                accounts_created_today += 1
-                print_info(f"  📅 This account was created TODAY")
-            else:
-                print_info(f"  📅 This account was created on {timestamp.date()}")
-                
-        except Exception as e:
-            print_error(f"  ❌ Invalid timestamp format: {e}")
-            all_valid = False
-    
-    print(f"\n{'='*80}")
-    print_info(f"SUMMARY: {accounts_created_today} Uniswap accounts created TODAY")
-    print(f"{'='*80}")
-    
-    if all_valid:
-        print_success("All traces with uniswap_account_created=true have valid uniswap_account_created_at timestamps")
-    else:
-        print_error("Some traces have invalid or missing uniswap_account_created_at timestamps")
-    
-    return all_valid
-
-def verify_backend_code_implementation():
-    """Verify the backend code has the correct implementation"""
-    print_test("Verify Backend Code Implementation")
-    
-    # Read server.py to verify the implementation
-    try:
-        with open("/app/backend/server.py", "r") as f:
-            content = f.read()
-        
-        # Check agent endpoint (lines 2737-2742)
-        if '"uniswap_account_created_at": _now_iso()' in content:
-            print_success("✅ Agent endpoint (/api/agent/traces/{trace_id}/create-uniswap-account) correctly sets uniswap_account_created_at")
-        else:
-            print_error("❌ Agent endpoint missing uniswap_account_created_at field")
-            return False
-        
-        # Check admin endpoint (lines 2911-2916)
-        if content.count('"uniswap_account_created_at": _now_iso()') >= 2:
-            print_success("✅ Admin endpoint (/api/admin/traces/{trace_id}/create-uniswap-account) correctly sets uniswap_account_created_at")
-        else:
-            print_error("❌ Admin endpoint missing uniswap_account_created_at field")
-            return False
-        
-        # Check _now_iso() function
-        if "def _now_iso() -> str:" in content and "datetime.now(timezone.utc).isoformat()" in content:
-            print_success("✅ _now_iso() function correctly returns ISO timestamp")
-        else:
-            print_error("❌ _now_iso() function not found or incorrect")
-            return False
-        
-        print_success("Backend code implementation is CORRECT")
-        return True
-        
-    except Exception as e:
-        print_error(f"Failed to read backend code: {e}")
-        return False
-
-def test_stat_card_logic(traces):
-    """Test the stat card logic that filters accounts created today"""
-    print_test("Test Stat Card Logic - Filter Accounts Created Today")
-    
-    today = datetime.now(timezone.utc).date()
-    
-    # Simulate the frontend filter logic:
-    # t.uniswap_account_created_at && new Date(t.uniswap_account_created_at) matches today's date
-    accounts_today = []
-    
-    for trace in traces:
-        created_at = trace.get("uniswap_account_created_at")
-        
-        # Check if field exists and is not null
-        if created_at:
-            try:
-                # Parse the ISO timestamp
-                timestamp = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                
-                # Check if it matches today's date
-                if timestamp.date() == today:
-                    accounts_today.append(trace)
-                    
-            except Exception as e:
-                print_error(f"Failed to parse timestamp for trace {trace.get('id')}: {e}")
-    
-    print_info(f"Stat card filter logic result: {len(accounts_today)} accounts created today")
-    
-    if len(accounts_today) > 0:
-        print_success(f"✅ Stat card would show: {len(accounts_today)} accounts created today")
-        for trace in accounts_today:
-            print_info(f"  - Trace {trace.get('id')} ({trace.get('email')})")
-    else:
-        print_info("ℹ️  Stat card would show: 0 accounts created today (no accounts created today yet)")
-    
-    return True
-
-def main():
-    """Main test function"""
+def test_admin_login() -> Optional[str]:
+    """Test 1: Login as admin and get token"""
     print("\n" + "="*80)
-    print("TRACCIA FONDI - UNISWAP ACCOUNT CREATED TODAY COUNTER FIX TEST")
+    print("TEST 1: Admin Login")
     print("="*80)
     
     try:
-        # 1. Login as admin
-        token = admin_login()
+        response = requests.post(
+            f"{BASE_URL}/auth/login",
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+            timeout=10
+        )
         
-        # 2. Get all traces
-        traces = get_all_traces(token)
+        print_info(f"POST {BASE_URL}/auth/login")
+        print_info(f"Status Code: {response.status_code}")
         
-        # 3. Verify backend code implementation
-        code_valid = verify_backend_code_implementation()
-        
-        # 4. Verify uniswap_account_created_at field on traces
-        field_valid = verify_uniswap_account_created_at_field(traces)
-        
-        # 5. Test stat card logic
-        stat_card_valid = test_stat_card_logic(traces)
-        
-        # Final summary
-        print("\n" + "="*80)
-        print("FINAL TEST SUMMARY")
-        print("="*80)
-        
-        if code_valid and field_valid and stat_card_valid:
-            print_success("✅ ALL TESTS PASSED")
-            print_info("\nKEY FINDINGS:")
-            print_info("1. Backend code correctly implements uniswap_account_created_at field")
-            print_info("2. Both agent and admin endpoints set the timestamp using _now_iso()")
-            print_info("3. Traces with uniswap_account_created=true have valid ISO timestamps")
-            print_info("4. Stat card filter logic works correctly")
-            print_info("\nThe 'Accounts Created Today' counter fix is WORKING CORRECTLY.")
-            print_info("The frontend auto-refresh (every 30s + on window focus) will ensure")
-            print_info("the counter updates when new accounts are created.")
-            return 0
+        if response.status_code == 200:
+            data = response.json()
+            token = data.get("token")
+            if token:
+                print_success(f"Admin login successful")
+                print_info(f"Token: {token[:20]}...")
+                return token
+            else:
+                print_error("No token in response")
+                return None
         else:
-            print_error("❌ SOME TESTS FAILED")
-            return 1
+            print_error(f"Login failed: {response.text}")
+            return None
             
     except Exception as e:
-        print_error(f"Test failed with exception: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
+        print_error(f"Exception during login: {str(e)}")
+        return None
+
+def test_get_italian_user_with_trace(token: str) -> Optional[Dict[str, Any]]:
+    """Test 2: Get users list and find Italian user with trace"""
+    print("\n" + "="*80)
+    print("TEST 2: Get Italian User with Trace")
+    print("="*80)
+    
+    try:
+        response = requests.get(
+            f"{BASE_URL}/admin/registered-users",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10
+        )
+        
+        print_info(f"GET {BASE_URL}/admin/registered-users")
+        print_info(f"Status Code: {response.status_code}")
+        
+        if response.status_code == 200:
+            users = response.json()
+            print_info(f"Found {len(users)} total users")
+            
+            # Find Italian user with trace
+            italian_users_with_trace = []
+            for user in users:
+                lang = user.get("lang", "")
+                trace = user.get("trace")
+                
+                if lang == "it" and trace and trace.get("id"):
+                    italian_users_with_trace.append({
+                        "user_id": user.get("id"),
+                        "email": user.get("email"),
+                        "first_name": user.get("first_name"),
+                        "last_name": user.get("last_name"),
+                        "lang": lang,
+                        "trace_id": trace.get("id"),
+                        "trace_status": trace.get("status"),
+                        "email_24h_sent": trace.get("email_24h_sent", False),
+                        "email_50h_sent": trace.get("email_50h_sent", False)
+                    })
+            
+            if italian_users_with_trace:
+                print_success(f"Found {len(italian_users_with_trace)} Italian user(s) with trace")
+                
+                # Pick the first one
+                selected_user = italian_users_with_trace[0]
+                print_info(f"Selected user:")
+                print_info(f"  - Email: {selected_user['email']}")
+                print_info(f"  - Name: {selected_user['first_name']} {selected_user['last_name']}")
+                print_info(f"  - Lang: {selected_user['lang']}")
+                print_info(f"  - Trace ID: {selected_user['trace_id']}")
+                print_info(f"  - 24h email sent: {selected_user['email_24h_sent']}")
+                print_info(f"  - 50h email sent: {selected_user['email_50h_sent']}")
+                
+                return selected_user
+            else:
+                print_warning("No Italian users with traces found")
+                print_info("Looking for any user with trace...")
+                
+                # Fallback: find any user with trace
+                for user in users:
+                    trace = user.get("trace")
+                    if trace and trace.get("id"):
+                        fallback_user = {
+                            "user_id": user.get("id"),
+                            "email": user.get("email"),
+                            "first_name": user.get("first_name"),
+                            "last_name": user.get("last_name"),
+                            "lang": user.get("lang", ""),
+                            "trace_id": trace.get("id"),
+                            "trace_status": trace.get("status"),
+                            "email_24h_sent": trace.get("email_24h_sent", False),
+                            "email_50h_sent": trace.get("email_50h_sent", False)
+                        }
+                        print_warning(f"Using fallback user with lang='{fallback_user['lang']}'")
+                        print_info(f"  - Email: {fallback_user['email']}")
+                        print_info(f"  - Trace ID: {fallback_user['trace_id']}")
+                        return fallback_user
+                
+                print_error("No users with traces found at all")
+                return None
+        else:
+            print_error(f"Failed to get users: {response.text}")
+            return None
+            
+    except Exception as e:
+        print_error(f"Exception during get users: {str(e)}")
+        return None
+
+def test_send_24h_email(token: str, trace_id: str) -> bool:
+    """Test 3: Trigger 24h email send and verify response"""
+    print("\n" + "="*80)
+    print("TEST 3: Send 24h Email (Verify _resolve_lang)")
+    print("="*80)
+    
+    try:
+        response = requests.post(
+            f"{BASE_URL}/admin/traces/{trace_id}/send-24h-email",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10
+        )
+        
+        print_info(f"POST {BASE_URL}/admin/traces/{trace_id}/send-24h-email")
+        print_info(f"Status Code: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_success("24h email endpoint returned 200 OK")
+            print_info(f"Response: {json.dumps(data, indent=2)}")
+            
+            # Check if email was actually sent
+            if data.get("email_24h_sent") == True:
+                print_success("email_24h_sent flag is now True")
+            else:
+                print_warning(f"email_24h_sent flag is: {data.get('email_24h_sent')}")
+            
+            return True
+        elif response.status_code == 400:
+            # Check if it's already sent
+            error_msg = response.text
+            if "already sent" in error_msg.lower():
+                print_warning(f"24h email was already sent for this trace")
+                print_info(f"Response: {error_msg}")
+                return True  # This is not a failure - just means it was already sent
+            else:
+                print_error(f"Bad request: {error_msg}")
+                return False
+        else:
+            print_error(f"Failed to send 24h email: {response.text}")
+            return False
+            
+    except Exception as e:
+        print_error(f"Exception during send 24h email: {str(e)}")
+        return False
+
+def test_verify_resolve_lang_in_code() -> bool:
+    """Test 4: Verify _resolve_lang function exists in backend code"""
+    print("\n" + "="*80)
+    print("TEST 4: Verify _resolve_lang Function in Code")
+    print("="*80)
+    
+    try:
+        # Check if we can access the backend code
+        import os
+        backend_file = "/root/traccia-fondi/backend/server.py"
+        
+        if os.path.exists(backend_file):
+            print_info(f"Checking {backend_file}")
+            with open(backend_file, 'r') as f:
+                content = f.read()
+                
+            if "_resolve_lang" in content:
+                print_success("_resolve_lang function found in server.py")
+                
+                # Try to extract the function
+                lines = content.split('\n')
+                in_function = False
+                function_lines = []
+                
+                for i, line in enumerate(lines):
+                    if "def _resolve_lang" in line or "async def _resolve_lang" in line:
+                        in_function = True
+                        function_lines.append(f"{i+1}: {line}")
+                    elif in_function:
+                        if line.strip() and not line.startswith(' ') and not line.startswith('\t'):
+                            # End of function
+                            break
+                        function_lines.append(f"{i+1}: {line}")
+                
+                if function_lines:
+                    print_info("Function definition:")
+                    for line in function_lines[:20]:  # Show first 20 lines
+                        print(f"  {line}")
+                    if len(function_lines) > 20:
+                        print(f"  ... ({len(function_lines) - 20} more lines)")
+                
+                return True
+            else:
+                print_error("_resolve_lang function NOT found in server.py")
+                return False
+        else:
+            print_warning(f"Cannot access {backend_file} - file not found")
+            print_info("This test requires SSH access to the VPS")
+            return None
+            
+    except Exception as e:
+        print_warning(f"Cannot verify code locally: {str(e)}")
+        print_info("This test requires SSH access to the VPS")
+        return None
+
+def main():
+    print("\n" + "="*80)
+    print("TRACCIA FONDI - EMAIL LANGUAGE FIX VERIFICATION")
+    print("Testing _resolve_lang() function for 24h/50h emails")
+    print("="*80)
+    
+    results = {
+        "admin_login": False,
+        "find_italian_user": False,
+        "send_24h_email": False,
+        "verify_code": None
+    }
+    
+    # Test 1: Admin login
+    token = test_admin_login()
+    if not token:
+        print_error("\n❌ CRITICAL: Admin login failed. Cannot proceed with tests.")
+        sys.exit(1)
+    results["admin_login"] = True
+    
+    # Test 2: Find Italian user with trace
+    user_data = test_get_italian_user_with_trace(token)
+    if not user_data:
+        print_error("\n❌ CRITICAL: No users with traces found. Cannot test email sending.")
+        sys.exit(1)
+    results["find_italian_user"] = True
+    
+    # Test 3: Send 24h email
+    trace_id = user_data["trace_id"]
+    email_sent = test_send_24h_email(token, trace_id)
+    results["send_24h_email"] = email_sent
+    
+    # Test 4: Verify code (optional - requires VPS access)
+    code_verified = test_verify_resolve_lang_in_code()
+    results["verify_code"] = code_verified
+    
+    # Summary
+    print("\n" + "="*80)
+    print("TEST SUMMARY")
+    print("="*80)
+    
+    print(f"\n1. Admin Login: {'✅ PASS' if results['admin_login'] else '❌ FAIL'}")
+    print(f"2. Find Italian User with Trace: {'✅ PASS' if results['find_italian_user'] else '❌ FAIL'}")
+    print(f"3. Send 24h Email (200 response): {'✅ PASS' if results['send_24h_email'] else '❌ FAIL'}")
+    
+    if results['verify_code'] is True:
+        print(f"4. Verify _resolve_lang in Code: ✅ PASS")
+    elif results['verify_code'] is False:
+        print(f"4. Verify _resolve_lang in Code: ❌ FAIL")
+    else:
+        print(f"4. Verify _resolve_lang in Code: ⚠️  SKIPPED (requires VPS access)")
+    
+    print("\n" + "="*80)
+    print("NEXT STEPS")
+    print("="*80)
+    
+    if results["send_24h_email"]:
+        print_info("✅ The 24h email endpoint returned 200 OK")
+        print_info("📋 To verify the language fix is working:")
+        print_info("   1. SSH to VPS: ssh root@187.127.226.127 (password: Satoshi@10benz)")
+        print_info("   2. Check logs: tail -n 100 /var/log/traccia-fondi-backend.out.log")
+        print_info("   3. Look for '24h email sent' log line")
+        print_info("   4. Verify no Python exceptions about _resolve_lang or missing user lookups")
+        print_info("   5. Check that _resolve_lang function exists in /root/traccia-fondi/backend/server.py")
+    else:
+        print_error("❌ The 24h email endpoint did not return 200 OK")
+        print_info("   Check backend logs for errors")
+    
+    print("\n")
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

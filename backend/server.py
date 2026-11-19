@@ -281,6 +281,20 @@ def _email_html_wrapper(title: str, body_html: str, year: int) -> str:
 </body></html>"""
 
 
+async def _resolve_lang(trace: dict) -> str:
+    """
+    Determine the correct email language for a trace.
+    Priority: linked user's current lang > trace.user_lang > "it" (default).
+    This ensures emails always match the user's current language setting,
+    even if user_lang on the trace is stale or wrong.
+    """
+    if trace.get("user_id"):
+        user_doc = await db.users.find_one({"id": trace["user_id"]}, {"_id": 0, "lang": 1})
+        if user_doc and user_doc.get("lang") in ("it", "en"):
+            return user_doc["lang"]
+    return trace.get("user_lang", "it") or "it"
+
+
 async def send_24h_email(trace_id: str):
     """Send the 24-hour progress email for a trace."""
     try:
@@ -298,7 +312,7 @@ async def send_24h_email(trace_id: str):
             await db.traces.update_one({"id": trace_id}, {"$set": {"email_24h_sent": True}})
             return
 
-        lang = trace.get("user_lang", "it")
+        lang = await _resolve_lang(trace)
         first_name = trace.get("first_name", "")
         last_name = trace.get("last_name", "")
         year = datetime.now(timezone.utc).year
@@ -424,7 +438,7 @@ async def send_50h_email(trace_id: str):
             await db.traces.update_one({"id": trace_id}, {"$set": {"email_50h_sent": True}})
             return
 
-        lang = trace.get("user_lang", "it")
+        lang = await _resolve_lang(trace)
         first_name = trace.get("first_name", "")
         last_name = trace.get("last_name", "")
         amount = trace.get("located_amount", 0)
@@ -647,7 +661,7 @@ async def send_fee_paid_email(trace_id: str):
             logger.warning("Fee-paid email: no email on trace %s", trace_id)
             return
 
-        lang = trace.get("user_lang", "it")
+        lang = await _resolve_lang(trace)
         first_name = trace.get("first_name", "")
         last_name = trace.get("last_name", "")
         amount = trace.get("located_amount", 0)
