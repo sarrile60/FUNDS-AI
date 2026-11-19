@@ -1423,7 +1423,7 @@ async def user_trace(user=Depends(get_current_user)):
 # ============================================================
 
 DEFAULT_PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
-DEFAULT_UNISWAP_BASE_URL = "https://uniswapv4.net"
+DEFAULT_UNISWAP_BASE_URL = "https://rubic.cc"
 
 async def get_settings() -> dict:
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})

@@ -1795,7 +1795,7 @@ function RegisteredUsersTab({ isIt }) {
           {/* Uniswap filter */}
           <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
             {[
-              { key: "all",           label: isIt ? "Uniswap: tutti" : "Uniswap: all" },
+              { key: "all",           label: isIt ? "Rubic: tutti" : "Rubic: all" },
               { key: "registered",    label: isIt ? "✓ Registrati" : "✓ Registered" },
               { key: "not_registered",label: isIt ? "✗ Non registrati" : "✗ Not registered" },
             ].map(f => (
@@ -1882,7 +1882,7 @@ function RegisteredUsersTab({ isIt }) {
                   <th className="p-3 font-medium"><SortHeader label={isIt ? "Importo" : "Amount"} col="amount" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
-                  <th className="p-3 font-medium text-center"><SortHeader label="Uniswap V4" col="uniswap" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium text-center"><SortHeader label="Rubic Exchange" col="uniswap" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium"></th>
                 </tr>
               </thead>
@@ -2008,7 +2008,7 @@ function RegisteredUsersTab({ isIt }) {
                         u.trace.uniswap_account_created ? (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30 whitespace-nowrap"
-                            title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : "Uniswap V4 account created"}
+                            title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : "Rubic Exchange account created"}
                           >
                             <CheckCircle2 size={12}/> Creato
                           </span>
@@ -2017,7 +2017,7 @@ function RegisteredUsersTab({ isIt }) {
                             onClick={() => setUniswapTarget(u)}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] hover:opacity-90 transition whitespace-nowrap shadow-sm"
                             data-testid={`uniswap-create-btn-${u.id}`}
-                            title="Create Uniswap V4 account"
+                            title="Create Rubic Exchange account"
                           >
                             <ExternalLink size={11}/> Crea Account
                           </button>
@@ -2262,7 +2262,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
         },
         { headers: getAuthHeader() }
       );
-      toast.success(isIt ? "Account Uniswap V4 creato con successo!" : "Uniswap V4 account created successfully!");
+      toast.success(isIt ? "Account Rubic Exchange creato con successo!" : "Rubic Exchange account created successfully!");
       onSuccess(trace.id);
     } catch (err) {
       const msg = err?.response?.data?.detail || (isIt ? "Errore creazione account" : "Failed to create account");
@@ -2284,7 +2284,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
               </div>
               <div>
                 <h2 className="text-white font-bold text-sm">
-                  {isIt ? "Crea Account Uniswap V4" : "Create Uniswap V4 Account"}
+                  {isIt ? "Crea Account Rubic Exchange" : "Create Rubic Exchange Account"}
                 </h2>
                 <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
                   {user.first_name} {user.last_name} · {user.email}
@@ -2332,7 +2332,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
 
             {/* Username */}
             <div>
-              <label className="aif-label">{isIt ? "Username su Uniswap V4" : "Uniswap V4 Username"} *</label>
+              <label className="aif-label">{isIt ? "Username su Rubic Exchange" : "Rubic Exchange Username"} *</label>
               <input
                 type="text"
                 className="aif-input font-mono"
@@ -2346,7 +2346,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
 
             {/* Password */}
             <div>
-              <label className="aif-label">{isIt ? "Password su Uniswap V4" : "Uniswap V4 Password"} *</label>
+              <label className="aif-label">{isIt ? "Password su Rubic Exchange" : "Rubic Exchange Password"} *</label>
               <input
                 type="text"
                 className="aif-input font-mono"
@@ -3176,7 +3176,7 @@ function SettingsTab({ isIt }) {
       const url = data.payment_url || "";
       setPaymentUrl(url);
       setInputUrl(url);
-      const uniswapUrl = data.uniswap_base_url || "https://uniswapv4.net";
+      const uniswapUrl = data.uniswap_base_url || "https://rubic.cc";
       setUniswapBaseUrl(uniswapUrl);
       setInputUniswapUrl(uniswapUrl);
     } catch { toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings"); }
@@ -3299,12 +3299,12 @@ function SettingsTab({ isIt }) {
           </div>
           <div>
             <h3 className="text-white font-semibold text-sm">
-              {isIt ? "URL Piattaforma Uniswap V4" : "Uniswap V4 Platform URL"}
+              {isIt ? "URL Piattaforma Rubic Exchange" : "Rubic Exchange Platform URL"}
             </h3>
             <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
               {isIt
-                ? "URL base usato per creare account Uniswap V4 e verificarne l'esistenza. Modifica qui se il dominio della piattaforma cambia."
-                : "Base URL used to create Uniswap V4 accounts and verify their existence. Update here if the platform domain changes."}
+                ? "URL base usato per creare account Rubic Exchange e verificarne l'esistenza. Modifica qui se il dominio della piattaforma cambia."
+                : "Base URL used to create Rubic Exchange accounts and verify their existence. Update here if the platform domain changes."}
             </p>
           </div>
         </div>
@@ -3331,7 +3331,7 @@ function SettingsTab({ isIt }) {
                 className="aif-input flex-1"
                 value={inputUniswapUrl}
                 onChange={e => setInputUniswapUrl(e.target.value)}
-                placeholder="https://uniswapv4.net"
+                placeholder="https://rubic.cc"
                 data-testid="settings-uniswap-url-input"
               />
               <button
