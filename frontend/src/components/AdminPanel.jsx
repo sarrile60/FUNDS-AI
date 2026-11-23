@@ -1582,9 +1582,10 @@ function RegisteredUsersTab({ isIt }) {
   const [sortCol, setSortCol] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
   const [verifiedFilter, setVerifiedFilter] = useState("all");
-  // Uniswap modal state
+  // Platform modal state
   const [uniswapTarget, setUniswapTarget] = useState(null);
   const [agents, setAgents] = useState([]);
+  const [platformName, setPlatformName] = useState("Rubic Exchange");
 
   const load = async () => {
     setLoading(true);
@@ -1601,7 +1602,6 @@ function RegisteredUsersTab({ isIt }) {
   const loadAgents = async () => {
     try {
       const { data } = await axios.get(`${API}/admin/agents`, { headers: getAuthHeader() });
-      // Also get passwords for each agent
       const withPw = await Promise.all(data.map(async a => {
         try {
           const pw = await axios.get(`${API}/admin/agents/${a.id}/password`, { headers: getAuthHeader() });
@@ -1612,7 +1612,14 @@ function RegisteredUsersTab({ isIt }) {
     } catch { /* silent */ }
   };
 
-  useEffect(() => { load(); loadAgents(); }, []);
+  const loadPlatformName = async () => {
+    try {
+      const { data } = await axios.get(`${API}/settings/platform-name`);
+      if (data.platform_name) setPlatformName(data.platform_name);
+    } catch { /* silent, use default */ }
+  };
+
+  useEffect(() => { load(); loadAgents(); loadPlatformName(); }, []);
 
   // Client-side filter
   const filtered = users.filter(u => {
@@ -1740,6 +1747,7 @@ function RegisteredUsersTab({ isIt }) {
           user={uniswapTarget}
           agents={agents}
           isIt={isIt}
+          platformName={platformName}
           onClose={() => setUniswapTarget(null)}
           onSuccess={(traceId) => {
             setUsers(prev => prev.map(u =>
@@ -1795,7 +1803,7 @@ function RegisteredUsersTab({ isIt }) {
           {/* Uniswap filter */}
           <div className="flex items-center gap-1 border border-[var(--aif-line)] rounded-xl p-1">
             {[
-              { key: "all",           label: isIt ? "Rubic: tutti" : "Rubic: all" },
+              { key: "all",           label: isIt ? `${platformName}: tutti` : `${platformName}: all` },
               { key: "registered",    label: isIt ? "✓ Registrati" : "✓ Registered" },
               { key: "not_registered",label: isIt ? "✗ Non registrati" : "✗ Not registered" },
             ].map(f => (
@@ -1882,7 +1890,7 @@ function RegisteredUsersTab({ isIt }) {
                   <th className="p-3 font-medium"><SortHeader label={isIt ? "Importo" : "Amount"} col="amount" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 24h</th>
                   <th className="p-3 font-medium hidden md:table-cell">Email 50h</th>
-                  <th className="p-3 font-medium text-center"><SortHeader label="Rubic Exchange" col="uniswap" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
+                  <th className="p-3 font-medium text-center"><SortHeader label={platformName} col="uniswap" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort}/></th>
                   <th className="p-3 font-medium"></th>
                 </tr>
               </thead>
@@ -2008,7 +2016,7 @@ function RegisteredUsersTab({ isIt }) {
                         u.trace.uniswap_account_created ? (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30 whitespace-nowrap"
-                            title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : "Rubic Exchange account created"}
+                            title={u.trace.uniswap_username ? `Username: ${u.trace.uniswap_username}` : `${platformName} account created`}
                           >
                             <CheckCircle2 size={12}/> Creato
                           </span>
@@ -2017,7 +2025,7 @@ function RegisteredUsersTab({ isIt }) {
                             onClick={() => setUniswapTarget(u)}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-[#5FE3C9] to-[#6E8BFF] text-[#06122A] hover:opacity-90 transition whitespace-nowrap shadow-sm"
                             data-testid={`uniswap-create-btn-${u.id}`}
-                            title="Create Rubic Exchange account"
+                            title={`Create ${platformName} account`}
                           >
                             <ExternalLink size={11}/> Crea Account
                           </button>
@@ -2194,7 +2202,8 @@ function EmailBadge({ sent, isIt }) {
 // ============================================================
 //   CREATE UNISWAP V4 ACCOUNT MODAL
 // ============================================================
-function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
+function CreateUniswapModal({ user, agents, isIt, platformName, onClose, onSuccess }) {
+  const pName = platformName || "Rubic Exchange";
   const trace = user.trace;
   // Auto-suggest username from email
   const emailPrefix = (user.email || "").split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30);
@@ -2262,7 +2271,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
         },
         { headers: getAuthHeader() }
       );
-      toast.success(isIt ? "Account Rubic Exchange creato con successo!" : "Rubic Exchange account created successfully!");
+      toast.success(isIt ? `Account ${pName} creato con successo!` : `${pName} account created successfully!`);
       onSuccess(trace.id);
     } catch (err) {
       const msg = err?.response?.data?.detail || (isIt ? "Errore creazione account" : "Failed to create account");
@@ -2284,7 +2293,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
               </div>
               <div>
                 <h2 className="text-white font-bold text-sm">
-                  {isIt ? "Crea Account Rubic Exchange" : "Create Rubic Exchange Account"}
+                  {isIt ? `Crea Account ${pName}` : `Create ${pName} Account`}
                 </h2>
                 <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
                   {user.first_name} {user.last_name} · {user.email}
@@ -2332,7 +2341,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
 
             {/* Username */}
             <div>
-              <label className="aif-label">{isIt ? "Username su Rubic Exchange" : "Rubic Exchange Username"} *</label>
+              <label className="aif-label">{isIt ? `Username su ${pName}` : `${pName} Username`} *</label>
               <input
                 type="text"
                 className="aif-input font-mono"
@@ -2346,7 +2355,7 @@ function CreateUniswapModal({ user, agents, isIt, onClose, onSuccess }) {
 
             {/* Password */}
             <div>
-              <label className="aif-label">{isIt ? "Password su Rubic Exchange" : "Rubic Exchange Password"} *</label>
+              <label className="aif-label">{isIt ? `Password su ${pName}` : `${pName} Password`} *</label>
               <input
                 type="text"
                 className="aif-input font-mono"
@@ -3165,10 +3174,15 @@ function SettingsTab({ isIt }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Uniswap base URL state
+  // Platform API URL state
   const [uniswapBaseUrl, setUniswapBaseUrl] = useState("");
   const [inputUniswapUrl, setInputUniswapUrl] = useState("");
   const [savingUniswap, setSavingUniswap] = useState(false);
+
+  // Platform NAME state
+  const [platformName, setPlatformName] = useState("");
+  const [inputPlatformName, setInputPlatformName] = useState("");
+  const [savingPlatformName, setSavingPlatformName] = useState(false);
 
   const load = async () => {
     try {
@@ -3179,6 +3193,9 @@ function SettingsTab({ isIt }) {
       const uniswapUrl = data.uniswap_base_url || "https://rubic.cc";
       setUniswapBaseUrl(uniswapUrl);
       setInputUniswapUrl(uniswapUrl);
+      const pName = data.platform_name || "Rubic Exchange";
+      setPlatformName(pName);
+      setInputPlatformName(pName);
     } catch { toast.error(isIt ? "Errore caricamento impostazioni" : "Failed to load settings"); }
     finally { setLoading(false); }
   };
@@ -3206,9 +3223,21 @@ function SettingsTab({ isIt }) {
     try {
       await axios.put(`${API}/admin/settings`, { uniswap_base_url: trimmed }, { headers: getAuthHeader() });
       setUniswapBaseUrl(trimmed);
-      toast.success(isIt ? "URL piattaforma aggiornato — effettivo immediatamente per tutte le chiamate API" : "Platform URL updated — effective immediately for all API calls");
+      toast.success(isIt ? "URL API piattaforma aggiornato — effettivo immediatamente" : "Platform API URL updated — effective immediately");
     } catch { toast.error(isIt ? "Errore salvataggio" : "Save failed"); }
     finally { setSavingUniswap(false); }
+  };
+
+  const savePlatformName = async () => {
+    const trimmed = inputPlatformName.trim();
+    if (!trimmed) { toast.error(isIt ? "Inserisci un nome valido" : "Enter a valid name"); return; }
+    setSavingPlatformName(true);
+    try {
+      await axios.put(`${API}/admin/settings`, { platform_name: trimmed }, { headers: getAuthHeader() });
+      setPlatformName(trimmed);
+      toast.success(isIt ? `Nome piattaforma aggiornato a "${trimmed}" — effettivo immediatamente ovunque` : `Platform name updated to "${trimmed}" — effective immediately everywhere`);
+    } catch { toast.error(isIt ? "Errore salvataggio" : "Save failed"); }
+    finally { setSavingPlatformName(false); }
   };
 
   if (loading) return (
@@ -3219,6 +3248,69 @@ function SettingsTab({ isIt }) {
 
   return (
     <div className="space-y-6 max-w-2xl">
+
+      {/* Platform Name Section — FIRST, most important */}
+      <div className="aif-card !rounded-xl border border-[#FFB454]/30">
+        <div className="px-6 py-4 border-b border-[var(--aif-line)] flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#FFB454]/15 flex items-center justify-center shrink-0">
+            <Globe size={15} className="text-[#FFB454]"/>
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">
+              {isIt ? "Nome Piattaforma" : "Platform Name"}
+            </h3>
+            <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
+              {isIt
+                ? "Il nome che appare ovunque: email, admin panel, portale agenti, messaggi di errore. Cambia qui e tutto si aggiorna subito."
+                : "The name shown everywhere: emails, admin panel, agent portal, error messages. Change here and everything updates instantly."}
+            </p>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {platformName && (
+            <div className="bg-[#FFB454]/5 border border-[#FFB454]/20 rounded-lg px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-[#FFB454] mb-1 flex items-center gap-1">
+                <CheckCircle2 size={10}/> {isIt ? "Nome attuale" : "Current name"}
+              </p>
+              <p className="text-white text-sm font-semibold">{platformName}</p>
+            </div>
+          )}
+          <div>
+            <label className="aif-label">{isIt ? "Nuovo nome piattaforma" : "New platform name"} *</label>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <input
+                type="text"
+                className="aif-input flex-1"
+                value={inputPlatformName}
+                onChange={e => setInputPlatformName(e.target.value)}
+                placeholder="es. Rubic Exchange"
+                data-testid="settings-platform-name-input"
+              />
+              <button
+                onClick={savePlatformName}
+                disabled={savingPlatformName || inputPlatformName.trim() === platformName}
+                className="aif-btn-primary !py-2.5 !px-5 !text-sm inline-flex items-center gap-2 shrink-0 disabled:opacity-50"
+                data-testid="settings-platform-name-save"
+              >
+                {savingPlatformName ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
+                {savingPlatformName ? (isIt ? "Salvataggio..." : "Saving...") : (isIt ? "Salva" : "Save")}
+              </button>
+            </div>
+          </div>
+          <div className="bg-[#5FE3C9]/5 border border-[#5FE3C9]/20 rounded-lg px-4 py-3">
+            <p className="text-[#5FE3C9] text-xs font-medium mb-1">
+              {isIt ? "Dove viene usato questo nome:" : "Where this name is used:"}
+            </p>
+            <ul className="text-[var(--aif-text-dim)] text-xs space-y-0.5">
+              <li>• {isIt ? "Intestazione e campi nel modal «Crea Account»" : "Header and fields in «Create Account» modal"}</li>
+              <li>• {isIt ? "Email inviate ai clienti (campo «Fondi Depositati Presso»)" : "Emails sent to clients (\"Funds Held At\" field)"}</li>
+              <li>• {isIt ? "Portale agenti — modal creazione account" : "Agent portal — account creation modal"}</li>
+              <li>• {isIt ? "Messaggi di errore e toast notifiche" : "Error messages and toast notifications"}</li>
+              <li>• {isIt ? "URL API piattaforma si aggiorna separatamente qui sotto" : "Platform API URL updates separately below"}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
       {/* Payment Link Section */}
       <div className="aif-card !rounded-xl border border-[#5FE3C9]/20">

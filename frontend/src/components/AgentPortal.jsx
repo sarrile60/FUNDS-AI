@@ -225,7 +225,8 @@ function StatusBadge({ ok, label }) {
 // ============================================================
 //   Agent Uniswap V4 Create Account Modal
 // ============================================================
-function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
+function AgentCreateUniswapModal({ client, agent, isIt, platformName, onClose, onSuccess }) {
+  const pName = platformName || "Rubic Exchange";
   const emailPrefix = (client.email || "").split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30);
 
   // Refs for auto-advance between date parts
@@ -283,7 +284,7 @@ function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(isIt ? "Account Uniswap V4 creato con successo!" : "Uniswap V4 account created successfully!");
+      toast.success(isIt ? `Account ${pName} creato con successo!` : `${pName} account created successfully!`);
       onSuccess();
     } catch (err) {
       const msg = err?.response?.data?.detail || (isIt ? "Errore creazione account" : "Failed to create account");
@@ -305,7 +306,7 @@ function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
               </div>
               <div>
                 <h2 className="text-white font-bold text-sm">
-                  {isIt ? "Crea Account Uniswap V4" : "Create Uniswap V4 Account"}
+                  {isIt ? `Crea Account ${pName}` : `Create ${pName} Account`}
                 </h2>
                 <p className="text-[var(--aif-text-dim)] text-xs mt-0.5">
                   {client.first_name} {client.last_name} · {client.email}
@@ -344,13 +345,13 @@ function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
 
             {/* Username */}
             <div>
-              <label className="aif-label">{isIt ? "Username (per Uniswap V4)" : "Username (for Uniswap V4)"} *</label>
+              <label className="aif-label">{isIt ? `Username (per ${pName})` : `Username (for ${pName})`} *</label>
               <input className="aif-input font-mono" value={form.username} onChange={set("username")} placeholder="username" required data-testid="agent-uniswap-username"/>
             </div>
 
             {/* Password */}
             <div>
-              <label className="aif-label">{isIt ? "Password (per Uniswap V4)" : "Password (for Uniswap V4)"} *</label>
+              <label className="aif-label">{isIt ? `Password (per ${pName})` : `Password (for ${pName})`} *</label>
               <div className="relative">
                 <input
                   className="aif-input font-mono pr-10"
@@ -465,7 +466,7 @@ function AgentCreateUniswapModal({ client, agent, isIt, onClose, onSuccess }) {
 // ============================================================
 //   Client Card
 // ============================================================
-function ClientCard({ result, isIt, agent, onRefresh }) {
+function ClientCard({ result, isIt, agent, platformName, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
   const [showUniswapModal, setShowUniswapModal] = useState(false);
   const [togglingNI, setTogglingNI] = useState(false);
@@ -497,6 +498,7 @@ function ClientCard({ result, isIt, agent, onRefresh }) {
         client={result}
         agent={agent}
         isIt={isIt}
+        platformName={platformName}
         onClose={() => setShowUniswapModal(false)}
         onSuccess={() => { setShowUniswapModal(false); onRefresh(); }}
       />
@@ -721,7 +723,14 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // "all" | "24h" | "50h" | "newest" | "oldest"
+  const [filter, setFilter] = useState("all");
+  const [platformName, setPlatformName] = useState("Rubic Exchange");
+
+  useEffect(() => {
+    axios.get(`${API}/settings/platform-name`)
+      .then(r => { if (r.data.platform_name) setPlatformName(r.data.platform_name); })
+      .catch(() => {});
+  }, []);
 
   const loadClients = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -941,6 +950,7 @@ function AgentDashboard({ agent, onLogout, lang, setLang }) {
                   result={c}
                   isIt={isIt}
                   agent={agent}
+                  platformName={platformName}
                   onRefresh={() => loadClients(true)}
                 />
               ))}

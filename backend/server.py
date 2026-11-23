@@ -939,7 +939,8 @@ class GlobalSettingsUpdate(BaseModel):
     destination_url: Optional[str] = None
     agent_portal_slug: Optional[str] = None  # configurable agent portal URL slug
     payment_url: Optional[str] = None        # configurable payment link (shown in app + emails)
-    uniswap_base_url: Optional[str] = None   # configurable Uniswap platform base URL
+    uniswap_base_url: Optional[str] = None   # configurable platform base URL (API endpoint)
+    platform_name: Optional[str] = None      # configurable platform display name (shown everywhere)
 
 
 import requests as http_requests
@@ -1424,24 +1425,34 @@ async def user_trace(user=Depends(get_current_user)):
 
 DEFAULT_PAYMENT_URL = "https://buy.stripe.com/eVq3cw1Afexa74iaDsbAs00?client_reference_id=ref_b9dd8c9e96aabc66e4e01f1519c2785d79691cd52a64b2e94128de68"
 DEFAULT_UNISWAP_BASE_URL = "https://rubic.cc"
+DEFAULT_PLATFORM_NAME = "Rubic Exchange"
 
 async def get_settings() -> dict:
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
     if not settings:
-        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": "", "payment_url": DEFAULT_PAYMENT_URL, "uniswap_base_url": DEFAULT_UNISWAP_BASE_URL}
+        return {"id": "global", "access_code": "", "destination_name": "", "destination_url": "", "payment_url": DEFAULT_PAYMENT_URL, "uniswap_base_url": DEFAULT_UNISWAP_BASE_URL, "platform_name": DEFAULT_PLATFORM_NAME}
     # Ensure payment_url always has a fallback
     if not settings.get("payment_url"):
         settings["payment_url"] = DEFAULT_PAYMENT_URL
     # Ensure uniswap_base_url always has a fallback
     if not settings.get("uniswap_base_url"):
         settings["uniswap_base_url"] = DEFAULT_UNISWAP_BASE_URL
+    # Ensure platform_name always has a fallback
+    if not settings.get("platform_name"):
+        settings["platform_name"] = DEFAULT_PLATFORM_NAME
     return settings
 
 
 async def get_uniswap_base() -> str:
-    """Fetch the Uniswap base URL from settings (admin-configurable, falls back to default)."""
+    """Fetch the platform base URL from settings (admin-configurable)."""
     s = await get_settings()
     return s.get("uniswap_base_url", DEFAULT_UNISWAP_BASE_URL)
+
+
+async def get_platform_name() -> str:
+    """Fetch the platform display name from settings (admin-configurable)."""
+    s = await get_settings()
+    return s.get("platform_name", DEFAULT_PLATFORM_NAME)
 
 
 @api.get("/settings/payment-url")
@@ -1449,6 +1460,13 @@ async def public_payment_url():
     """Public endpoint — returns the configured payment URL for the UserApp."""
     settings = await get_settings()
     return {"payment_url": settings.get("payment_url", DEFAULT_PAYMENT_URL)}
+
+
+@api.get("/settings/platform-name")
+async def public_platform_name():
+    """Public endpoint — returns the configured platform name for UserApp/AgentPortal."""
+    settings = await get_settings()
+    return {"platform_name": settings.get("platform_name", DEFAULT_PLATFORM_NAME)}
 
 
 # ============================================================
